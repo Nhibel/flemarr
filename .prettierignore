@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+styled-system
+coverage
+*.lock
+pnpm-lock.yaml
+.pnpm-store

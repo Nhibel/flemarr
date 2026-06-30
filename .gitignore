@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Vite
+.vite/
+
+# Panda CSS generated files
+styled-system/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Local data (DAT cache, SQLite, downloaded ROMs path settings)
+.rom-curator-data/
+
+# Misc
+*.tmp
+*.bak
