@@ -180,3 +180,15 @@ export async function updateSettings(patch: UpdateSettings): Promise<Settings> {
 }
 
 export type { Settings, UpdateSettings };
+
+export async function validateDir(
+  path: string,
+): Promise<{ exists: boolean; isDirectory: boolean }> {
+  const res = await fetch('/api/fs/validate-dir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{ exists: boolean; isDirectory: boolean }>;
+}

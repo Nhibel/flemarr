@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
-import { getSettings, updateSettings } from '@/lib/api.js';
+import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
 import type { Settings } from '@/lib/api.js';
 
 type Fresh1g1rPreset = Settings['fresh1g1rPreset'];
 const PRESETS: Fresh1g1rPreset[] = ['PropeR', 'McLean', 'Hearto'];
+type ValidationState = 'idle' | 'checking' | 'valid' | 'not-found' | 'not-dir';
 
 interface Props {
   onClose: () => void;
@@ -31,6 +32,7 @@ export function SettingsPage({ onClose }: Props) {
 
   const [newSystem, setNewSystem] = useState('');
   const [newPath, setNewPath] = useState('');
+  const [validation, setValidation] = useState<ValidationState>('idle');
 
   if (isLoading) {
     return (
@@ -58,13 +60,28 @@ export function SettingsPage({ onClose }: Props) {
     mutation.mutate({ downloaderConcurrency: value });
   };
 
+  const handleValidatePath = async () => {
+    const path = newPath.trim();
+    if (!path) return;
+    setValidation('checking');
+    try {
+      const result = await validateDir(path);
+      if (!result.exists) setValidation('not-found');
+      else if (!result.isDirectory) setValidation('not-dir');
+      else setValidation('valid');
+    } catch {
+      setValidation('not-found');
+    }
+  };
+
   const handleAddPath = () => {
     const system = newSystem.trim();
     const path = newPath.trim();
-    if (!system || !path) return;
+    if (!system || !path || validation !== 'valid') return;
     mutation.mutate({ systemPaths: { [system]: path } });
     setNewSystem('');
     setNewPath('');
+    setValidation('idle');
   };
 
   const handleRemovePath = (system: string) => {
@@ -89,6 +106,15 @@ export function SettingsPage({ onClose }: Props) {
     borderColor: 'gray.100',
     _last: { borderBottom: 'none', mb: '0', pb: '0' },
   });
+
+  const validationHint =
+    validation === 'valid'
+      ? { text: '✓ Dossier trouvé', color: 'green.600' }
+      : validation === 'not-found'
+        ? { text: '✗ Chemin introuvable', color: 'red.600' }
+        : validation === 'not-dir'
+          ? { text: "✗ Ce chemin existe mais n'est pas un dossier", color: 'red.600' }
+          : null;
 
   return (
     <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6', pb: '12' })}>
@@ -254,41 +280,75 @@ export function SettingsPage({ onClose }: Props) {
           </div>
         )}
 
-        <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap' })}>
+        {/* Add new path — two-step: verify then confirm */}
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
           <input
             type="text"
-            placeholder="Système (ex: Nintendo - Super Nintendo…)"
+            placeholder="Système (ex: Nintendo - Super Nintendo Entertainment System)"
             value={newSystem}
             onChange={(e) => setNewSystem(e.target.value)}
-            className={cx(css({ flex: '1', minW: '40' }), inputClass)}
+            className={inputClass}
           />
-          <input
-            type="text"
-            placeholder="Chemin (ex: /roms/snes)"
-            value={newPath}
-            onChange={(e) => setNewPath(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
-            className={cx(css({ flex: '1', minW: '32' }), inputClass)}
-          />
-          <button
-            onClick={handleAddPath}
-            disabled={!newSystem.trim() || !newPath.trim() || mutation.isPending}
-            className={css({
-              px: '3',
-              py: '1.5',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              bg: 'blue.500',
-              color: 'white',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              flexShrink: 0,
-              _hover: { bg: 'blue.600' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
-          >
-            Ajouter
-          </button>
+          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+            <input
+              type="text"
+              placeholder="Chemin absolu (ex: C:\Roms\SNES)"
+              value={newPath}
+              onChange={(e) => {
+                setNewPath(e.target.value);
+                setValidation('idle');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && validation === 'idle') void handleValidatePath();
+              }}
+              className={cx(css({ flex: '1' }), inputClass)}
+            />
+            <button
+              onClick={() => void handleValidatePath()}
+              disabled={!newPath.trim() || validation === 'checking'}
+              className={css({
+                px: '3',
+                py: '1.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                border: '1px solid',
+                borderColor: 'gray.300',
+                bg: 'white',
+                color: 'gray.600',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                flexShrink: 0,
+                _hover: { bg: 'gray.50' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              {validation === 'checking' ? 'Vérification…' : 'Vérifier'}
+            </button>
+            <button
+              onClick={handleAddPath}
+              disabled={!newSystem.trim() || validation !== 'valid' || mutation.isPending}
+              className={css({
+                px: '3',
+                py: '1.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                bg: 'blue.500',
+                color: 'white',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                flexShrink: 0,
+                _hover: { bg: 'blue.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              Ajouter
+            </button>
+          </div>
+          {validationHint && (
+            <p className={css({ fontSize: 'xs', color: validationHint.color })}>
+              {validationHint.text}
+            </p>
+          )}
         </div>
       </section>
     </main>
