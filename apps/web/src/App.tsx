@@ -114,43 +114,41 @@ function GameView({ dat, onReset }: GameViewProps) {
         ))}
       </div>
 
-      {/* Games tab */}
-      {tab === 'games' && (
-        <>
-          {isLoading && (
-            <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Loading games…</p>
-          )}
-          {error instanceof Error && (
-            <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
-              {error.message}
-            </p>
-          )}
-          {!isLoading && !error && (
-            <>
-              <GameFilters
-                filterState={filterState}
-                totalCount={games.length}
-                filteredCount={filtered.length}
-                onSearch={setSearch}
-                onToggleRegion={toggleRegion}
-                onToggleCategory={toggleCategory}
-                onSetSortBy={setSortBy}
-                onToggleSortDir={toggleSortDir}
-                onSelectAll={selectAll}
-                onClearAll={clearAll}
-                isAllSelected={isAllSelected}
-              />
-              <GameList games={filtered} selected={selected} onToggle={toggle} />
-              <div className={css({ mt: '3' })}>
-                <SelectionSummary games={games} selected={selected} />
-              </div>
-            </>
-          )}
-        </>
-      )}
+      {/* Games tab — kept mounted to preserve filter/selection state */}
+      <div className={css({ display: tab === 'games' ? 'block' : 'none' })}>
+        {isLoading && <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Loading games…</p>}
+        {error instanceof Error && (
+          <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+            {error.message}
+          </p>
+        )}
+        {!isLoading && !error && (
+          <>
+            <GameFilters
+              filterState={filterState}
+              totalCount={games.length}
+              filteredCount={filtered.length}
+              onSearch={setSearch}
+              onToggleRegion={toggleRegion}
+              onToggleCategory={toggleCategory}
+              onSetSortBy={setSortBy}
+              onToggleSortDir={toggleSortDir}
+              onSelectAll={selectAll}
+              onClearAll={clearAll}
+              isAllSelected={isAllSelected}
+            />
+            <GameList games={filtered} selected={selected} onToggle={toggle} />
+            <div className={css({ mt: '3' })}>
+              <SelectionSummary games={games} selected={selected} />
+            </div>
+          </>
+        )}
+      </div>
 
-      {/* Scanner tab */}
-      {tab === 'scanner' && <ScanPage datId={dat.id} />}
+      {/* Scanner tab — kept mounted to preserve scan progress */}
+      <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
+        <ScanPage datId={dat.id} />
+      </div>
     </main>
   );
 }
