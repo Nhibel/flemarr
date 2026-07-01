@@ -7,8 +7,11 @@ import { GameList } from '@/features/game-list/GameList.js';
 import { SelectionSummary } from '@/features/game-list/SelectionSummary.js';
 import { useGameFilters } from '@/features/game-list/use-game-filters.js';
 import { useSelection } from '@/features/game-list/use-selection.js';
+import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { fetchGames } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
+
+type Tab = 'games' | 'scanner';
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
@@ -33,6 +36,8 @@ interface GameViewProps {
 }
 
 function GameView({ dat, onReset }: GameViewProps) {
+  const [tab, setTab] = useState<Tab>('games');
+
   const {
     data: games = [],
     isLoading,
@@ -57,7 +62,7 @@ function GameView({ dat, onReset }: GameViewProps) {
   return (
     <main className={css({ maxW: '5xl', mx: 'auto', mt: '8', px: '6', pb: '12' })}>
       {/* Header */}
-      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '6' })}>
+      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '4' })}>
         <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.800', flex: 1 })}>
           {dat.system}
         </h1>
@@ -77,35 +82,75 @@ function GameView({ dat, onReset }: GameViewProps) {
         </button>
       </div>
 
-      {isLoading && <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Loading games…</p>}
+      {/* Tabs */}
+      <div
+        className={css({
+          display: 'flex',
+          gap: '0',
+          mb: '4',
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+        })}
+      >
+        {(['games', 'scanner'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={css({
+              px: '4',
+              py: '2',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              borderBottom: '2px solid',
+              borderColor: tab === t ? 'blue.500' : 'transparent',
+              color: tab === t ? 'blue.600' : 'gray.500',
+              _hover: { color: 'gray.700' },
+              textTransform: 'capitalize',
+            })}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
 
-      {error instanceof Error && (
-        <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
-          {error.message}
-        </p>
-      )}
-
-      {!isLoading && !error && (
+      {/* Games tab */}
+      {tab === 'games' && (
         <>
-          <GameFilters
-            filterState={filterState}
-            totalCount={games.length}
-            filteredCount={filtered.length}
-            onSearch={setSearch}
-            onToggleRegion={toggleRegion}
-            onToggleCategory={toggleCategory}
-            onSetSortBy={setSortBy}
-            onToggleSortDir={toggleSortDir}
-            onSelectAll={selectAll}
-            onClearAll={clearAll}
-            isAllSelected={isAllSelected}
-          />
-          <GameList games={filtered} selected={selected} onToggle={toggle} />
-          <div className={css({ mt: '3' })}>
-            <SelectionSummary games={games} selected={selected} />
-          </div>
+          {isLoading && (
+            <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Loading games…</p>
+          )}
+          {error instanceof Error && (
+            <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+              {error.message}
+            </p>
+          )}
+          {!isLoading && !error && (
+            <>
+              <GameFilters
+                filterState={filterState}
+                totalCount={games.length}
+                filteredCount={filtered.length}
+                onSearch={setSearch}
+                onToggleRegion={toggleRegion}
+                onToggleCategory={toggleCategory}
+                onSetSortBy={setSortBy}
+                onToggleSortDir={toggleSortDir}
+                onSelectAll={selectAll}
+                onClearAll={clearAll}
+                isAllSelected={isAllSelected}
+              />
+              <GameList games={filtered} selected={selected} onToggle={toggle} />
+              <div className={css({ mt: '3' })}>
+                <SelectionSummary games={games} selected={selected} />
+              </div>
+            </>
+          )}
         </>
       )}
+
+      {/* Scanner tab */}
+      {tab === 'scanner' && <ScanPage datId={dat.id} />}
     </main>
   );
 }
