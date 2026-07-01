@@ -24,6 +24,22 @@ export function computeCrc32Buffer(buf: Buffer): string {
   return update(0, buf).toString(16).padStart(8, '0');
 }
 
+export class Crc32Accumulator {
+  private state = 0xffffffff;
+
+  feed(buf: Buffer): void {
+    let c = this.state;
+    for (let i = 0; i < buf.length; i++) {
+      c = ((TABLE[(c ^ (buf[i] as number)) & 0xff] as number) ^ (c >>> 8)) >>> 0;
+    }
+    this.state = c;
+  }
+
+  digest(): string {
+    return ((this.state ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0');
+  }
+}
+
 export function computeCrc32(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let crc = 0;
