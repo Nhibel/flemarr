@@ -8,10 +8,11 @@ import { SelectionSummary } from '@/features/game-list/SelectionSummary.js';
 import { useGameFilters } from '@/features/game-list/use-game-filters.js';
 import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
+import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { fetchGames } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
-type Tab = 'games' | 'scanner';
+type Tab = 'games' | 'scanner' | 'sources';
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
@@ -92,7 +93,7 @@ function GameView({ dat, onReset }: GameViewProps) {
           borderColor: 'gray.200',
         })}
       >
-        {(['games', 'scanner'] as Tab[]).map((t) => (
+        {(['games', 'scanner', 'sources'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -148,6 +149,11 @@ function GameView({ dat, onReset }: GameViewProps) {
       {/* Scanner tab — kept mounted to preserve scan progress */}
       <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
         <ScanPage datId={dat.id} />
+      </div>
+
+      {/* Sources tab — kept mounted to preserve resolve results */}
+      <div className={css({ display: tab === 'sources' ? 'block' : 'none' })}>
+        <SourcesPanel datId={dat.id} system={dat.system} selectedGameIds={[...selected]} />
       </div>
     </main>
   );

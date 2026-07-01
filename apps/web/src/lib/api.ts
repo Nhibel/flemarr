@@ -2,6 +2,29 @@ import { datUploadResponseSchema, gamesResponseSchema, errorResponseSchema } fro
 import type { DatUploadResponse, GamesResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
 import type { ScanJob, RenameRequest, RenameResult } from '@shared/scan.js';
+import {
+  getSourcesResponseSchema,
+  searchResponseSchema,
+  indexResponseSchema,
+  resolveResponseSchema,
+} from '@shared/archive.js';
+import type {
+  ArchiveSource,
+  ArchiveLayout,
+  GetSourcesResponse,
+  SearchResponse,
+  IndexResponse,
+  ResolveResponse,
+} from '@shared/archive.js';
+
+export type {
+  ArchiveSource,
+  ArchiveLayout,
+  GetSourcesResponse,
+  SearchResponse,
+  IndexResponse,
+  ResolveResponse,
+};
 
 async function parseResponse<T>(res: Response, schema: { parse(v: unknown): T }): Promise<T> {
   const json: unknown = await res.json();
@@ -48,4 +71,52 @@ export async function requestRenames(renames: RenameRequest): Promise<RenameResu
     body: JSON.stringify(renames),
   });
   return parseResponse(res, renameResultSchema);
+}
+
+export async function fetchSources(system: string): Promise<GetSourcesResponse> {
+  const res = await fetch(`/api/archive/sources?system=${encodeURIComponent(system)}`);
+  return parseResponse(res, getSourcesResponseSchema);
+}
+
+export async function addSource(system: string, source: ArchiveSource): Promise<void> {
+  const res = await fetch('/api/archive/sources', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, source }),
+  });
+  await parseResponse(res, getSourcesResponseSchema.partial());
+}
+
+export async function deleteSource(identifier: string): Promise<void> {
+  const res = await fetch(`/api/archive/sources/${encodeURIComponent(identifier)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const json: unknown = await res.json();
+    const err = errorResponseSchema.safeParse(json);
+    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
+  }
+}
+
+export async function searchArchive(q: string): Promise<SearchResponse> {
+  const res = await fetch(`/api/archive/search?q=${encodeURIComponent(q)}`);
+  return parseResponse(res, searchResponseSchema);
+}
+
+export async function previewIndex(identifier: string): Promise<IndexResponse> {
+  const res = await fetch('/api/archive/index', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier }),
+  });
+  return parseResponse(res, indexResponseSchema);
+}
+
+export async function resolveGames(datId: string, gameIds: string[]): Promise<ResolveResponse> {
+  const res = await fetch('/api/archive/resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ datId, gameIds }),
+  });
+  return parseResponse(res, resolveResponseSchema);
 }
