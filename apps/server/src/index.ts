@@ -5,6 +5,7 @@ import { datsRoute } from '@/routes/dats.js';
 import { scanRoute } from '@/routes/scan.js';
 import { archiveRoute } from '@/routes/archive.js';
 import { downloadsRoute } from '@/routes/downloads.js';
+import { fresh1g1rRoute } from '@/routes/fresh1g1r.js';
 
 const app = new Hono();
 
@@ -13,6 +14,7 @@ app.route('/api', datsRoute);
 app.route('/api', scanRoute);
 app.route('/api', archiveRoute);
 app.route('/api', downloadsRoute);
+app.route('/api', fresh1g1rRoute);
 
 const PORT = Number(process.env['PORT'] ?? 3000);
 
