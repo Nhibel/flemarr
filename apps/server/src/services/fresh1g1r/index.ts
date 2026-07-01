@@ -20,7 +20,8 @@ const githubFileSchema = z.object({
 const githubContentsSchema = z.array(githubFileSchema);
 
 function systemFromFilename(name: string): string {
-  return name.replace(/\.dat$/i, '');
+  // Strip "(No-Intro - Fresh1G1R - PropeR).dat" / "(Redump - Fresh1G1R - PropeR).dat" suffix
+  return name.replace(/\s+\([^)]*Fresh1G1R[^)]*\)\.dat$/i, '').trim();
 }
 
 function rawUrl(path: string): string {
@@ -46,32 +47,45 @@ async function writeCache(sha: string, content: string): Promise<void> {
 }
 
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSourceEntry[]> {
-  const url = `https://api.github.com/repos/${REPO}/contents/${encodeURIComponent(preset)}`;
-  const res = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'rom-curator/1.0',
-    },
-  });
+  const base = `https://api.github.com/repos/${REPO}/contents/daily-1g1r-dat/${encodeURIComponent(preset)}`;
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'rom-curator/1.0',
+  };
 
-  if (!res.ok) {
-    throw new Error(`GitHub API returned ${res.status} for preset ${preset}`);
+  const [noIntroRes, redumpRes] = await Promise.all([
+    fetch(`${base}/no-intro`, { headers }),
+    fetch(`${base}/redump`, { headers }),
+  ]);
+
+  const results: DatSourceEntry[] = [];
+
+  for (const [res, subdir] of [
+    [noIntroRes, 'no-intro'],
+    [redumpRes, 'redump'],
+  ] as const) {
+    if (!res.ok) {
+      if (res.status === 404) continue; // subdir absent for this preset, skip
+      throw new Error(`GitHub API returned ${res.status} for preset ${preset}/${subdir}`);
+    }
+    const raw: unknown = await res.json();
+    const parsed = githubContentsSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error('Unexpected GitHub API response shape');
+    }
+    results.push(
+      ...parsed.data
+        .filter((f) => f.type === 'file' && f.name.toLowerCase().endsWith('.dat'))
+        .map((f) => ({
+          name: f.name,
+          system: systemFromFilename(f.name),
+          path: f.path,
+          sha: f.sha,
+        })),
+    );
   }
 
-  const raw: unknown = await res.json();
-  const parsed = githubContentsSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error('Unexpected GitHub API response shape');
-  }
-
-  return parsed.data
-    .filter((f) => f.type === 'file' && f.name.toLowerCase().endsWith('.dat'))
-    .map((f) => ({
-      name: f.name,
-      system: systemFromFilename(f.name),
-      path: f.path,
-      sha: f.sha,
-    }));
+  return results.sort((a, b) => a.system.localeCompare(b.system));
 }
 
 export async function fetchDat(
