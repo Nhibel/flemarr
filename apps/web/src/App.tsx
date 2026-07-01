@@ -13,21 +13,59 @@ import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames } from '@/lib/api.js';
+import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
+type AppView = 'loader' | 'game' | 'settings';
+
+function GearIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
+  const [view, setView] = useState<AppView>('loader');
+
+  if (view === 'settings') {
+    return <SettingsPage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
+  }
 
   if (activeDat === null) {
     return (
       <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: '6', color: 'gray.800' })}>
-          rom-curator
-        </h1>
+        <div className={css({ display: 'flex', alignItems: 'baseline', mb: '6' })}>
+          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.800', flex: 1 })}>
+            rom-curator
+          </h1>
+          <button
+            onClick={() => setView('settings')}
+            title="Paramètres"
+            className={css({
+              color: 'gray.400',
+              cursor: 'pointer',
+              p: '1',
+              borderRadius: 'md',
+              _hover: { color: 'gray.600', bg: 'gray.100' },
+            })}
+          >
+            <GearIcon />
+          </button>
+        </div>
 
         {/* Mode toggle */}
         <div
@@ -61,23 +99,43 @@ export function App() {
         </div>
 
         {loaderMode === 'fresh1g1r' ? (
-          <Fresh1g1rBrowser onSuccess={setActiveDat} />
+          <Fresh1g1rBrowser
+            onSuccess={(dat) => {
+              setActiveDat(dat);
+              setView('game');
+            }}
+          />
         ) : (
-          <DatUpload onSuccess={setActiveDat} />
+          <DatUpload
+            onSuccess={(dat) => {
+              setActiveDat(dat);
+              setView('game');
+            }}
+          />
         )}
       </main>
     );
   }
 
-  return <GameView dat={activeDat} onReset={() => setActiveDat(null)} />;
+  return (
+    <GameView
+      dat={activeDat}
+      onReset={() => {
+        setActiveDat(null);
+        setView('loader');
+      }}
+      onSettings={() => setView('settings')}
+    />
+  );
 }
 
 interface GameViewProps {
   dat: DatUploadResponse;
   onReset: () => void;
+  onSettings: () => void;
 }
 
-function GameView({ dat, onReset }: GameViewProps) {
+function GameView({ dat, onReset, onSettings }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
 
@@ -127,6 +185,19 @@ function GameView({ dat, onReset }: GameViewProps) {
           })}
         >
           Load different DAT
+        </button>
+        <button
+          onClick={onSettings}
+          title="Paramètres"
+          className={css({
+            color: 'gray.400',
+            cursor: 'pointer',
+            p: '1',
+            borderRadius: 'md',
+            _hover: { color: 'gray.600', bg: 'gray.100' },
+          })}
+        >
+          <GearIcon />
         </button>
       </div>
 

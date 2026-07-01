@@ -14,14 +14,28 @@ const SAMPLE_DAT: DatFile = {
       name: 'Super Mario World (USA)',
       region: ['USA'],
       languages: ['En'],
-      roms: [{ name: 'Super Mario World (USA).sfc', size: 524288, crc: 'b19ed489' }],
+      roms: [
+        {
+          name: 'Super Mario World (USA).sfc',
+          size: 524288,
+          crc: 'b19ed489',
+          status: 'good' as const,
+        },
+      ],
     },
     {
       id: 'game-2',
       name: 'Donkey Kong Country (USA)',
       region: ['USA'],
       languages: ['En'],
-      roms: [{ name: 'Donkey Kong Country (USA).sfc', size: 2097152, crc: 'af614831' }],
+      roms: [
+        {
+          name: 'Donkey Kong Country (USA).sfc',
+          size: 2097152,
+          crc: 'af614831',
+          status: 'good' as const,
+        },
+      ],
     },
   ],
 };

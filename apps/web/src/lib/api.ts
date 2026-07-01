@@ -6,6 +6,8 @@ import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
 import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
+import { settingsResponseSchema } from '@shared/settings.js';
+import type { Settings, UpdateSettings } from '@shared/settings.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -162,3 +164,19 @@ export async function fetchDatFromFresh1g1r(request: FetchDatRequest): Promise<D
   });
   return parseResponse(res, fetchDatResponseSchema);
 }
+
+export async function getSettings(): Promise<Settings> {
+  const res = await fetch('/api/settings');
+  return parseResponse(res, settingsResponseSchema);
+}
+
+export async function updateSettings(patch: UpdateSettings): Promise<Settings> {
+  const res = await fetch('/api/settings', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  return parseResponse(res, settingsResponseSchema);
+}
+
+export type { Settings, UpdateSettings };

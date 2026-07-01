@@ -8,10 +8,11 @@ vi.mock('../services/settings/index.js', () => ({
 }));
 
 import { getSettings, updateSettings } from '../services/settings/index.js';
+import type { Settings } from '@shared/settings.js';
 
 const app = new Hono().route('/api', settingsRoute);
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS: Settings = {
   fresh1g1rPreset: 'PropeR',
   downloaderConcurrency: 2,
   systemPaths: {},
@@ -34,7 +35,7 @@ describe('GET /api/settings', () => {
 
 describe('PATCH /api/settings', () => {
   it('updates fresh1g1rPreset and returns updated settings', async () => {
-    const updated = { ...DEFAULT_SETTINGS, fresh1g1rPreset: 'McLean' };
+    const updated: Settings = { ...DEFAULT_SETTINGS, fresh1g1rPreset: 'McLean' };
     vi.mocked(updateSettings).mockReturnValue(updated);
     const res = await app.request('/api/settings', {
       method: 'PATCH',
