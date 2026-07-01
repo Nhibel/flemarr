@@ -656,19 +656,25 @@ function ResolvePanel({
 
 function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] }) {
   const found = game.sources.length > 0;
+  const containerStyle = css.raw(
+    found
+      ? {
+          borderColor: 'green.200',
+          bg: 'green.50',
+          _dark: { bg: 'green.900', borderColor: 'green.800' },
+        }
+      : { borderColor: 'bd.default', bg: 'bg.page' },
+  );
   return (
-    <div
-      className={css({
-        p: '3',
-        border: '1px solid',
-        borderRadius: 'md',
-        borderColor: found ? 'green.200' : 'bd.default',
-        bg: found ? 'green.50' : 'bg.page',
-      })}
-    >
+    <div className={css({ p: '3', border: '1px solid', borderRadius: 'md' }, containerStyle)}>
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
         <span
-          className={css({ fontSize: 'sm', color: found ? 'green.700' : 'fg.faint', mt: '0.5' })}
+          className={css({
+            fontSize: 'sm',
+            color: found ? 'green.700' : 'fg.faint',
+            _dark: found ? { color: 'green.400' } : undefined,
+            mt: '0.5',
+          })}
         >
           {found ? '✓' : '—'}
         </span>

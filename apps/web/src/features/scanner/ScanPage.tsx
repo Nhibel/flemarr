@@ -362,6 +362,7 @@ function RenameRow({
         cursor: 'pointer',
         bg: checked ? 'amber.50' : 'bg.page',
         _hover: { bg: checked ? 'amber.100' : 'bg.surface' },
+        _dark: checked ? { bg: 'amber.900' } : undefined,
         _last: { borderBottom: 'none' },
       })}
     >
