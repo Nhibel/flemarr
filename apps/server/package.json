@@ -12,12 +12,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",
+    "better-sqlite3": "^12.11.1",
     "fast-xml-parser": "^4.4.0",
     "hono": "^4.5.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@rom-curator/shared": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0",
