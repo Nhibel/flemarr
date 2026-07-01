@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { listDatSources, fetchDatFromFresh1g1r } from '@/lib/api.js';
+import { listDatSources, fetchDatFromFresh1g1r, getSettings } from '@/lib/api.js';
 import type { Fresh1g1rPreset, ListSourcesResponse } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
@@ -12,7 +12,9 @@ interface Props {
 }
 
 export function Fresh1g1rBrowser({ onSuccess }: Props) {
-  const [preset, setPreset] = useState<Fresh1g1rPreset>('PropeR');
+  const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const [preset, setPreset] = useState<Fresh1g1rPreset | null>(null);
+  const resolvedPreset: Fresh1g1rPreset = preset ?? settingsData?.fresh1g1rPreset ?? 'PropeR';
   const [search, setSearch] = useState('');
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -23,14 +25,14 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
     error: listError,
     refetch,
   } = useQuery({
-    queryKey: ['dat-sources', preset],
-    queryFn: () => listDatSources(preset),
+    queryKey: ['dat-sources', resolvedPreset],
+    queryFn: () => listDatSources(resolvedPreset),
     staleTime: 5 * 60 * 1000, // 5 min — GitHub contents don't change that fast
   });
 
   const loadMutation = useMutation({
     mutationFn: (entry: ListSourcesResponse['sources'][number]) =>
-      fetchDatFromFresh1g1r({ preset, path: entry.path, sha: entry.sha }),
+      fetchDatFromFresh1g1r({ preset: resolvedPreset, path: entry.path, sha: entry.sha }),
     onSuccess: (dat) => onSuccess(dat),
     onError: (err) => setLoadError(err instanceof Error ? err.message : 'Erreur'),
   });
@@ -67,10 +69,10 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 borderRadius: 'md',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: preset === p ? 'blue.400' : 'gray.300',
-                bg: preset === p ? 'blue.50' : 'white',
-                color: preset === p ? 'blue.700' : 'gray.600',
-                _hover: { bg: preset === p ? 'blue.50' : 'gray.50' },
+                borderColor: resolvedPreset === p ? 'blue.400' : 'gray.300',
+                bg: resolvedPreset === p ? 'blue.50' : 'white',
+                color: resolvedPreset === p ? 'blue.700' : 'gray.600',
+                _hover: { bg: resolvedPreset === p ? 'blue.50' : 'gray.50' },
               })}
             >
               {p}

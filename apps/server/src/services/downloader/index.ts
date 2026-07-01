@@ -2,10 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { rename, rm } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { assertWithinRoot } from '@/lib/fs-safety.js';
+import { getSettings } from '@/services/settings/index.js';
 import { downloadFile } from './worker.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
-
-const CONCURRENCY = 2;
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 
 interface DownloadItemState {
@@ -53,6 +52,7 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
   const job = downloadJobs.get(jobId);
   if (!job) return;
 
+  const concurrency = getSettings().downloaderConcurrency;
   const { signal } = job.controller;
   const queue = [...job.items];
   const inFlight = new Set<Promise<void>>();
@@ -105,7 +105,7 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
   for (const item of queue) {
     if (signal.aborted) break;
 
-    if (inFlight.size >= CONCURRENCY) {
+    if (inFlight.size >= concurrency) {
       await Promise.race(inFlight);
     }
 
