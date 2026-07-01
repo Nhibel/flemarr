@@ -1,41 +1,53 @@
+import type { Database } from 'better-sqlite3';
 import type { ArchiveSource } from '@shared/archive.js';
+import { getDb } from '@/lib/db.js';
 
-// Mutable in-memory store — persisted to SQLite in phase 7.
-// Keyed by the exact system string from the DAT header (e.g. "Nintendo - Super Nintendo Entertainment System").
-const store = new Map<string, ArchiveSource[]>();
-
-export function getSources(system: string): ArchiveSource[] {
-  return store.get(system) ?? [];
+interface SourceRow {
+  identifier: string;
+  system: string;
+  layout: string;
+  note: string;
 }
 
-export function getAllSystems(): string[] {
-  return [...store.keys()];
+function rowToSource(row: SourceRow): ArchiveSource {
+  return {
+    identifier: row.identifier,
+    layout: row.layout as ArchiveSource['layout'],
+    note: row.note,
+  };
 }
 
-export function addSource(system: string, source: ArchiveSource): void {
-  const existing = store.get(system) ?? [];
-  const alreadyExists = existing.some((s) => s.identifier === source.identifier);
-  if (!alreadyExists) {
-    store.set(system, [...existing, source]);
-  }
+export function getSources(system: string, db: Database = getDb()): ArchiveSource[] {
+  const rows = db
+    .prepare(`SELECT * FROM archive_sources WHERE system = ? ORDER BY identifier`)
+    .all(system) as SourceRow[];
+  return rows.map(rowToSource);
 }
 
-export function removeSource(identifier: string): boolean {
-  let removed = false;
-  for (const [system, sources] of store.entries()) {
-    const next = sources.filter((s) => s.identifier !== identifier);
-    if (next.length !== sources.length) {
-      if (next.length === 0) store.delete(system);
-      else store.set(system, next);
-      removed = true;
-    }
-  }
-  return removed;
+export function getAllSystems(db: Database = getDb()): string[] {
+  const rows = db.prepare(`SELECT DISTINCT system FROM archive_sources ORDER BY system`).all() as {
+    system: string;
+  }[];
+  return rows.map((r) => r.system);
 }
 
-export function findSystemForIdentifier(identifier: string): string | undefined {
-  for (const [system, sources] of store.entries()) {
-    if (sources.some((s) => s.identifier === identifier)) return system;
-  }
-  return undefined;
+export function addSource(system: string, source: ArchiveSource, db: Database = getDb()): void {
+  db.prepare(
+    `INSERT OR IGNORE INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+  ).run(source.identifier, system, source.layout, source.note);
+}
+
+export function removeSource(identifier: string, db: Database = getDb()): boolean {
+  const result = db.prepare(`DELETE FROM archive_sources WHERE identifier = ?`).run(identifier);
+  return result.changes > 0;
+}
+
+export function findSystemForIdentifier(
+  identifier: string,
+  db: Database = getDb(),
+): string | undefined {
+  const row = db
+    .prepare(`SELECT system FROM archive_sources WHERE identifier = ?`)
+    .get(identifier) as { system: string } | undefined;
+  return row?.system;
 }
