@@ -41,6 +41,7 @@ export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props)
         cursor: 'pointer',
         userSelect: 'none',
         _hover: { bg: isSelected ? 'blue.100' : 'bg.surface' },
+        _dark: isSelected ? { bg: 'blue.900', _hover: { bg: 'blue.800' } } : undefined,
       })}
       onClick={() => onToggle(game.id)}
     >
