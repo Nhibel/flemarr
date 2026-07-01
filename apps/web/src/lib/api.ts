@@ -2,6 +2,8 @@ import { datUploadResponseSchema, gamesResponseSchema, errorResponseSchema } fro
 import type { DatUploadResponse, GamesResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
 import type { ScanJob, RenameRequest, RenameResult } from '@shared/scan.js';
+import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
+import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -24,6 +26,8 @@ export type {
   SearchResponse,
   IndexResponse,
   ResolveResponse,
+  DownloadRequest,
+  DownloadEvent,
 };
 
 async function parseResponse<T>(res: Response, schema: { parse(v: unknown): T }): Promise<T> {
@@ -120,3 +124,23 @@ export async function resolveGames(datId: string, gameIds: string[]): Promise<Re
   });
   return parseResponse(res, resolveResponseSchema);
 }
+
+export async function startDownload(request: DownloadRequest): Promise<string> {
+  const res = await fetch('/api/downloads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return parseResponse(res, downloadJobSchema).then((j) => j.jobId);
+}
+
+export function openDownloadEvents(jobId: string): EventSource {
+  return new EventSource(`/api/downloads/${encodeURIComponent(jobId)}/events`);
+}
+
+export async function cancelDownload(jobId: string): Promise<void> {
+  await fetch(`/api/downloads/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+}
+
+// Re-export schema for use in components
+export { downloadEventSchema };

@@ -8,20 +8,28 @@ import {
   searchArchive,
   previewIndex,
   resolveGames,
+  startDownload,
 } from '@/lib/api.js';
 import type { ArchiveSource, ArchiveLayout, ResolveResponse } from '@/lib/api.js';
+import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 
 interface Props {
   datId: string;
   system: string;
   selectedGameIds: string[];
+  onQueueDownload: (job: QueuedDownload) => void;
 }
 
-export function SourcesPanel({ datId, system, selectedGameIds }: Props) {
+export function SourcesPanel({ datId, system, selectedGameIds, onQueueDownload }: Props) {
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}>
       <SourcesManager system={system} />
-      <ResolvePanel datId={datId} system={system} selectedGameIds={selectedGameIds} />
+      <ResolvePanel
+        datId={datId}
+        system={system}
+        selectedGameIds={selectedGameIds}
+        onQueueDownload={onQueueDownload}
+      />
     </div>
   );
 }
@@ -463,14 +471,18 @@ function ResolvePanel({
   datId,
   system,
   selectedGameIds,
+  onQueueDownload,
 }: {
   datId: string;
   system: string;
   selectedGameIds: string[];
+  onQueueDownload: (job: QueuedDownload) => void;
 }) {
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [destinationDir, setDestinationDir] = useState('');
+  const [queuing, setQueuing] = useState(false);
 
   const { data: sourcesData } = useQuery({
     queryKey: ['archive-sources', system],
@@ -492,6 +504,27 @@ function ResolvePanel({
       setResolving(false);
     }
   }, [datId, selectedGameIds]);
+
+  const handleDownload = useCallback(async () => {
+    if (!result || !destinationDir.trim()) return;
+    const found = result.results.filter((r) => r.sources.length > 0);
+    if (found.length === 0) return;
+    setQueuing(true);
+    try {
+      const items = found.map((r) => ({
+        gameId: r.gameId,
+        romName: r.romName,
+        expectedCrc: r.expectedCrc,
+        downloadUrl: r.sources[0]!.downloadUrl,
+      }));
+      const jobId = await startDownload({ items, destinationDir: destinationDir.trim() });
+      onQueueDownload({ jobId, items, destinationDir: destinationDir.trim() });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur au lancement');
+    } finally {
+      setQueuing(false);
+    }
+  }, [result, destinationDir, onQueueDownload]);
 
   return (
     <section>
@@ -542,8 +575,8 @@ function ResolvePanel({
       )}
 
       {result && (
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-          <div className={css({ display: 'flex', gap: '3', mb: '1' })}>
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+          <div className={css({ display: 'flex', gap: '3' })}>
             <Chip
               label="Trouvés"
               count={result.results.filter((r) => r.sources.length > 0).length}
@@ -555,9 +588,56 @@ function ResolvePanel({
               color="gray"
             />
           </div>
-          {result.results.map((r) => (
-            <ResolvedGameRow key={r.gameId} game={r} />
-          ))}
+
+          {result.results.filter((r) => r.sources.length > 0).length > 0 && (
+            <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+              <input
+                type="text"
+                placeholder="Dossier de destination (ex. /mnt/roms/snes)"
+                value={destinationDir}
+                onChange={(e) => setDestinationDir(e.target.value)}
+                className={css({
+                  flex: 1,
+                  px: '2.5',
+                  py: '1.5',
+                  fontSize: 'sm',
+                  border: '1px solid',
+                  borderColor: 'gray.300',
+                  borderRadius: 'md',
+                  bg: 'white',
+                  outline: 'none',
+                  _focusVisible: { borderColor: 'blue.400' },
+                })}
+              />
+              <button
+                onClick={() => void handleDownload()}
+                disabled={queuing || !destinationDir.trim()}
+                className={css({
+                  px: '3',
+                  py: '1.5',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  flexShrink: 0,
+                  bg: 'green.500',
+                  color: 'white',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'green.600' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                {queuing
+                  ? 'Lancement…'
+                  : `Télécharger (${result.results.filter((r) => r.sources.length > 0).length})`}
+              </button>
+            </div>
+          )}
+
+          <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+            {result.results.map((r) => (
+              <ResolvedGameRow key={r.gameId} game={r} />
+            ))}
+          </div>
         </div>
       )}
     </section>

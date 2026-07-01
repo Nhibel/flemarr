@@ -9,10 +9,12 @@ import { useGameFilters } from '@/features/game-list/use-game-filters.js';
 import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
+import { DownloadManager } from '@/features/downloader/DownloadManager.js';
+import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
-type Tab = 'games' | 'scanner' | 'sources';
+type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
@@ -38,6 +40,12 @@ interface GameViewProps {
 
 function GameView({ dat, onReset }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
+  const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
+
+  const handleQueueDownload = (job: QueuedDownload) => {
+    setDownloadJobs((prev) => [...prev, job]);
+    setTab('downloads');
+  };
 
   const {
     data: games = [],
@@ -93,7 +101,7 @@ function GameView({ dat, onReset }: GameViewProps) {
           borderColor: 'gray.200',
         })}
       >
-        {(['games', 'scanner', 'sources'] as Tab[]).map((t) => (
+        {(['games', 'scanner', 'sources', 'downloads'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -153,7 +161,17 @@ function GameView({ dat, onReset }: GameViewProps) {
 
       {/* Sources tab — kept mounted to preserve resolve results */}
       <div className={css({ display: tab === 'sources' ? 'block' : 'none' })}>
-        <SourcesPanel datId={dat.id} system={dat.system} selectedGameIds={[...selected]} />
+        <SourcesPanel
+          datId={dat.id}
+          system={dat.system}
+          selectedGameIds={[...selected]}
+          onQueueDownload={handleQueueDownload}
+        />
+      </div>
+
+      {/* Downloads tab — kept mounted to preserve job progress */}
+      <div className={css({ display: tab === 'downloads' ? 'block' : 'none' })}>
+        <DownloadManager jobs={downloadJobs} />
       </div>
     </main>
   );
