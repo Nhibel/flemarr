@@ -4,6 +4,8 @@ import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
 import type { ScanJob, RenameRequest, RenameResult } from '@shared/scan.js';
 import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
+import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
+import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -28,6 +30,8 @@ export type {
   ResolveResponse,
   DownloadRequest,
   DownloadEvent,
+  Fresh1g1rPreset,
+  ListSourcesResponse,
 };
 
 async function parseResponse<T>(res: Response, schema: { parse(v: unknown): T }): Promise<T> {
@@ -144,3 +148,17 @@ export async function cancelDownload(jobId: string): Promise<void> {
 
 // Re-export schema for use in components
 export { downloadEventSchema };
+
+export async function listDatSources(preset: Fresh1g1rPreset): Promise<ListSourcesResponse> {
+  const res = await fetch(`/api/dat-sources?preset=${encodeURIComponent(preset)}`);
+  return parseResponse(res, listSourcesResponseSchema);
+}
+
+export async function fetchDatFromFresh1g1r(request: FetchDatRequest): Promise<DatUploadResponse> {
+  const res = await fetch('/api/dats/from-fresh1g1r', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return parseResponse(res, fetchDatResponseSchema);
+}

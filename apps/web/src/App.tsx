@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { DatUpload } from '@/features/dat-loader/DatUpload.js';
+import { Fresh1g1rBrowser } from '@/features/dat-loader/Fresh1g1rBrowser.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
 import { GameList } from '@/features/game-list/GameList.js';
 import { SelectionSummary } from '@/features/game-list/SelectionSummary.js';
@@ -15,17 +16,55 @@ import { fetchGames } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
+type LoaderMode = 'manual' | 'fresh1g1r';
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
+  const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
 
   if (activeDat === null) {
     return (
       <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: '8', color: 'gray.800' })}>
+        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: '6', color: 'gray.800' })}>
           rom-curator
         </h1>
-        <DatUpload onSuccess={setActiveDat} />
+
+        {/* Mode toggle */}
+        <div
+          className={css({
+            display: 'inline-flex',
+            mb: '6',
+            border: '1px solid',
+            borderColor: 'gray.200',
+            borderRadius: 'lg',
+            overflow: 'hidden',
+          })}
+        >
+          {(['fresh1g1r', 'manual'] as LoaderMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setLoaderMode(m)}
+              className={css({
+                px: '4',
+                py: '2',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                cursor: 'pointer',
+                bg: loaderMode === m ? 'blue.500' : 'white',
+                color: loaderMode === m ? 'white' : 'gray.500',
+                _hover: { bg: loaderMode === m ? 'blue.500' : 'gray.50' },
+              })}
+            >
+              {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
+            </button>
+          ))}
+        </div>
+
+        {loaderMode === 'fresh1g1r' ? (
+          <Fresh1g1rBrowser onSuccess={setActiveDat} />
+        ) : (
+          <DatUpload onSuccess={setActiveDat} />
+        )}
       </main>
     );
   }

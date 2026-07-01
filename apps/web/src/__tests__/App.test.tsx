@@ -8,9 +8,10 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('App', () => {
-  it('renders the heading and DAT upload zone on initial load', () => {
+  it('renders the heading and mode toggle on initial load', () => {
     render(<App />, { wrapper });
     expect(screen.getByRole('heading', { name: /rom-curator/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /upload a dat file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /manuel/i })).toBeInTheDocument();
   });
 });
