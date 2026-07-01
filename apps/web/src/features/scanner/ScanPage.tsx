@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { startScan, openScanEvents, requestRenames } from '@/lib/api.js';
+import { PathInput } from '@/components/PathInput.js';
 import type { ScanResult, WrongNameEntry, ScanEvent } from '@shared/scan.js';
 import { scanEventSchema } from '@shared/scan.js';
 
@@ -97,16 +98,14 @@ export function ScanPage({ datId }: Props) {
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
       {/* Directory input */}
       <div className={css({ display: 'flex', gap: '2' })}>
-        <input
-          type="text"
-          placeholder="Directory path (e.g. /mnt/roms/snes)"
+        <PathInput
           value={directory}
-          onChange={(e) => setDirectory(e.target.value)}
+          onChange={setDirectory}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void handleScan();
           }}
-          className={css({
-            flex: 1,
+          placeholder="Directory path (e.g. /mnt/roms/snes)"
+          inputClassName={css({
             px: '3',
             py: '2',
             border: '1px solid',

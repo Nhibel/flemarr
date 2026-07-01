@@ -3,9 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
 import type { Settings } from '@/lib/api.js';
+import { PathInput } from '@/components/PathInput.js';
 
 type Fresh1g1rPreset = Settings['fresh1g1rPreset'];
 const PRESETS: Fresh1g1rPreset[] = ['PropeR', 'McLean', 'Hearto'];
+const PRESET_DESCRIPTIONS: Record<Fresh1g1rPreset, string> = {
+  McLean: 'Anglais uniquement, jeux licenciés seulement. Sélection la plus stricte.',
+  PropeR: 'Toutes langues · jeux, add-ons, bonus discs, éducatif. Officiel uniquement.',
+  Hearto: 'Le plus large · toutes langues, démos, non-licenciés, proto/bêta/alpha.',
+};
 type ValidationState = 'idle' | 'checking' | 'valid' | 'not-found' | 'not-dir';
 
 interface Props {
@@ -211,30 +217,55 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
         >
           Preset Fresh1G1R
         </h2>
-        <div className={css({ display: 'flex', gap: '2' })}>
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              onClick={() => handlePreset(p)}
-              disabled={mutation.isPending}
-              className={css({
-                px: '3',
-                py: '1.5',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                border: '1px solid',
-                borderColor: settings.fresh1g1rPreset === p ? 'blue.400' : 'bd.strong',
-                bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'bg.page',
-                color: settings.fresh1g1rPreset === p ? 'blue.700' : 'fg.muted',
-                _hover: { bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'bg.surface' },
-                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-              })}
-            >
-              {p}
-            </button>
-          ))}
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
+          {PRESETS.map((p) => {
+            const active = settings.fresh1g1rPreset === p;
+            return (
+              <button
+                key={p}
+                onClick={() => handlePreset(p)}
+                disabled={mutation.isPending}
+                className={css({
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: '3',
+                  px: '3',
+                  py: '2',
+                  textAlign: 'left',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: active ? 'blue.400' : 'bd.default',
+                  bg: active ? 'blue.50' : 'bg.page',
+                  _hover: { bg: active ? 'blue.50' : 'bg.surface' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                  _dark: active ? { bg: 'blue.900', borderColor: 'blue.600' } : undefined,
+                })}
+              >
+                <span
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'semibold',
+                    flexShrink: 0,
+                    color: active ? 'blue.700' : 'fg.default',
+                    _dark: active ? { color: 'blue.300' } : undefined,
+                    w: '16',
+                  })}
+                >
+                  {p}
+                </span>
+                <span
+                  className={css({
+                    fontSize: 'xs',
+                    color: active ? 'blue.600' : 'fg.faint',
+                    _dark: active ? { color: 'blue.400' } : undefined,
+                  })}
+                >
+                  {PRESET_DESCRIPTIONS[p]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -363,18 +394,17 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
             className={inputClass}
           />
           <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-            <input
-              type="text"
-              placeholder="Chemin absolu (ex: C:\Roms\SNES)"
+            <PathInput
               value={newPath}
-              onChange={(e) => {
-                setNewPath(e.target.value);
+              onChange={(v) => {
+                setNewPath(v);
                 setValidation('idle');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && validation === 'idle') void handleValidatePath();
               }}
-              className={cx(css({ flex: '1' }), inputClass)}
+              placeholder="Chemin absolu (ex: C:\Roms\SNES)"
+              inputClassName={inputClass}
             />
             <button
               onClick={() => void handleValidatePath()}

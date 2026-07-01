@@ -10,3 +10,10 @@ export const validateDirResponseSchema = z.object({
   isDirectory: z.boolean(),
 });
 export type ValidateDirResponse = z.infer<typeof validateDirResponseSchema>;
+
+export const listDirsResponseSchema = z.object({
+  listedPath: z.string(),
+  parent: z.string().nullable(),
+  dirs: z.array(z.string()),
+});
+export type ListDirsResponse = z.infer<typeof listDirsResponseSchema>;

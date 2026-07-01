@@ -1,3 +1,5 @@
+import { listDirsResponseSchema } from '@shared/fs.js';
+import type { ListDirsResponse } from '@shared/fs.js';
 import { datUploadResponseSchema, gamesResponseSchema, errorResponseSchema } from '@shared/api.js';
 import type { DatUploadResponse, GamesResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
@@ -192,3 +194,11 @@ export async function validateDir(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<{ exists: boolean; isDirectory: boolean }>;
 }
+
+export async function listDirs(path: string): Promise<ListDirsResponse> {
+  const res = await fetch(`/api/fs/list-dirs?path=${encodeURIComponent(path)}`);
+  if (!res.ok) return { listedPath: '', parent: null, dirs: [] };
+  return listDirsResponseSchema.parse(await res.json());
+}
+
+export type { ListDirsResponse };

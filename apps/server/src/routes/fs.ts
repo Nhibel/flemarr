@@ -1,9 +1,44 @@
 import { Hono } from 'hono';
-import { isAbsolute } from 'node:path';
-import { stat } from 'node:fs/promises';
+import { isAbsolute, dirname, join } from 'node:path';
+import { stat, readdir } from 'node:fs/promises';
 import { validateDirRequestSchema } from '@shared/fs.js';
 
 export const fsRoute = new Hono();
+
+fsRoute.get('/fs/list-dirs', async (c) => {
+  const rawPath = c.req.query('path') ?? '';
+
+  if (!rawPath || !isAbsolute(rawPath)) {
+    return c.json({ listedPath: '', parent: null, dirs: [] });
+  }
+
+  async function tryList(p: string) {
+    try {
+      const info = await stat(p);
+      if (!info.isDirectory()) return null;
+      const parentPath = dirname(p);
+      const entries = await readdir(p);
+      const dirs: string[] = [];
+      for (const name of entries) {
+        const full = join(p, name);
+        try {
+          const s = await stat(full);
+          if (s.isDirectory()) dirs.push(full);
+        } catch {
+          /* inaccessible — skip */
+        }
+      }
+      dirs.sort();
+      return { listedPath: p, parent: parentPath === p ? null : parentPath, dirs };
+    } catch {
+      return null;
+    }
+  }
+
+  const result = (await tryList(rawPath)) ?? (await tryList(dirname(rawPath)));
+  if (!result) return c.json({ listedPath: '', parent: null, dirs: [] });
+  return c.json(result);
+});
 
 fsRoute.post('/fs/validate-dir', async (c) => {
   let body: unknown;

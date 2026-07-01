@@ -7,6 +7,12 @@ import type { DatUploadResponse } from '@shared/api.js';
 
 const PRESETS: Fresh1g1rPreset[] = ['PropeR', 'McLean', 'Hearto'];
 
+const PRESET_DESCRIPTIONS: Record<Fresh1g1rPreset, string> = {
+  McLean: 'Anglais uniquement, jeux licenciés seulement. Sélection la plus stricte.',
+  PropeR: 'Toutes langues · jeux, add-ons, bonus discs, éducatif. Officiel uniquement.',
+  Hearto: 'Le plus large · toutes langues, démos, non-licenciés, proto/bêta/alpha.',
+};
+
 interface Props {
   onSuccess: (dat: DatUploadResponse) => void;
 }
@@ -94,6 +100,9 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           ↺ Actualiser
         </button>
       </div>
+      <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '-1' })}>
+        {PRESET_DESCRIPTIONS[resolvedPreset]}
+      </p>
 
       {/* Search */}
       <input
