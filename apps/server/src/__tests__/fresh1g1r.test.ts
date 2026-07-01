@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { closeDb } from '../lib/db.js';
 
 vi.mock('node:os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:os')>();
@@ -75,6 +76,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  closeDb(); // release SQLite file lock before deleting the temp dir
   await rm(join(tmpdir(), 'rom-curator-fresh1g1r-test'), { recursive: true, force: true });
 });
 
