@@ -10,9 +10,57 @@ type ValidationState = 'idle' | 'checking' | 'valid' | 'not-found' | 'not-dir';
 
 interface Props {
   onClose: () => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
-export function SettingsPage({ onClose }: Props) {
+function SunIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+const iconBtnClass = css({
+  color: 'fg.faint',
+  cursor: 'pointer',
+  p: '1',
+  borderRadius: 'md',
+  _hover: { color: 'fg.muted', bg: 'bg.muted' },
+});
+
+export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   const queryClient = useQueryClient();
   const {
     data: settings,
@@ -37,7 +85,7 @@ export function SettingsPage({ onClose }: Props) {
   if (isLoading) {
     return (
       <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
-        <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Chargement…</p>
+        <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Chargement…</p>
       </main>
     );
   }
@@ -93,9 +141,11 @@ export function SettingsPage({ onClose }: Props) {
     py: '1.5',
     fontSize: 'sm',
     border: '1px solid',
-    borderColor: 'gray.300',
+    borderColor: 'bd.strong',
     borderRadius: 'md',
     outline: 'none',
+    bg: 'bg.page',
+    color: 'fg.default',
     _focusVisible: { borderColor: 'blue.400', ring: '2px', ringColor: 'blue.100' },
   });
 
@@ -103,7 +153,7 @@ export function SettingsPage({ onClose }: Props) {
     pb: '6',
     mb: '6',
     borderBottom: '1px solid',
-    borderColor: 'gray.100',
+    borderColor: 'bd.subtle',
     _last: { borderBottom: 'none', mb: '0', pb: '0' },
   });
 
@@ -119,9 +169,16 @@ export function SettingsPage({ onClose }: Props) {
   return (
     <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6', pb: '12' })}>
       <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '8' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.800', flex: 1 })}>
+        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           Paramètres
         </h1>
+        <button
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          className={iconBtnClass}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
         <button
           onClick={onClose}
           className={css({
@@ -129,6 +186,7 @@ export function SettingsPage({ onClose }: Props) {
             color: 'blue.600',
             cursor: 'pointer',
             _hover: { textDecoration: 'underline' },
+            _dark: { color: 'blue.400' },
           })}
         >
           ← Retour
@@ -144,7 +202,12 @@ export function SettingsPage({ onClose }: Props) {
       {/* Fresh1G1R preset */}
       <section className={sectionClass}>
         <h2
-          className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'gray.700', mb: '3' })}
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.default',
+            mb: '3',
+          })}
         >
           Preset Fresh1G1R
         </h2>
@@ -162,10 +225,10 @@ export function SettingsPage({ onClose }: Props) {
                 borderRadius: 'md',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: settings.fresh1g1rPreset === p ? 'blue.400' : 'gray.300',
-                bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'white',
-                color: settings.fresh1g1rPreset === p ? 'blue.700' : 'gray.600',
-                _hover: { bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'gray.50' },
+                borderColor: settings.fresh1g1rPreset === p ? 'blue.400' : 'bd.strong',
+                bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'bg.page',
+                color: settings.fresh1g1rPreset === p ? 'blue.700' : 'fg.muted',
+                _hover: { bg: settings.fresh1g1rPreset === p ? 'blue.50' : 'bg.surface' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
@@ -178,11 +241,16 @@ export function SettingsPage({ onClose }: Props) {
       {/* Downloader concurrency */}
       <section className={sectionClass}>
         <h2
-          className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'gray.700', mb: '1' })}
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.default',
+            mb: '1',
+          })}
         >
           Téléchargements simultanés
         </h2>
-        <p className={css({ fontSize: 'xs', color: 'gray.400', mb: '3' })}>
+        <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
           Nombre de fichiers téléchargés en parallèle (1–8). Archive.org est sensible aux rafales —
           2 est recommandé.
         </p>
@@ -199,18 +267,23 @@ export function SettingsPage({ onClose }: Props) {
             disabled={mutation.isPending}
             className={cx(css({ width: '16', textAlign: 'center' }), inputClass)}
           />
-          <span className={css({ fontSize: 'sm', color: 'gray.500' })}>simultané(s)</span>
+          <span className={css({ fontSize: 'sm', color: 'fg.subtle' })}>simultané(s)</span>
         </div>
       </section>
 
       {/* System paths */}
       <section className={sectionClass}>
         <h2
-          className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'gray.700', mb: '1' })}
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.default',
+            mb: '1',
+          })}
         >
           Répertoires par système
         </h2>
-        <p className={css({ fontSize: 'xs', color: 'gray.400', mb: '3' })}>
+        <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
           Dossier de destination pour chaque système. Utilisé par le scanner et le téléchargeur.
         </p>
 
@@ -219,7 +292,7 @@ export function SettingsPage({ onClose }: Props) {
             className={css({
               mb: '4',
               border: '1px solid',
-              borderColor: 'gray.200',
+              borderColor: 'bd.default',
               borderRadius: 'md',
               overflow: 'hidden',
             })}
@@ -234,14 +307,14 @@ export function SettingsPage({ onClose }: Props) {
                   px: '3',
                   py: '2',
                   borderBottom: '1px solid',
-                  borderColor: 'gray.100',
+                  borderColor: 'bd.subtle',
                   _last: { borderBottom: 'none' },
                 })}
               >
                 <span
                   className={css({
                     fontSize: 'sm',
-                    color: 'gray.700',
+                    color: 'fg.default',
                     flex: 1,
                     minW: '0',
                     truncate: true,
@@ -252,7 +325,7 @@ export function SettingsPage({ onClose }: Props) {
                 <span
                   className={css({
                     fontSize: 'xs',
-                    color: 'gray.400',
+                    color: 'fg.faint',
                     fontFamily: 'mono',
                     flex: 1,
                     minW: '0',
@@ -312,13 +385,13 @@ export function SettingsPage({ onClose }: Props) {
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 border: '1px solid',
-                borderColor: 'gray.300',
-                bg: 'white',
-                color: 'gray.600',
+                borderColor: 'bd.strong',
+                bg: 'bg.page',
+                color: 'fg.muted',
                 borderRadius: 'md',
                 cursor: 'pointer',
                 flexShrink: 0,
-                _hover: { bg: 'gray.50' },
+                _hover: { bg: 'bg.surface' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >

@@ -60,7 +60,7 @@ export function GameFilters({
           px: '3',
           py: '2',
           border: '1px solid',
-          borderColor: 'gray.300',
+          borderColor: 'bd.strong',
           borderRadius: 'md',
           fontSize: 'sm',
           outline: 'none',
@@ -70,7 +70,7 @@ export function GameFilters({
 
       {/* Region chips */}
       <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', alignItems: 'center' })}>
-        <span className={css({ fontSize: 'xs', color: 'gray.500', fontWeight: 'medium' })}>
+        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
           Region
         </span>
         {REGIONS.map((r) => {
@@ -80,9 +80,9 @@ export function GameFilters({
               key={r}
               onClick={() => onToggleRegion(r)}
               className={css(chipBase, {
-                bg: active ? 'blue.500' : 'white',
-                color: active ? 'white' : 'gray.600',
-                borderColor: active ? 'blue.500' : 'gray.300',
+                bg: active ? 'blue.500' : 'bg.page',
+                color: active ? 'white' : 'fg.muted',
+                borderColor: active ? 'blue.500' : 'bd.strong',
                 _hover: { borderColor: 'blue.400' },
               })}
             >
@@ -94,7 +94,7 @@ export function GameFilters({
 
       {/* Category chips */}
       <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', alignItems: 'center' })}>
-        <span className={css({ fontSize: 'xs', color: 'gray.500', fontWeight: 'medium' })}>
+        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
           Category
         </span>
         {CATEGORIES.map((c) => {
@@ -118,7 +118,7 @@ export function GameFilters({
 
       {/* Sort + selection actions */}
       <div className={css({ display: 'flex', gap: '3', alignItems: 'center', flexWrap: 'wrap' })}>
-        <span className={css({ fontSize: 'xs', color: 'gray.500', fontWeight: 'medium' })}>
+        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
           Sort by
         </span>
         <select
@@ -128,10 +128,12 @@ export function GameFilters({
             px: '2',
             py: '1',
             border: '1px solid',
-            borderColor: 'gray.300',
+            borderColor: 'bd.strong',
             borderRadius: 'md',
             fontSize: 'sm',
             cursor: 'pointer',
+            bg: 'bg.page',
+            color: 'fg.default',
           })}
         >
           {SORT_OPTIONS.map((o) => (
@@ -144,16 +146,16 @@ export function GameFilters({
           onClick={onToggleSortDir}
           aria-label={filterState.sortDir === 'asc' ? 'Sort descending' : 'Sort ascending'}
           className={css(chipBase, {
-            bg: 'white',
-            color: 'gray.600',
-            borderColor: 'gray.300',
+            bg: 'bg.page',
+            color: 'fg.muted',
+            borderColor: 'bd.strong',
             _hover: { borderColor: 'blue.400' },
           })}
         >
           {filterState.sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
         </button>
 
-        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'gray.400' })}>
+        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'fg.faint' })}>
           {filteredCount} / {totalCount}
         </span>
 
@@ -161,9 +163,9 @@ export function GameFilters({
           onClick={onSelectAll}
           disabled={isAllSelected}
           className={css(chipBase, {
-            bg: 'white',
-            color: 'gray.600',
-            borderColor: 'gray.300',
+            bg: 'bg.page',
+            color: 'fg.muted',
+            borderColor: 'bd.strong',
             _hover: { borderColor: 'blue.400' },
             _disabled: { opacity: 0.4, cursor: 'not-allowed' },
           })}
@@ -173,9 +175,9 @@ export function GameFilters({
         <button
           onClick={onClearAll}
           className={css(chipBase, {
-            bg: 'white',
-            color: 'gray.600',
-            borderColor: 'gray.300',
+            bg: 'bg.page',
+            color: 'fg.muted',
+            borderColor: 'bd.strong',
             _hover: { borderColor: 'red.400' },
           })}
         >

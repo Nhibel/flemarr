@@ -22,7 +22,7 @@ export function SelectionSummary({ games, selected }: Props) {
 
   if (selected.size === 0) {
     return (
-      <p className={css({ fontSize: 'sm', color: 'gray.400', py: '2' })}>No games selected.</p>
+      <p className={css({ fontSize: 'sm', color: 'fg.faint', py: '2' })}>No games selected.</p>
     );
   }
 
@@ -39,13 +39,18 @@ export function SelectionSummary({ games, selected }: Props) {
         borderColor: 'blue.200',
         borderRadius: 'md',
         fontSize: 'sm',
+        _dark: { bg: 'blue.900', borderColor: 'blue.800' },
       })}
     >
-      <span className={css({ fontWeight: 'semibold', color: 'blue.700' })}>
+      <span
+        className={css({ fontWeight: 'semibold', color: 'blue.700', _dark: { color: 'blue.300' } })}
+      >
         {selected.size} game{selected.size !== 1 ? 's' : ''} selected
       </span>
-      <span className={css({ color: 'blue.500' })}>·</span>
-      <span className={css({ color: 'blue.600' })}>{formatSize(totalBytes)} total</span>
+      <span className={css({ color: 'blue.500', _dark: { color: 'blue.400' } })}>·</span>
+      <span className={css({ color: 'blue.600', _dark: { color: 'blue.400' } })}>
+        {formatSize(totalBytes)} total
+      </span>
     </div>
   );
 }

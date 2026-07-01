@@ -56,7 +56,12 @@ function SourcesManager({ system }: { system: string }) {
     <section>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '3' })}>
         <h2
-          className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'gray.800', flex: 1 })}
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.heading',
+            flex: 1,
+          })}
         >
           Sources pour {system}
         </h2>
@@ -89,7 +94,7 @@ function SourcesManager({ system }: { system: string }) {
       )}
 
       {sources.length === 0 && !showAdd ? (
-        <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+        <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           Aucune source configurée. Ajoutez un identifiant archive.org pour commencer.
         </p>
       ) : (
@@ -142,9 +147,9 @@ function SourceRow({
         gap: '3',
         p: '3',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: 'bd.default',
         borderRadius: 'md',
-        bg: 'white',
+        bg: 'bg.page',
       })}
     >
       <div className={css({ flex: 1, minW: 0 })}>
@@ -153,7 +158,7 @@ function SourceRow({
             className={css({
               fontSize: 'sm',
               fontWeight: 'medium',
-              color: 'gray.800',
+              color: 'fg.heading',
               fontFamily: 'mono',
             })}
           >
@@ -161,7 +166,7 @@ function SourceRow({
           </span>
           <LayoutBadge layout={source.layout} />
         </div>
-        {source.note && <p className={css({ fontSize: 'xs', color: 'gray.400' })}>{source.note}</p>}
+        {source.note && <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>{source.note}</p>}
         {preview && (
           <p className={css({ fontSize: 'xs', color: 'green.600', mt: '1' })}>
             ✓ {preview.fileCount} fichiers trouvés
@@ -182,9 +187,9 @@ function SourceRow({
             borderRadius: 'md',
             cursor: 'pointer',
             border: '1px solid',
-            borderColor: 'gray.300',
-            color: 'gray.600',
-            _hover: { bg: 'gray.50' },
+            borderColor: 'bd.strong',
+            color: 'fg.muted',
+            _hover: { bg: 'bg.surface' },
             _disabled: { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
@@ -286,7 +291,7 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
     >
       {/* Search */}
       <div>
-        <p className={css({ fontSize: 'xs', color: 'gray.500', mb: '1.5' })}>
+        <p className={css({ fontSize: 'xs', color: 'fg.subtle', mb: '1.5' })}>
           Rechercher sur archive.org (optionnel)
         </p>
         <div className={css({ display: 'flex', gap: '2' })}>
@@ -304,9 +309,9 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
               py: '1.5',
               fontSize: 'sm',
               border: '1px solid',
-              borderColor: 'gray.300',
+              borderColor: 'bd.strong',
               borderRadius: 'md',
-              bg: 'white',
+              bg: 'bg.page',
               outline: 'none',
               _focusVisible: { borderColor: 'blue.400' },
             })}
@@ -318,12 +323,12 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
               px: '3',
               py: '1.5',
               fontSize: 'sm',
-              bg: 'white',
+              bg: 'bg.page',
               border: '1px solid',
-              borderColor: 'gray.300',
+              borderColor: 'bd.strong',
               borderRadius: 'md',
               cursor: 'pointer',
-              _hover: { bg: 'gray.50' },
+              _hover: { bg: 'bg.surface' },
               _disabled: { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
@@ -336,9 +341,9 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
             className={css({
               mt: '2',
               border: '1px solid',
-              borderColor: 'gray.200',
+              borderColor: 'bd.default',
               borderRadius: 'md',
-              bg: 'white',
+              bg: 'bg.page',
               maxH: '48',
               overflowY: 'auto',
             })}
@@ -369,7 +374,7 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
                   {r.identifier}
                 </span>
                 {r.title !== r.identifier && (
-                  <span className={css({ color: 'gray.500', fontSize: 'xs' })}>{r.title}</span>
+                  <span className={css({ color: 'fg.subtle', fontSize: 'xs' })}>{r.title}</span>
                 )}
               </button>
             ))}
@@ -391,9 +396,9 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
               py: '1.5',
               fontSize: 'sm',
               border: '1px solid',
-              borderColor: 'gray.300',
+              borderColor: 'bd.strong',
               borderRadius: 'md',
-              bg: 'white',
+              bg: 'bg.page',
               outline: 'none',
               fontFamily: 'mono',
               _focusVisible: { borderColor: 'blue.400' },
@@ -407,9 +412,9 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
               py: '1.5',
               fontSize: 'sm',
               border: '1px solid',
-              borderColor: 'gray.300',
+              borderColor: 'bd.strong',
               borderRadius: 'md',
-              bg: 'white',
+              bg: 'bg.page',
               cursor: 'pointer',
             })}
           >
@@ -427,9 +432,9 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
             py: '1.5',
             fontSize: 'sm',
             border: '1px solid',
-            borderColor: 'gray.300',
+            borderColor: 'bd.strong',
             borderRadius: 'md',
-            bg: 'white',
+            bg: 'bg.page',
             outline: 'none',
             _focusVisible: { borderColor: 'blue.400' },
           })}
@@ -530,7 +535,12 @@ function ResolvePanel({
     <section>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '3' })}>
         <h2
-          className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'gray.800', flex: 1 })}
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.heading',
+            flex: 1,
+          })}
         >
           Résolution des sources
         </h2>
@@ -563,7 +573,7 @@ function ResolvePanel({
       )}
 
       {selectedGameIds.length === 0 && hasSources && (
-        <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+        <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           Sélectionnez des jeux dans l'onglet Games pour lancer la résolution.
         </p>
       )}
@@ -602,9 +612,9 @@ function ResolvePanel({
                   py: '1.5',
                   fontSize: 'sm',
                   border: '1px solid',
-                  borderColor: 'gray.300',
+                  borderColor: 'bd.strong',
                   borderRadius: 'md',
-                  bg: 'white',
+                  bg: 'bg.page',
                   outline: 'none',
                   _focusVisible: { borderColor: 'blue.400' },
                 })}
@@ -652,18 +662,18 @@ function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] })
         p: '3',
         border: '1px solid',
         borderRadius: 'md',
-        borderColor: found ? 'green.200' : 'gray.200',
-        bg: found ? 'green.50' : 'white',
+        borderColor: found ? 'green.200' : 'bd.default',
+        bg: found ? 'green.50' : 'bg.page',
       })}
     >
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
         <span
-          className={css({ fontSize: 'sm', color: found ? 'green.700' : 'gray.400', mt: '0.5' })}
+          className={css({ fontSize: 'sm', color: found ? 'green.700' : 'fg.faint', mt: '0.5' })}
         >
           {found ? '✓' : '—'}
         </span>
         <div className={css({ flex: 1, minW: 0 })}>
-          <p className={css({ fontSize: 'sm', color: 'gray.800', fontWeight: 'medium' })}>
+          <p className={css({ fontSize: 'sm', color: 'fg.heading', fontWeight: 'medium' })}>
             {game.romName || game.gameId}
           </p>
           {found ? (
@@ -673,7 +683,7 @@ function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] })
                   key={i}
                   className={css({
                     fontSize: 'xs',
-                    color: 'gray.500',
+                    color: 'fg.subtle',
                     fontFamily: 'mono',
                     truncate: true,
                   })}
@@ -683,7 +693,7 @@ function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] })
               ))}
             </div>
           ) : (
-            <p className={css({ fontSize: 'xs', color: 'gray.400', mt: '0.5' })}>
+            <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '0.5' })}>
               Non trouvé dans les sources configurées
             </p>
           )}
@@ -694,24 +704,25 @@ function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] })
 }
 
 function Chip({ label, count, color }: { label: string; count: number; color: 'green' | 'gray' }) {
-  const colors = {
-    green: { bg: 'green.50', border: 'green.200', text: 'green.700' },
-    gray: { bg: 'gray.50', border: 'gray.200', text: 'gray.600' },
-  }[color];
+  const colorStyle = css.raw(
+    color === 'green'
+      ? { bg: 'green.50', borderColor: 'green.200', color: 'green.700' }
+      : { bg: 'bg.surface', borderColor: 'bd.default', color: 'fg.muted' },
+  );
 
   return (
     <span
-      className={css({
-        px: '3',
-        py: '1',
-        borderRadius: 'full',
-        fontSize: 'xs',
-        fontWeight: 'medium',
-        border: '1px solid',
-        bg: colors.bg,
-        borderColor: colors.border,
-        color: colors.text,
-      })}
+      className={css(
+        {
+          px: '3',
+          py: '1',
+          borderRadius: 'full',
+          fontSize: 'xs',
+          fontWeight: 'medium',
+          border: '1px solid',
+        },
+        colorStyle,
+      )}
     >
       {count} {label}
     </span>

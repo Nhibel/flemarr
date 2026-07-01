@@ -52,7 +52,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
       {/* Preset + refresh */}
       <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-        <span className={css({ fontSize: 'sm', color: 'gray.600', flexShrink: 0 })}>Preset</span>
+        <span className={css({ fontSize: 'sm', color: 'fg.muted', flexShrink: 0 })}>Preset</span>
         <div className={css({ display: 'flex', gap: '1' })}>
           {PRESETS.map((p) => (
             <button
@@ -69,10 +69,10 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 borderRadius: 'md',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: resolvedPreset === p ? 'blue.400' : 'gray.300',
-                bg: resolvedPreset === p ? 'blue.50' : 'white',
-                color: resolvedPreset === p ? 'blue.700' : 'gray.600',
-                _hover: { bg: resolvedPreset === p ? 'blue.50' : 'gray.50' },
+                borderColor: resolvedPreset === p ? 'blue.400' : 'bd.strong',
+                bg: resolvedPreset === p ? 'blue.50' : 'bg.page',
+                color: resolvedPreset === p ? 'blue.700' : 'fg.muted',
+                _hover: { bg: resolvedPreset === p ? 'blue.50' : 'bg.surface' },
               })}
             >
               {p}
@@ -85,9 +85,9 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           className={css({
             ml: 'auto',
             fontSize: 'xs',
-            color: 'gray.400',
+            color: 'fg.faint',
             cursor: 'pointer',
-            _hover: { color: 'gray.600' },
+            _hover: { color: 'fg.muted' },
             _disabled: { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
@@ -106,7 +106,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           py: '2',
           fontSize: 'sm',
           border: '1px solid',
-          borderColor: 'gray.300',
+          borderColor: 'bd.strong',
           borderRadius: 'md',
           outline: 'none',
           _focusVisible: { borderColor: 'blue.400', ring: '2px', ringColor: 'blue.100' },
@@ -115,7 +115,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
 
       {/* States */}
       {isLoading && (
-        <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+        <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           Chargement de la liste depuis GitHub…
         </p>
       )}
@@ -134,7 +134,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
 
       {/* System list */}
       {!isLoading && filtered.length === 0 && !listError && (
-        <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+        <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           {search ? 'Aucun système trouvé.' : 'Aucun DAT disponible pour ce preset.'}
         </p>
       )}
@@ -143,7 +143,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
         <div
           className={css({
             border: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: 'bd.default',
             borderRadius: 'md',
             overflow: 'hidden',
             maxH: '72',
@@ -162,12 +162,12 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                   px: '3',
                   py: '2.5',
                   borderBottom: '1px solid',
-                  borderColor: 'gray.100',
+                  borderColor: 'bd.subtle',
                   _last: { borderBottom: 'none' },
-                  _hover: { bg: 'gray.50' },
+                  _hover: { bg: 'bg.surface' },
                 })}
               >
-                <span className={css({ flex: 1, fontSize: 'sm', color: 'gray.700' })}>
+                <span className={css({ flex: 1, fontSize: 'sm', color: 'fg.default' })}>
                   {entry.system}
                 </span>
                 <button

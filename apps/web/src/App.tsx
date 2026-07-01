@@ -14,6 +14,7 @@ import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames } from '@/lib/api.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
+import { useTheme } from '@/lib/use-theme.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
@@ -36,33 +37,85 @@ function GearIcon() {
   );
 }
 
+function SunIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+const iconBtnClass = css({
+  color: 'fg.faint',
+  cursor: 'pointer',
+  p: '1',
+  borderRadius: 'md',
+  _hover: { color: 'fg.muted', bg: 'bg.muted' },
+});
+
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
   const [view, setView] = useState<AppView>('loader');
+  const { theme, toggle } = useTheme();
 
   if (view === 'settings') {
-    return <SettingsPage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
+    return (
+      <SettingsPage
+        onClose={() => setView(activeDat ? 'game' : 'loader')}
+        theme={theme}
+        onToggleTheme={toggle}
+      />
+    );
   }
 
   if (activeDat === null) {
     return (
       <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
         <div className={css({ display: 'flex', alignItems: 'baseline', mb: '6' })}>
-          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.800', flex: 1 })}>
+          <h1
+            className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}
+          >
             rom-curator
           </h1>
           <button
-            onClick={() => setView('settings')}
-            title="Paramètres"
-            className={css({
-              color: 'gray.400',
-              cursor: 'pointer',
-              p: '1',
-              borderRadius: 'md',
-              _hover: { color: 'gray.600', bg: 'gray.100' },
-            })}
+            onClick={toggle}
+            title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+            className={iconBtnClass}
           >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <button onClick={() => setView('settings')} title="Paramètres" className={iconBtnClass}>
             <GearIcon />
           </button>
         </div>
@@ -73,7 +126,7 @@ export function App() {
             display: 'inline-flex',
             mb: '6',
             border: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: 'bd.default',
             borderRadius: 'lg',
             overflow: 'hidden',
           })}
@@ -88,9 +141,9 @@ export function App() {
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 cursor: 'pointer',
-                bg: loaderMode === m ? 'blue.500' : 'white',
-                color: loaderMode === m ? 'white' : 'gray.500',
-                _hover: { bg: loaderMode === m ? 'blue.500' : 'gray.50' },
+                bg: loaderMode === m ? 'blue.500' : 'bg.page',
+                color: loaderMode === m ? 'white' : 'fg.subtle',
+                _hover: { bg: loaderMode === m ? 'blue.500' : 'bg.surface' },
               })}
             >
               {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
@@ -125,6 +178,8 @@ export function App() {
         setView('loader');
       }}
       onSettings={() => setView('settings')}
+      theme={theme}
+      onToggleTheme={toggle}
     />
   );
 }
@@ -133,9 +188,11 @@ interface GameViewProps {
   dat: DatUploadResponse;
   onReset: () => void;
   onSettings: () => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
-function GameView({ dat, onReset, onSettings }: GameViewProps) {
+function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
 
@@ -169,10 +226,10 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
     <main className={css({ maxW: '5xl', mx: 'auto', mt: '8', px: '6', pb: '12' })}>
       {/* Header */}
       <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '4' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'gray.800', flex: 1 })}>
+        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           {dat.system}
         </h1>
-        <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
+        <span className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           {dat.source} · {dat.gameCount} games
         </span>
         <button
@@ -182,21 +239,19 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
             color: 'blue.600',
             cursor: 'pointer',
             _hover: { textDecoration: 'underline' },
+            _dark: { color: 'blue.400' },
           })}
         >
           Load different DAT
         </button>
         <button
-          onClick={onSettings}
-          title="Paramètres"
-          className={css({
-            color: 'gray.400',
-            cursor: 'pointer',
-            p: '1',
-            borderRadius: 'md',
-            _hover: { color: 'gray.600', bg: 'gray.100' },
-          })}
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          className={iconBtnClass}
         >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+        <button onClick={onSettings} title="Paramètres" className={iconBtnClass}>
           <GearIcon />
         </button>
       </div>
@@ -208,7 +263,7 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
           gap: '0',
           mb: '4',
           borderBottom: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'bd.default',
         })}
       >
         {(['games', 'scanner', 'sources', 'downloads'] as Tab[]).map((t) => (
@@ -223,8 +278,9 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
               cursor: 'pointer',
               borderBottom: '2px solid',
               borderColor: tab === t ? 'blue.500' : 'transparent',
-              color: tab === t ? 'blue.600' : 'gray.500',
-              _hover: { color: 'gray.700' },
+              color: tab === t ? 'blue.600' : 'fg.subtle',
+              _hover: { color: 'fg.default' },
+              _dark: { color: tab === t ? 'blue.400' : undefined },
               textTransform: 'capitalize',
             })}
           >
@@ -235,7 +291,7 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
 
       {/* Games tab — kept mounted to preserve filter/selection state */}
       <div className={css({ display: tab === 'games' ? 'block' : 'none' })}>
-        {isLoading && <p className={css({ color: 'gray.400', fontSize: 'sm' })}>Loading games…</p>}
+        {isLoading && <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Loading games…</p>}
         {error instanceof Error && (
           <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
             {error.message}

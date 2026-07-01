@@ -110,7 +110,7 @@ export function ScanPage({ datId }: Props) {
             px: '3',
             py: '2',
             border: '1px solid',
-            borderColor: 'gray.300',
+            borderColor: 'bd.strong',
             borderRadius: 'md',
             fontSize: 'sm',
             outline: 'none',
@@ -139,7 +139,7 @@ export function ScanPage({ datId }: Props) {
 
       {/* Progress */}
       {scan.phase === 'scanning' && (
-        <div className={css({ fontSize: 'sm', color: 'gray.500' })}>
+        <div className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
           {scan.total > 0 ? `${scan.scanned} / ${scan.total} files hashed…` : 'Collecting files…'}
         </div>
       )}
@@ -192,7 +192,7 @@ function ScanResults({
         <Chip label="Matched" count={result.matched.length} color="green" />
         <Chip label="Wrong name" count={result.wrongName.length} color="amber" />
         <Chip label="Unmatched" count={result.unmatched.length} color="gray" />
-        <span className={css({ fontSize: 'xs', color: 'gray.400', alignSelf: 'center' })}>
+        <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
           {total} files scanned
         </span>
       </div>
@@ -201,7 +201,7 @@ function ScanResults({
       {result.wrongName.length > 0 && (
         <div>
           <div className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '2' })}>
-            <h3 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'gray.700' })}>
+            <h3 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.default' })}>
               Rename suggestions
             </h3>
             <button
@@ -219,7 +219,7 @@ function ScanResults({
           <div
             className={css({
               border: '1px solid',
-              borderColor: 'gray.200',
+              borderColor: 'bd.default',
               borderRadius: 'md',
               overflow: 'hidden',
             })}
@@ -272,7 +272,7 @@ function ScanResults({
       {/* Unmatched */}
       {result.unmatched.length > 0 && (
         <details className={css({ fontSize: 'sm' })}>
-          <summary className={css({ cursor: 'pointer', color: 'gray.500', mb: '1' })}>
+          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
             {result.unmatched.length} unmatched file{result.unmatched.length !== 1 ? 's' : ''}
           </summary>
           <ul
@@ -288,7 +288,7 @@ function ScanResults({
               <li
                 key={p}
                 className={css({
-                  color: 'gray.500',
+                  color: 'fg.subtle',
                   fontFamily: 'mono',
                   fontSize: 'xs',
                   truncate: true,
@@ -313,25 +313,27 @@ function Chip({
   count: number;
   color: 'green' | 'amber' | 'gray';
 }) {
-  const colors = {
-    green: { bg: 'green.50', border: 'green.200', text: 'green.700' },
-    amber: { bg: 'amber.50', border: 'amber.200', text: 'amber.700' },
-    gray: { bg: 'gray.50', border: 'gray.200', text: 'gray.600' },
-  }[color];
+  const colorStyle = css.raw(
+    color === 'green'
+      ? { bg: 'green.50', borderColor: 'green.200', color: 'green.700' }
+      : color === 'amber'
+        ? { bg: 'amber.50', borderColor: 'amber.200', color: 'amber.700' }
+        : { bg: 'bg.surface', borderColor: 'bd.default', color: 'fg.muted' },
+  );
 
   return (
     <span
-      className={css({
-        px: '3',
-        py: '1',
-        borderRadius: 'full',
-        fontSize: 'xs',
-        fontWeight: 'medium',
-        border: '1px solid',
-        bg: colors.bg,
-        borderColor: colors.border,
-        color: colors.text,
-      })}
+      className={css(
+        {
+          px: '3',
+          py: '1',
+          borderRadius: 'full',
+          fontSize: 'xs',
+          fontWeight: 'medium',
+          border: '1px solid',
+        },
+        colorStyle,
+      )}
     >
       {count} {label}
     </span>
@@ -356,10 +358,10 @@ function RenameRow({
         px: '3',
         py: '2',
         borderBottom: '1px solid',
-        borderColor: 'gray.100',
+        borderColor: 'bd.subtle',
         cursor: 'pointer',
-        bg: checked ? 'amber.50' : 'white',
-        _hover: { bg: checked ? 'amber.100' : 'gray.50' },
+        bg: checked ? 'amber.50' : 'bg.page',
+        _hover: { bg: checked ? 'amber.100' : 'bg.surface' },
         _last: { borderBottom: 'none' },
       })}
     >
@@ -371,16 +373,16 @@ function RenameRow({
       />
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.5', minW: 0 })}>
         <span
-          className={css({ fontSize: 'xs', color: 'gray.400', fontFamily: 'mono', truncate: true })}
+          className={css({ fontSize: 'xs', color: 'fg.faint', fontFamily: 'mono', truncate: true })}
         >
           {entry.filePath}
         </span>
-        <span className={css({ fontSize: 'sm', color: 'gray.700' })}>
+        <span className={css({ fontSize: 'sm', color: 'fg.default' })}>
           <span className={css({ color: 'red.500' })}>{entry.currentName}</span>
           {' → '}
           <span className={css({ color: 'green.600' })}>{entry.canonicalName}</span>
         </span>
-        <span className={css({ fontSize: 'xs', color: 'gray.400' })}>{entry.gameName}</span>
+        <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>{entry.gameName}</span>
       </div>
     </label>
   );

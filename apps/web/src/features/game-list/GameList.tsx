@@ -48,7 +48,7 @@ export function GameList({ games, selected, onToggle }: Props) {
 
   if (games.length === 0) {
     return (
-      <div className={css({ py: '12', textAlign: 'center', color: 'gray.400', fontSize: 'sm' })}>
+      <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
         No games match the current filters.
       </div>
     );
@@ -68,7 +68,7 @@ export function GameList({ games, selected, onToggle }: Props) {
         height: '600px',
         overflowY: 'auto',
         border: '1px solid',
-        borderColor: 'gray.200',
+        borderColor: 'bd.default',
         borderRadius: 'md',
         outline: 'none',
         _focusVisible: { ring: '2px', ringColor: 'blue.300', ringOffset: '2px' },

@@ -40,7 +40,7 @@ export function DatUpload({ onSuccess }: Props) {
         justifyContent: 'center',
         gap: '3',
         border: '2px dashed',
-        borderColor: isDragging ? 'blue.500' : 'gray.300',
+        borderColor: isDragging ? 'blue.500' : 'bd.strong',
         borderRadius: 'lg',
         padding: '12',
         cursor: 'pointer',
@@ -67,10 +67,10 @@ export function DatUpload({ onSuccess }: Props) {
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
 
-      <p className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'gray.700' })}>
+      <p className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'fg.default' })}>
         {mutation.isPending ? 'Parsing…' : 'Drop a DAT file here'}
       </p>
-      <p className={css({ fontSize: 'sm', color: 'gray.500' })}>
+      <p className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
         or click to browse — .dat or .xml
       </p>
 

@@ -34,13 +34,13 @@ export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props)
         px: '4',
         py: '2',
         borderBottom: '1px solid',
-        borderColor: 'gray.100',
-        bg: isSelected ? 'blue.50' : isFocused ? 'gray.50' : 'white',
+        borderColor: 'bd.subtle',
+        bg: isSelected ? 'blue.50' : isFocused ? 'bg.surface' : 'bg.page',
         outline: isFocused ? '2px solid token(colors.blue.500)' : 'none',
         outlineOffset: '-2px',
         cursor: 'pointer',
         userSelect: 'none',
-        _hover: { bg: isSelected ? 'blue.100' : 'gray.50' },
+        _hover: { bg: isSelected ? 'blue.100' : 'bg.surface' },
       })}
       onClick={() => onToggle(game.id)}
     >
@@ -63,8 +63,8 @@ export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props)
               fontSize: 'xs',
               px: '1.5',
               py: '0.5',
-              bg: 'gray.100',
-              color: 'gray.600',
+              bg: 'bg.muted',
+              color: 'fg.muted',
               borderRadius: 'sm',
             })}
           >
@@ -76,7 +76,7 @@ export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props)
       <span
         className={css({
           fontSize: 'xs',
-          color: 'gray.400',
+          color: 'fg.faint',
           flexShrink: 0,
           w: '16',
           textAlign: 'right',
