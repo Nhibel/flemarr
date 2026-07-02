@@ -23,6 +23,12 @@ const xauthnResponseSchema = z.object({
     .optional(),
 });
 
+// xauthn returns Set-Cookie-style strings ("value; expires=…; path=/") —
+// only the value belongs in a Cookie request header.
+function cookieValue(raw: string): string {
+  return raw.split(';')[0]?.trim() ?? '';
+}
+
 export class ArchiveLoginError extends Error {
   constructor(reason: string) {
     super(`archive.org login failed: ${reason}`);
@@ -52,8 +58,8 @@ export async function exchangeArchiveLogin(email: string, password: string): Pro
   const cookies = parsed.data.values?.cookies;
   updateSettings({
     ...(s3 ? { archiveOrgAccessKey: s3.access, archiveOrgSecretKey: s3.secret } : {}),
-    archiveOrgLoggedInUser: cookies?.['logged-in-user'] ?? '',
-    archiveOrgLoggedInSig: cookies?.['logged-in-sig'] ?? '',
+    archiveOrgLoggedInUser: cookieValue(cookies?.['logged-in-user'] ?? ''),
+    archiveOrgLoggedInSig: cookieValue(cookies?.['logged-in-sig'] ?? ''),
   });
 
   // Earlier anonymous probes may have cached 403s — start fresh.

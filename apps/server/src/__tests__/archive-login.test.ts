@@ -40,6 +40,34 @@ describe('exchangeArchiveLogin', () => {
     expect(s.archiveOrgLoggedInSig).toBe('the-sig');
   });
 
+  it('strips Set-Cookie attributes — only the value goes in a Cookie header', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            values: {
+              cookies: {
+                'logged-in-user':
+                  'me%40mail.com; expires=Fri, 03 Jul 2027 00:00:00 GMT; path=/; domain=.archive.org',
+                'logged-in-sig': 'sig-value; expires=Fri, 03 Jul 2027 00:00:00 GMT; path=/',
+              },
+            },
+            version: 1,
+          }),
+      }),
+    );
+
+    await exchangeArchiveLogin('me@mail.com', 'pw');
+
+    const s = getSettings();
+    expect(s.archiveOrgLoggedInUser).toBe('me%40mail.com');
+    expect(s.archiveOrgLoggedInSig).toBe('sig-value');
+  });
+
   it('throws ArchiveLoginError with the reason on failure', async () => {
     vi.stubGlobal(
       'fetch',
