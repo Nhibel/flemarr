@@ -45,6 +45,31 @@ describe('GET /api/dats', () => {
   });
 });
 
+describe('DELETE /api/dats/:id', () => {
+  it('deletes an existing DAT', async () => {
+    const app = makeApp();
+    const upload = await app.request('/api/dats', {
+      method: 'POST',
+      headers: { 'content-type': 'text/xml' },
+      body: VALID_DAT,
+    });
+    const { id } = (await upload.json()) as { id: string };
+
+    const del = await app.request(`/api/dats/${id}`, { method: 'DELETE' });
+    expect(del.status).toBe(200);
+
+    const res = await app.request('/api/dats');
+    const body = (await res.json()) as { dats: { id: string }[] };
+    expect(body.dats.some((d) => d.id === id)).toBe(false);
+  });
+
+  it('returns 404 for an unknown id', async () => {
+    const app = makeApp();
+    const res = await app.request('/api/dats/nonexistent', { method: 'DELETE' });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('POST /api/dats', () => {
   it('accepts a valid DAT and returns 201 with summary', async () => {
     const app = makeApp();

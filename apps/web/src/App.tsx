@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { DatUpload } from '@/features/dat-loader/DatUpload.js';
 import { Fresh1g1rBrowser } from '@/features/dat-loader/Fresh1g1rBrowser.js';
@@ -12,7 +12,7 @@ import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
-import { fetchGames, listDats } from '@/lib/api.js';
+import { fetchGames, listDats, deleteDat } from '@/lib/api.js';
 import { computeMissingGameIds } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
@@ -149,9 +149,14 @@ function LoaderView({
   onSettings,
 }: LoaderViewProps) {
   // DATs persisted server-side (SQLite) — lets the user resume without re-parsing
+  const queryClient = useQueryClient();
   const { data: existingDats = [] } = useQuery({
     queryKey: ['dats'],
     queryFn: listDats,
+  });
+  const removeDat = useMutation({
+    mutationFn: deleteDat,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['dats'] }),
   });
 
   return (
@@ -194,19 +199,11 @@ function LoaderView({
             })}
           >
             {existingDats.map((dat) => (
-              <button
+              <div
                 key={dat.id}
-                onClick={() => onLoaded(dat)}
                 className={css({
                   display: 'flex',
-                  alignItems: 'baseline',
-                  gap: '2',
-                  w: 'full',
-                  px: '3',
-                  py: '2',
-                  fontSize: 'sm',
-                  textAlign: 'left',
-                  cursor: 'pointer',
+                  alignItems: 'center',
                   borderBottom: '1px solid',
                   borderColor: 'bd.subtle',
                   bg: 'bg.page',
@@ -214,13 +211,46 @@ function LoaderView({
                   _last: { borderBottom: 'none' },
                 })}
               >
-                <span className={css({ color: 'fg.default', flex: 1, truncate: true })}>
-                  {dat.system}
-                </span>
-                <span className={css({ fontSize: 'xs', color: 'fg.faint', flexShrink: 0 })}>
-                  {dat.source} · {dat.gameCount} jeux
-                </span>
-              </button>
+                <button
+                  onClick={() => onLoaded(dat)}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '2',
+                    flex: 1,
+                    minW: 0,
+                    px: '3',
+                    py: '2',
+                    fontSize: 'sm',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  })}
+                >
+                  <span className={css({ color: 'fg.default', flex: 1, truncate: true })}>
+                    {dat.system}
+                  </span>
+                  <span className={css({ fontSize: 'xs', color: 'fg.faint', flexShrink: 0 })}>
+                    {dat.source} · {dat.gameCount} jeux
+                  </span>
+                </button>
+                <button
+                  onClick={() => removeDat.mutate(dat.id)}
+                  disabled={removeDat.isPending}
+                  title="Supprimer ce DAT"
+                  className={css({
+                    px: '3',
+                    py: '2',
+                    fontSize: 'sm',
+                    color: 'fg.faint',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    _hover: { color: 'red.600' },
+                    _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                  })}
+                >
+                  ✕
+                </button>
+              </div>
             ))}
           </div>
         </section>

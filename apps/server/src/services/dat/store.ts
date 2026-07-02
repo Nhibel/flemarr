@@ -13,6 +13,25 @@ interface DatRow {
 }
 
 export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
+  // Re-loading a DAT for the same system replaces the previous one instead of
+  // piling up duplicates. The id is kept so localStorage selections (keyed by
+  // dat id) survive a DAT update.
+  const existing = db
+    .prepare(`SELECT id FROM dats WHERE system = ? AND source = ? ORDER BY created_at DESC LIMIT 1`)
+    .get(dat.system, dat.source) as { id: string } | undefined;
+
+  if (existing) {
+    db.prepare(
+      `UPDATE dats SET version = ?, date = ?, games_json = ?, created_at = unixepoch() WHERE id = ?`,
+    ).run(dat.version ?? null, dat.date ?? null, JSON.stringify(dat.games), existing.id);
+    return {
+      id: existing.id,
+      system: dat.system,
+      gameCount: dat.games.length,
+      source: dat.source,
+    };
+  }
+
   const id = randomUUID();
   db.prepare(
     `INSERT INTO dats (id, system, source, version, date, games_json)
@@ -26,6 +45,10 @@ export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
     JSON.stringify(dat.games),
   );
   return { id, system: dat.system, gameCount: dat.games.length, source: dat.source };
+}
+
+export function deleteDat(id: string, db: Database = getDb()): boolean {
+  return db.prepare(`DELETE FROM dats WHERE id = ?`).run(id).changes > 0;
 }
 
 export function getDat(id: string, db: Database = getDb()): DatFile | undefined {

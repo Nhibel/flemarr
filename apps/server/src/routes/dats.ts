@@ -1,10 +1,18 @@
 import { Hono } from 'hono';
-import { parseDat, addDat, getDat, listDats } from '@/services/dat/index.js';
+import { parseDat, addDat, getDat, listDats, deleteDat } from '@/services/dat/index.js';
 
 export const datsRoute = new Hono();
 
 datsRoute.get('/dats', (c) => {
   return c.json({ dats: listDats() });
+});
+
+datsRoute.delete('/dats/:id', (c) => {
+  const id = c.req.param('id');
+  if (!deleteDat(id)) {
+    return c.json({ error: { code: 'NOT_FOUND', message: `DAT ${id} not found` } }, 404);
+  }
+  return c.json({ ok: true });
 });
 
 datsRoute.post('/dats', async (c) => {

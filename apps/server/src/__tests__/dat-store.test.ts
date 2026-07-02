@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDb } from '../lib/db.js';
-import { addDat, getDat, listDats } from '../services/dat/store.js';
+import { addDat, getDat, listDats, deleteDat } from '../services/dat/store.js';
 import type { Database } from 'better-sqlite3';
 import type { DatFile } from '@shared/dat.js';
 
@@ -55,10 +55,38 @@ describe('addDat', () => {
     expect(summary.gameCount).toBe(2);
   });
 
-  it('each call generates a distinct id', () => {
+  it('re-adding the same system+source replaces the DAT and keeps the id', () => {
     const s1 = addDat(SAMPLE_DAT, db);
-    const s2 = addDat(SAMPLE_DAT, db);
-    expect(s1.id).not.toBe(s2.id);
+    const updated: DatFile = {
+      ...SAMPLE_DAT,
+      version: '20240201-000000',
+      games: SAMPLE_DAT.games.slice(0, 1),
+    };
+    const s2 = addDat(updated, db);
+
+    expect(s2.id).toBe(s1.id);
+    expect(s2.gameCount).toBe(1);
+    expect(listDats(db)).toHaveLength(1);
+    expect(getDat(s1.id, db)?.version).toBe('20240201-000000');
+  });
+
+  it('different systems get distinct rows', () => {
+    addDat(SAMPLE_DAT, db);
+    addDat({ ...SAMPLE_DAT, system: 'Sega - Mega Drive' }, db);
+    expect(listDats(db)).toHaveLength(2);
+  });
+});
+
+describe('deleteDat', () => {
+  it('removes a stored DAT', () => {
+    const { id } = addDat(SAMPLE_DAT, db);
+    expect(deleteDat(id, db)).toBe(true);
+    expect(getDat(id, db)).toBeUndefined();
+    expect(listDats(db)).toHaveLength(0);
+  });
+
+  it('returns false for unknown id', () => {
+    expect(deleteDat('no-such-id', db)).toBe(false);
   });
 });
 

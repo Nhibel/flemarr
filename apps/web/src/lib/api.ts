@@ -71,6 +71,15 @@ export async function listDats(): Promise<ListDatsResponse['dats']> {
   return parseResponse(res, listDatsResponseSchema).then((r) => r.dats);
 }
 
+export async function deleteDat(datId: string): Promise<void> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const json: unknown = await res.json();
+    const err = errorResponseSchema.safeParse(json);
+    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
+  }
+}
+
 export async function fetchGames(datId: string): Promise<GamesResponse['games']> {
   const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/games`);
   return parseResponse(res, gamesResponseSchema).then((r) => r.games);
