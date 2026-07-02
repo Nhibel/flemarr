@@ -4,6 +4,7 @@ import { join, basename } from 'node:path';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { downloadFile } from './worker.js';
+import { recordDownload } from './history.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 
@@ -41,7 +42,7 @@ function evictOldJobs(): void {
 }
 
 export async function startDownload(request: DownloadRequest): Promise<string> {
-  const { items, destinationDir } = request;
+  const { datId, items, destinationDir } = request;
 
   // Configured roots only (ARCHITECTURE.md) — refuse destinations outside settings.systemPaths
   assertWithinConfiguredRoots(destinationDir, Object.values(getSettings().systemPaths));
@@ -60,12 +61,12 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   const job: DownloadJobState = { status: 'running', items: jobItems, events, controller };
   downloadJobs.set(jobId, job);
 
-  runQueue(jobId, destinationDir).catch(() => undefined);
+  runQueue(jobId, datId, destinationDir).catch(() => undefined);
 
   return jobId;
 }
 
-async function runQueue(jobId: string, destinationDir: string): Promise<void> {
+async function runQueue(jobId: string, datId: string, destinationDir: string): Promise<void> {
   const job = downloadJobs.get(jobId);
   if (!job) return;
 
@@ -101,6 +102,14 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
         await rename(item.tempPath, dest);
         item.status = 'done';
         job.events.push({ type: 'file-done', gameId: item.gameId, romName: item.romName });
+        recordDownload({
+          gameId: item.gameId,
+          romName: item.romName,
+          datId,
+          destination: dest,
+          expectedCrc: item.expectedCrc,
+          status: 'done',
+        });
       } else if (result === 'cancelled') {
         item.status = 'failed';
       } else {
@@ -112,14 +121,33 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
           romName: item.romName,
           reason,
         });
+        recordDownload({
+          gameId: item.gameId,
+          romName: item.romName,
+          datId,
+          destination: join(destinationDir, item.romName),
+          expectedCrc: item.expectedCrc,
+          status: 'failed',
+          errorMessage: reason,
+        });
       }
     } catch (err) {
       item.status = 'failed';
+      const reason = err instanceof Error ? err.message : 'Unknown error';
       job.events.push({
         type: 'file-failed',
         gameId: item.gameId,
         romName: item.romName,
-        reason: err instanceof Error ? err.message : 'Unknown error',
+        reason,
+      });
+      recordDownload({
+        gameId: item.gameId,
+        romName: item.romName,
+        datId,
+        destination: join(destinationDir, item.romName),
+        expectedCrc: item.expectedCrc,
+        status: 'failed',
+        errorMessage: reason,
       });
     }
   };

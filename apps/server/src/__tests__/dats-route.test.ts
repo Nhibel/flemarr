@@ -23,6 +23,28 @@ const VALID_DAT = `<?xml version="1.0"?>
   </game>
 </datafile>`;
 
+describe('GET /api/dats', () => {
+  it('lists previously added DATs with their summaries', async () => {
+    const app = makeApp();
+    const upload = await app.request('/api/dats', {
+      method: 'POST',
+      headers: { 'content-type': 'text/xml' },
+      body: VALID_DAT,
+    });
+    const { id } = (await upload.json()) as { id: string };
+
+    const res = await app.request('/api/dats');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      dats: { id: string; system: string; gameCount: number; source: string }[];
+    };
+    const found = body.dats.find((d) => d.id === id);
+    expect(found).toBeDefined();
+    expect(found?.system).toBe('Test System');
+    expect(found?.gameCount).toBe(1);
+  });
+});
+
 describe('POST /api/dats', () => {
   it('accepts a valid DAT and returns 201 with summary', async () => {
     const app = makeApp();

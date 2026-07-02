@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, access } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startDownload, cancelJob, downloadJobs } from '../services/downloader/index.js';
@@ -23,7 +23,7 @@ const ITEM = {
 
 beforeEach(async () => {
   await mkdir(TMP, { recursive: true });
-updateSettings({ systemPaths: { test: TMP } });
+  updateSettings({ systemPaths: { test: TMP } });
   vi.mocked(downloadFile).mockReset();
   downloadJobs.clear();
 });
@@ -33,7 +33,7 @@ afterEach(async () => {
 });
 
 function makeRequest(overrides: Partial<DownloadRequest> = {}): DownloadRequest {
-  return { items: [ITEM], destinationDir: TMP, ...overrides };
+  return { datId: 'dat-001', items: [ITEM], destinationDir: TMP, ...overrides };
 }
 
 describe('startDownload', () => {
@@ -82,6 +82,21 @@ describe('startDownload', () => {
       expect(failed.reason).toBe('CRC mismatch');
     }
   });
+
+  it('records download history for done and failed files', async () => {
+    const { getDb } = await import('../lib/db.js');
+
+    vi.mocked(downloadFile).mockResolvedValue('crc-mismatch');
+    await startDownload(makeRequest({ datId: 'dat-history-test' }));
+    await new Promise((r) => setTimeout(r, 100));
+
+    const rows = getDb()
+      .prepare(`SELECT * FROM download_history WHERE dat_id = ?`)
+      .all('dat-history-test') as { status: string; error_message: string | null }[];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe('failed');
+    expect(rows[0]?.error_message).toBe('CRC mismatch');
+  });
 });
 
 describe('cancelJob', () => {
@@ -113,6 +128,7 @@ describe('startDownload — multiple items with concurrency', () => {
     vi.mocked(downloadFile).mockResolvedValue('done');
 
     const request: DownloadRequest = {
+      datId: 'dat-001',
       items: [
         { ...ITEM, gameId: 'g1', romName: 'Game1.sfc' },
         { ...ITEM, gameId: 'g2', romName: 'Game2.sfc' },

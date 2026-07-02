@@ -103,7 +103,6 @@ function SourcesManager({ system }: { system: string }) {
             <SourceRow
               key={s.identifier}
               source={s}
-              system={system}
               onRemove={() => removeMutation.mutate(s.identifier)}
             />
           ))}
@@ -113,15 +112,7 @@ function SourcesManager({ system }: { system: string }) {
   );
 }
 
-function SourceRow({
-  source,
-  system,
-  onRemove,
-}: {
-  source: ArchiveSource;
-  system: string;
-  onRemove: () => void;
-}) {
+function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemove: () => void }) {
   const [preview, setPreview] = useState<{ fileCount: number } | null>(null);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -522,14 +513,14 @@ function ResolvePanel({
         expectedCrc: r.expectedCrc,
         downloadUrl: r.sources[0]!.downloadUrl,
       }));
-      const jobId = await startDownload({ items, destinationDir: destinationDir.trim() });
+      const jobId = await startDownload({ datId, items, destinationDir: destinationDir.trim() });
       onQueueDownload({ jobId, items, destinationDir: destinationDir.trim() });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur au lancement');
     } finally {
       setQueuing(false);
     }
-  }, [result, destinationDir, onQueueDownload]);
+  }, [result, datId, destinationDir, onQueueDownload]);
 
   return (
     <section>

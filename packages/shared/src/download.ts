@@ -9,6 +9,7 @@ export const downloadItemSchema = z.object({
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
 export const downloadRequestSchema = z.object({
+  datId: z.string().min(1),
   items: z.array(downloadItemSchema).min(1),
   destinationDir: z.string().min(1),
 });

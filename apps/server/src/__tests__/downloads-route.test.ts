@@ -14,6 +14,7 @@ import { startDownload, cancelJob } from '../services/downloader/index.js';
 const app = new Hono().route('/api', downloadsRoute);
 
 const VALID_BODY = {
+  datId: 'dat-001',
   items: [
     {
       gameId: 'smw',

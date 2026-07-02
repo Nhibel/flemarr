@@ -1,7 +1,11 @@
 import { Hono } from 'hono';
-import { parseDat, addDat, getDat } from '@/services/dat/index.js';
+import { parseDat, addDat, getDat, listDats } from '@/services/dat/index.js';
 
 export const datsRoute = new Hono();
+
+datsRoute.get('/dats', (c) => {
+  return c.json({ dats: listDats() });
+});
 
 datsRoute.post('/dats', async (c) => {
   const contentType = c.req.header('content-type') ?? '';
@@ -15,10 +19,7 @@ datsRoute.post('/dats', async (c) => {
   }
 
   if (!body.trim()) {
-    return c.json(
-      { error: { code: 'EMPTY_BODY', message: 'Request body is empty' } },
-      400,
-    );
+    return c.json({ error: { code: 'EMPTY_BODY', message: 'Request body is empty' } }, 400);
   }
 
   let dat;
@@ -45,10 +46,7 @@ datsRoute.get('/dats/:id/games', (c) => {
   const dat = getDat(id);
 
   if (dat == null) {
-    return c.json(
-      { error: { code: 'NOT_FOUND', message: `DAT ${id} not found` } },
-      404,
-    );
+    return c.json({ error: { code: 'NOT_FOUND', message: `DAT ${id} not found` } }, 404);
   }
 
   return c.json({ games: dat.games });

@@ -1,7 +1,12 @@
 import { listDirsResponseSchema } from '@shared/fs.js';
 import type { ListDirsResponse } from '@shared/fs.js';
-import { datUploadResponseSchema, gamesResponseSchema, errorResponseSchema } from '@shared/api.js';
-import type { DatUploadResponse, GamesResponse } from '@shared/api.js';
+import {
+  datUploadResponseSchema,
+  gamesResponseSchema,
+  listDatsResponseSchema,
+  errorResponseSchema,
+} from '@shared/api.js';
+import type { DatUploadResponse, GamesResponse, ListDatsResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
 import type { ScanJob, RenameRequest, RenameResult } from '@shared/scan.js';
 import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
@@ -56,6 +61,11 @@ export async function uploadDat(file: File): Promise<DatUploadResponse> {
     body: content,
   });
   return parseResponse(res, datUploadResponseSchema);
+}
+
+export async function listDats(): Promise<ListDatsResponse['dats']> {
+  const res = await fetch('/api/dats');
+  return parseResponse(res, listDatsResponseSchema).then((r) => r.dats);
 }
 
 export async function fetchGames(datId: string): Promise<GamesResponse['games']> {

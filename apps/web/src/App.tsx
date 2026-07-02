@@ -12,7 +12,7 @@ import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
-import { fetchGames } from '@/lib/api.js';
+import { fetchGames, listDats } from '@/lib/api.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { useTheme } from '@/lib/use-theme.js';
 import type { DatUploadResponse } from '@shared/api.js';
@@ -101,72 +101,17 @@ export function App() {
 
   if (activeDat === null) {
     return (
-      <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
-        <div className={css({ display: 'flex', alignItems: 'baseline', mb: '6' })}>
-          <h1
-            className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}
-          >
-            rom-curator
-          </h1>
-          <button
-            onClick={toggle}
-            title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-            className={iconBtnClass}
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
-          <button onClick={() => setView('settings')} title="Paramètres" className={iconBtnClass}>
-            <GearIcon />
-          </button>
-        </div>
-
-        {/* Mode toggle */}
-        <div
-          className={css({
-            display: 'inline-flex',
-            mb: '6',
-            border: '1px solid',
-            borderColor: 'bd.default',
-            borderRadius: 'lg',
-            overflow: 'hidden',
-          })}
-        >
-          {(['fresh1g1r', 'manual'] as LoaderMode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setLoaderMode(m)}
-              className={css({
-                px: '4',
-                py: '2',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                cursor: 'pointer',
-                bg: loaderMode === m ? 'blue.500' : 'bg.page',
-                color: loaderMode === m ? 'white' : 'fg.subtle',
-                _hover: { bg: loaderMode === m ? 'blue.500' : 'bg.surface' },
-              })}
-            >
-              {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
-            </button>
-          ))}
-        </div>
-
-        {loaderMode === 'fresh1g1r' ? (
-          <Fresh1g1rBrowser
-            onSuccess={(dat) => {
-              setActiveDat(dat);
-              setView('game');
-            }}
-          />
-        ) : (
-          <DatUpload
-            onSuccess={(dat) => {
-              setActiveDat(dat);
-              setView('game');
-            }}
-          />
-        )}
-      </main>
+      <LoaderView
+        loaderMode={loaderMode}
+        onSetLoaderMode={setLoaderMode}
+        onLoaded={(dat) => {
+          setActiveDat(dat);
+          setView('game');
+        }}
+        theme={theme}
+        onToggleTheme={toggle}
+        onSettings={() => setView('settings')}
+      />
     );
   }
 
@@ -181,6 +126,141 @@ export function App() {
       theme={theme}
       onToggleTheme={toggle}
     />
+  );
+}
+
+interface LoaderViewProps {
+  loaderMode: LoaderMode;
+  onSetLoaderMode: (m: LoaderMode) => void;
+  onLoaded: (dat: DatUploadResponse) => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
+  onSettings: () => void;
+}
+
+function LoaderView({
+  loaderMode,
+  onSetLoaderMode,
+  onLoaded,
+  theme,
+  onToggleTheme,
+  onSettings,
+}: LoaderViewProps) {
+  // DATs persisted server-side (SQLite) — lets the user resume without re-parsing
+  const { data: existingDats = [] } = useQuery({
+    queryKey: ['dats'],
+    queryFn: listDats,
+  });
+
+  return (
+    <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
+      <div className={css({ display: 'flex', alignItems: 'baseline', mb: '6' })}>
+        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+          rom-curator
+        </h1>
+        <button
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          className={iconBtnClass}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+        <button onClick={onSettings} title="Paramètres" className={iconBtnClass}>
+          <GearIcon />
+        </button>
+      </div>
+
+      {/* Resume a previously loaded DAT */}
+      {existingDats.length > 0 && (
+        <section className={css({ mb: '6' })}>
+          <h2
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'semibold',
+              color: 'fg.default',
+              mb: '2',
+            })}
+          >
+            Reprendre un DAT chargé
+          </h2>
+          <div
+            className={css({
+              border: '1px solid',
+              borderColor: 'bd.default',
+              borderRadius: 'md',
+              overflow: 'hidden',
+            })}
+          >
+            {existingDats.map((dat) => (
+              <button
+                key={dat.id}
+                onClick={() => onLoaded(dat)}
+                className={css({
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: '2',
+                  w: 'full',
+                  px: '3',
+                  py: '2',
+                  fontSize: 'sm',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid',
+                  borderColor: 'bd.subtle',
+                  bg: 'bg.page',
+                  _hover: { bg: 'bg.surface' },
+                  _last: { borderBottom: 'none' },
+                })}
+              >
+                <span className={css({ color: 'fg.default', flex: 1, truncate: true })}>
+                  {dat.system}
+                </span>
+                <span className={css({ fontSize: 'xs', color: 'fg.faint', flexShrink: 0 })}>
+                  {dat.source} · {dat.gameCount} jeux
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Mode toggle */}
+      <div
+        className={css({
+          display: 'inline-flex',
+          mb: '6',
+          border: '1px solid',
+          borderColor: 'bd.default',
+          borderRadius: 'lg',
+          overflow: 'hidden',
+        })}
+      >
+        {(['fresh1g1r', 'manual'] as LoaderMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => onSetLoaderMode(m)}
+            className={css({
+              px: '4',
+              py: '2',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              bg: loaderMode === m ? 'blue.500' : 'bg.page',
+              color: loaderMode === m ? 'white' : 'fg.subtle',
+              _hover: { bg: loaderMode === m ? 'blue.500' : 'bg.surface' },
+            })}
+          >
+            {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
+          </button>
+        ))}
+      </div>
+
+      {loaderMode === 'fresh1g1r' ? (
+        <Fresh1g1rBrowser onSuccess={onLoaded} />
+      ) : (
+        <DatUpload onSuccess={onLoaded} />
+      )}
+    </main>
   );
 }
 

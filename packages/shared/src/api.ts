@@ -9,6 +9,11 @@ export const gamesResponseSchema = z.object({
 });
 export type GamesResponse = z.infer<typeof gamesResponseSchema>;
 
+export const listDatsResponseSchema = z.object({
+  dats: z.array(datSummarySchema),
+});
+export type ListDatsResponse = z.infer<typeof listDatsResponseSchema>;
+
 export const errorResponseSchema = z.object({
   error: z.object({
     code: z.string(),
