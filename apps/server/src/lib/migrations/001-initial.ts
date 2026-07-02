@@ -1,3 +1,5 @@
+// Inlined as a TS module so the production bundle needs no asset copying.
+export const migration001 = `
 CREATE TABLE IF NOT EXISTS dats (
   id TEXT PRIMARY KEY,
   system TEXT NOT NULL,
@@ -38,3 +40,4 @@ CREATE TABLE IF NOT EXISTS download_history (
   error_message TEXT,
   completed_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+`;

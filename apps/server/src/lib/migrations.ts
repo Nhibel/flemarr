@@ -1,18 +1,22 @@
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { Database } from 'better-sqlite3';
+import { migration001 } from './migrations/001-initial.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const MIGRATION_FILES = ['001_initial.sql'];
+// Ordered, append-only. PRAGMA user_version records how many have been applied,
+// so migrations run exactly once and don't need to stay idempotent forever.
+const MIGRATIONS: string[] = [migration001];
 
 export function applyMigrations(db: Database): void {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
-  for (const file of MIGRATION_FILES) {
-    const sql = readFileSync(join(__dirname, 'migrations', file), 'utf8');
-    db.exec(sql);
+  const applied = db.pragma('user_version', { simple: true }) as number;
+
+  for (let i = applied; i < MIGRATIONS.length; i++) {
+    const sql = MIGRATIONS[i];
+    if (sql === undefined) continue;
+    db.transaction(() => {
+      db.exec(sql);
+      db.pragma(`user_version = ${i + 1}`);
+    })();
   }
 }

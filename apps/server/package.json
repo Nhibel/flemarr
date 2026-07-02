@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
+    "start": "node dist/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src"
@@ -21,6 +22,7 @@
     "@rom-curator/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

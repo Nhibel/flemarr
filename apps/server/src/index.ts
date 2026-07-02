@@ -1,29 +1,25 @@
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
-import { healthRoute } from '@/routes/health.js';
-import { datsRoute } from '@/routes/dats.js';
-import { scanRoute } from '@/routes/scan.js';
-import { archiveRoute } from '@/routes/archive.js';
-import { downloadsRoute } from '@/routes/downloads.js';
-import { fresh1g1rRoute } from '@/routes/fresh1g1r.js';
-import { settingsRoute } from '@/routes/settings.js';
-import { fsRoute } from '@/routes/fs.js';
-
-const app = new Hono();
-
-app.route('/api', healthRoute);
-app.route('/api', datsRoute);
-app.route('/api', scanRoute);
-app.route('/api', archiveRoute);
-app.route('/api', downloadsRoute);
-app.route('/api', fresh1g1rRoute);
-app.route('/api', settingsRoute);
-app.route('/api', fsRoute);
+import { app } from '@/app.js';
+import { closeDb } from '@/lib/db.js';
 
 const PORT = Number(process.env['PORT'] ?? 3000);
 
-serve({ fetch: app.fetch, port: PORT }, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
+  console.log(`Server running on http://localhost:${info.port}`);
 });
 
-export { app };
+function shutdown(signal: string): void {
+  console.log(`${signal} received, shutting down`);
+  server.close(() => {
+    closeDb();
+    process.exit(0);
+  });
+  // Open SSE streams can hold the server open indefinitely — force exit after grace period
+  setTimeout(() => {
+    closeDb();
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
