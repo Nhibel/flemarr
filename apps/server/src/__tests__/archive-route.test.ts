@@ -194,9 +194,8 @@ describe('POST /api/archive/resolve', () => {
     vi.mocked(resolveGames).mockResolvedValue([
       {
         gameId: 'smw',
-        romName: 'Super Mario World (USA).sfc',
-        expectedCrc: 'b19ed489',
-        sources: [],
+        gameName: 'Super Mario World (USA)',
+        roms: [{ romName: 'Super Mario World (USA).sfc', expectedCrc: 'b19ed489', sources: [] }],
       },
     ]);
     const res = await app.request('/api/archive/resolve', {

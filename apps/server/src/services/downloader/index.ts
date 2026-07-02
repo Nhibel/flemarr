@@ -87,7 +87,13 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
       const isLast = totalBytes > 0 && bytesDownloaded >= totalBytes;
       if (!isLast && now - lastProgressAt < PROGRESS_THROTTLE_MS) return;
       lastProgressAt = now;
-      job.events.push({ type: 'progress', gameId: item.gameId, bytesDownloaded, totalBytes });
+      job.events.push({
+        type: 'progress',
+        gameId: item.gameId,
+        romName: item.romName,
+        bytesDownloaded,
+        totalBytes,
+      });
     };
 
     // Try candidate URLs in order. HTTP/network failures fall through to the

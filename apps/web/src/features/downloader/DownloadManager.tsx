@@ -62,8 +62,13 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
       const next = new Map(prev);
       const items = [...job.items];
 
+      // Items are identified by gameId + romName: a multi-disc game queues
+      // one item per disc under the same gameId.
+      const findItem = (gameId: string, romName: string) =>
+        items.findIndex((i) => i.gameId === gameId && i.romName === romName);
+
       if (event.type === 'progress') {
-        const idx = items.findIndex((i) => i.gameId === event.gameId);
+        const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) {
           items[idx] = {
             ...items[idx]!,
@@ -75,10 +80,10 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
           };
         }
       } else if (event.type === 'file-done') {
-        const idx = items.findIndex((i) => i.gameId === event.gameId);
+        const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items[idx] = { ...items[idx]!, status: 'done', progress: 100 };
       } else if (event.type === 'file-failed') {
-        const idx = items.findIndex((i) => i.gameId === event.gameId);
+        const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items[idx] = { ...items[idx]!, status: 'failed', failReason: event.reason };
       } else if (event.type === 'complete') {
         next.set(jobId, { ...job, items, status: 'done' });
@@ -254,7 +259,7 @@ function JobCard({ state }: { state: JobState }) {
       {/* Items */}
       <div className={css({ display: 'flex', flexDirection: 'column' })}>
         {state.items.map((item) => (
-          <DownloadRow key={item.gameId} item={item} />
+          <DownloadRow key={`${item.gameId}/${item.romName}`} item={item} />
         ))}
       </div>
     </div>

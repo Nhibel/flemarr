@@ -717,6 +717,12 @@ function ResolvePanel({
   const effectiveGameIds =
     excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
 
+  const downloadableCount =
+    result?.results.reduce(
+      (n, r) => n + r.roms.filter((rom) => rom.sources.length > 0).length,
+      0,
+    ) ?? 0;
+
   const handleResolve = useCallback(async () => {
     if (effectiveGameIds.length === 0) return;
     setResolving(true);
@@ -733,16 +739,20 @@ function ResolvePanel({
 
   const handleDownload = useCallback(async () => {
     if (!result || !destinationDir.trim()) return;
-    const found = result.results.filter((r) => r.sources.length > 0);
-    if (found.length === 0) return;
+    // One download item per resolved ROM — multi-disc games queue every disc
+    const items = result.results.flatMap((r) =>
+      r.roms
+        .filter((rom) => rom.sources.length > 0)
+        .map((rom) => ({
+          gameId: r.gameId,
+          romName: rom.romName,
+          expectedCrc: rom.expectedCrc,
+          downloadUrls: rom.sources.map((s) => s.downloadUrl),
+        })),
+    );
+    if (items.length === 0) return;
     setQueuing(true);
     try {
-      const items = found.map((r) => ({
-        gameId: r.gameId,
-        romName: r.romName,
-        expectedCrc: r.expectedCrc,
-        downloadUrls: r.sources.map((s) => s.downloadUrl),
-      }));
       const jobId = await startDownload({ datId, items, destinationDir: destinationDir.trim() });
       onQueueDownload({ jobId, items, destinationDir: destinationDir.trim() });
     } catch (err) {
@@ -845,18 +855,35 @@ function ResolvePanel({
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
           <div className={css({ display: 'flex', gap: '3' })}>
             <Chip
-              label="Trouvés"
-              count={result.results.filter((r) => r.sources.length > 0).length}
+              label="Complets"
+              count={
+                result.results.filter(
+                  (r) => r.roms.length > 0 && r.roms.every((rom) => rom.sources.length > 0),
+                ).length
+              }
               color="green"
             />
             <Chip
-              label="Non trouvés"
-              count={result.results.filter((r) => r.sources.length === 0).length}
+              label="Partiels"
+              count={
+                result.results.filter(
+                  (r) =>
+                    r.roms.some((rom) => rom.sources.length > 0) &&
+                    r.roms.some((rom) => rom.sources.length === 0),
+                ).length
+              }
+              color="gray"
+            />
+            <Chip
+              label="Introuvables"
+              count={
+                result.results.filter((r) => r.roms.every((rom) => rom.sources.length === 0)).length
+              }
               color="gray"
             />
           </div>
 
-          {result.results.filter((r) => r.sources.length > 0).length > 0 && (
+          {result.results.some((r) => r.roms.some((rom) => rom.sources.length > 0)) && (
             <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
               <input
                 type="text"
@@ -898,7 +925,7 @@ function ResolvePanel({
               >
                 {queuing
                   ? 'Lancement…'
-                  : `Télécharger (${result.results.filter((r) => r.sources.length > 0).length})`}
+                  : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
               </button>
             </div>
           )}
@@ -915,53 +942,75 @@ function ResolvePanel({
 }
 
 function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] }) {
-  const found = game.sources.length > 0;
+  const foundCount = game.roms.filter((rom) => rom.sources.length > 0).length;
+  const allFound = game.roms.length > 0 && foundCount === game.roms.length;
+  const noneFound = foundCount === 0;
+
   const containerStyle = css.raw(
-    found
+    allFound
       ? {
           borderColor: 'green.200',
           bg: 'green.50',
           _dark: { bg: 'green.900', borderColor: 'green.800' },
         }
-      : { borderColor: 'bd.default', bg: 'bg.page' },
+      : noneFound
+        ? { borderColor: 'bd.default', bg: 'bg.page' }
+        : {
+            borderColor: 'amber.200',
+            bg: 'amber.50',
+            _dark: { bg: 'amber.900', borderColor: 'amber.800' },
+          },
   );
+
   return (
     <div className={css({ p: '3', border: '1px solid', borderRadius: 'md' }, containerStyle)}>
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
         <span
           className={css({
             fontSize: 'sm',
-            color: found ? 'green.700' : 'fg.faint',
-            _dark: found ? { color: 'green.400' } : undefined,
+            color: allFound ? 'green.700' : noneFound ? 'fg.faint' : 'amber.700',
+            _dark: allFound
+              ? { color: 'green.400' }
+              : noneFound
+                ? undefined
+                : { color: 'amber.400' },
             mt: '0.5',
           })}
         >
-          {found ? '✓' : '—'}
+          {allFound ? '✓' : noneFound ? '—' : '◐'}
         </span>
         <div className={css({ flex: 1, minW: 0 })}>
           <p className={css({ fontSize: 'sm', color: 'fg.heading', fontWeight: 'medium' })}>
-            {game.romName || game.gameId}
+            {game.gameName || game.gameId}
+            {game.roms.length > 1 && (
+              <span className={css({ fontWeight: 'normal', color: 'fg.faint' })}>
+                {' '}
+                — {foundCount}/{game.roms.length} disques
+              </span>
+            )}
           </p>
-          {found ? (
+          {noneFound ? (
+            <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '0.5' })}>
+              Non trouvé dans les sources configurées
+            </p>
+          ) : (
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '1', mt: '1' })}>
-              {game.sources.map((s, i) => (
+              {game.roms.map((rom) => (
                 <p
-                  key={i}
+                  key={rom.romName}
                   className={css({
                     fontSize: 'xs',
-                    color: 'fg.subtle',
+                    color: rom.sources.length > 0 ? 'fg.subtle' : 'fg.faint',
                     fontFamily: 'mono',
                     truncate: true,
                   })}
                 >
-                  [{s.container}] {s.identifier}
+                  {rom.sources.length > 0
+                    ? `✓ ${rom.romName} — [${rom.sources[0]!.container}] ${rom.sources[0]!.identifier}`
+                    : `— ${rom.romName} — introuvable`}
                 </p>
               ))}
             </div>
-          ) : (
-            <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '0.5' })}>
-              Non trouvé dans les sources configurées
-            </p>
           )}
         </div>
       </div>

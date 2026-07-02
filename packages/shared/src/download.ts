@@ -26,6 +26,9 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('progress'),
     gameId: z.string(),
+    // A multi-disc game downloads one item per ROM under the same gameId —
+    // romName disambiguates which one is progressing.
+    romName: z.string(),
     bytesDownloaded: z.number(),
     totalBytes: z.number(),
   }),

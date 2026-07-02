@@ -67,67 +67,61 @@ function orderZipCandidates(zips: ArchiveFile[], romName: string): ArchiveFile[]
   ];
 }
 
+async function resolveRomInSource(
+  romName: string,
+  romCrc: string,
+  source: { identifier: string; layout: 'direct' | 'zip-collection' },
+  files: ArchiveFile[],
+): Promise<ResolvedSource | null> {
+  if (source.layout === 'direct') {
+    const match = findMatch(romName, romCrc, files);
+    if (!match) return null;
+    return {
+      identifier: source.identifier,
+      downloadUrl: resolveDownloadUrl(source.identifier, match.name),
+      container: 'direct',
+    };
+  }
+
+  // zip-collection — probe candidate ZIPs (best first) and keep the first
+  // one that actually contains the ROM, instead of guessing blindly.
+  const candidates = orderZipCandidates(findZipFiles(files), romName).slice(0, MAX_ZIP_HEAD_CHECKS);
+  for (const zip of candidates) {
+    const downloadUrl = resolveDownloadUrl(source.identifier, romName, zip.name);
+    if (await urlExists(downloadUrl)) {
+      return { identifier: source.identifier, downloadUrl, container: 'zip-entry' };
+    }
+  }
+  return null;
+}
+
 async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGame> {
   const game = dat.games.find((g) => g.id === gameId);
   if (!game) {
-    return { gameId, romName: '', expectedCrc: '', sources: [] };
-  }
-
-  // Use the first ROM as the canonical one (multi-disc games have multiple ROMs but
-  // the first is the most relevant for matching purposes).
-  const rom = game.roms[0];
-  if (!rom) {
-    return { gameId, romName: '', expectedCrc: '', sources: [] };
+    return { gameId, gameName: '', roms: [] };
   }
 
   const sources = getSources(dat.system);
-  const resolvedSources: ResolvedSource[] = [];
+  const roms: ResolvedGame['roms'] = [];
 
-  for (const source of sources) {
-    let files: ArchiveFile[];
-    try {
-      files = await getIndex(source.identifier);
-    } catch {
-      // Source unreachable — skip, don't fail the whole resolution
-      continue;
-    }
-
-    if (source.layout === 'direct') {
-      const match = findMatch(rom.name, rom.crc, files);
-      if (match) {
-        resolvedSources.push({
-          identifier: source.identifier,
-          downloadUrl: resolveDownloadUrl(source.identifier, match.name),
-          container: 'direct',
-        });
+  // Every ROM of the game is resolved — multi-disc games need all discs.
+  for (const rom of game.roms) {
+    const resolvedSources: ResolvedSource[] = [];
+    for (const source of sources) {
+      let files: ArchiveFile[];
+      try {
+        files = await getIndex(source.identifier);
+      } catch {
+        // Source unreachable — skip, don't fail the whole resolution
+        continue;
       }
-    } else {
-      // zip-collection — probe candidate ZIPs (best first) and keep the first
-      // one that actually contains the ROM, instead of guessing blindly.
-      const candidates = orderZipCandidates(findZipFiles(files), rom.name).slice(
-        0,
-        MAX_ZIP_HEAD_CHECKS,
-      );
-      for (const zip of candidates) {
-        const downloadUrl = resolveDownloadUrl(source.identifier, rom.name, zip.name);
-        if (await urlExists(downloadUrl)) {
-          resolvedSources.push({
-            identifier: source.identifier,
-            downloadUrl,
-            container: 'zip-entry',
-          });
-          break;
-        }
-      }
+      const resolved = await resolveRomInSource(rom.name, rom.crc, source, files);
+      if (resolved) resolvedSources.push(resolved);
     }
+    roms.push({ romName: rom.name, expectedCrc: rom.crc, sources: resolvedSources });
   }
 
-  return {
-    gameId,
-    romName: rom.name,
-    expectedCrc: rom.crc,
-    sources: resolvedSources,
-  };
+  return { gameId, gameName: game.name, roms };
 }
 
 export async function resolveGames(
@@ -145,9 +139,10 @@ export async function resolveGames(
     }
 
     const resolved = await resolveOneGame(dat, gameId);
-    // Positive results cached for the session (no TTL limit — invalidated by adding/removing sources)
-    // Negative results cached for 15 minutes
-    const ttl = resolved.sources.length > 0 ? 24 * 60 * 60 * 1000 : NEGATIVE_TTL_MS;
+    // Fully-resolved games cached long (invalidated when sources change);
+    // partial or empty results cached 15 minutes
+    const complete = resolved.roms.length > 0 && resolved.roms.every((r) => r.sources.length > 0);
+    const ttl = complete ? 24 * 60 * 60 * 1000 : NEGATIVE_TTL_MS;
     setCached(datId, gameId, resolved, ttl);
     results.push(resolved);
   }

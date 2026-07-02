@@ -98,11 +98,18 @@ export const resolvedSourceSchema = z.object({
 });
 export type ResolvedSource = z.infer<typeof resolvedSourceSchema>;
 
-export const resolvedGameSchema = z.object({
-  gameId: z.string(),
+// One entry per ROM of the game — multi-disc games resolve every disc.
+export const resolvedRomSchema = z.object({
   romName: z.string(),
   expectedCrc: z.string(),
   sources: z.array(resolvedSourceSchema),
+});
+export type ResolvedRom = z.infer<typeof resolvedRomSchema>;
+
+export const resolvedGameSchema = z.object({
+  gameId: z.string(),
+  gameName: z.string(),
+  roms: z.array(resolvedRomSchema),
 });
 export type ResolvedGame = z.infer<typeof resolvedGameSchema>;
 

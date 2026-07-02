@@ -71,9 +71,9 @@ describe('resolveGames — direct layout', () => {
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results).toHaveLength(1);
-    expect(results[0]?.sources).toHaveLength(1);
-    expect(results[0]?.sources[0]?.container).toBe('direct');
-    expect(results[0]?.sources[0]?.downloadUrl).toContain('Super%20Mario%20World');
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.container).toBe('direct');
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('Super%20Mario%20World');
   });
 
   it('returns empty sources for a game not in the collection', async () => {
@@ -85,7 +85,7 @@ describe('resolveGames — direct layout', () => {
     vi.mocked(getIndex).mockResolvedValue(DIRECT_FILES);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['yoshi']);
-    expect(results[0]?.sources).toHaveLength(0);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
   });
 
   it('matches by filename when CRC is absent from archive metadata', async () => {
@@ -98,7 +98,7 @@ describe('resolveGames — direct layout', () => {
     vi.mocked(getIndex).mockResolvedValue(filesNoCrc);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
   });
 });
 
@@ -112,9 +112,9 @@ describe('resolveGames — zip-collection layout', () => {
     vi.mocked(getIndex).mockResolvedValue(ZIP_FILES);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.sources).toHaveLength(1);
-    expect(results[0]?.sources[0]?.container).toBe('zip-entry');
-    expect(results[0]?.sources[0]?.downloadUrl).toContain('No-Intro%20SNES.zip');
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.container).toBe('zip-entry');
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('No-Intro%20SNES.zip');
   });
 
   it('probes the ZIP named after the ROM first (per-game-zip uploads)', async () => {
@@ -132,7 +132,9 @@ describe('resolveGames — zip-collection layout', () => {
     // Only one HEAD needed: the basename-matching ZIP was probed first
     expect(vi.mocked(urlExists)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(urlExists).mock.calls[0]?.[0]).toContain('Super%20Mario%20World%20(USA).zip');
-    expect(results[0]?.sources[0]?.downloadUrl).toContain('Super%20Mario%20World%20(USA).zip');
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain(
+      'Super%20Mario%20World%20(USA).zip',
+    );
   });
 
   it('falls back to the next ZIP when the first candidate 404s', async () => {
@@ -148,8 +150,8 @@ describe('resolveGames — zip-collection layout', () => {
     vi.mocked(urlExists).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.sources).toHaveLength(1);
-    expect(results[0]?.sources[0]?.downloadUrl).toContain('part2.zip');
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('part2.zip');
   });
 
   it('reports not found when no candidate ZIP contains the ROM', async () => {
@@ -162,7 +164,7 @@ describe('resolveGames — zip-collection layout', () => {
     vi.mocked(urlExists).mockResolvedValue(false);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.sources).toHaveLength(0);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
   });
 });
 
@@ -191,12 +193,69 @@ describe('resolveGames — error handling', () => {
     vi.mocked(getIndex).mockRejectedValue(new Error('network error'));
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.sources).toHaveLength(0);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
   });
 
   it('returns empty result for unknown gameId', async () => {
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['nonexistent']);
-    expect(results[0]?.sources).toHaveLength(0);
-    expect(results[0]?.romName).toBe('');
+    expect(results[0]?.roms).toHaveLength(0);
+    expect(results[0]?.gameName).toBe('');
+  });
+});
+
+describe('resolveGames — multi-disc games', () => {
+  const MULTI_DISC_DAT: DatFile = {
+    source: 'redump',
+    system: 'Sony - PlayStation',
+    games: [
+      {
+        id: 'ff7',
+        name: 'Final Fantasy VII (USA)',
+        region: ['USA'],
+        languages: ['En'],
+        roms: [
+          {
+            name: 'Final Fantasy VII (USA) (Disc 1).bin',
+            size: 1,
+            crc: '00000001',
+            status: 'good',
+          },
+          {
+            name: 'Final Fantasy VII (USA) (Disc 2).bin',
+            size: 1,
+            crc: '00000002',
+            status: 'good',
+          },
+          {
+            name: 'Final Fantasy VII (USA) (Disc 3).bin',
+            size: 1,
+            crc: '00000003',
+            status: 'good',
+          },
+        ],
+      },
+    ],
+  };
+
+  it('resolves every disc, reporting the missing ones', async () => {
+    addSource('Sony - PlayStation', {
+      identifier: 'direct-psx',
+      layout: 'direct',
+      note: '',
+    });
+    // Only discs 1 and 2 are present in the collection
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: 'Final Fantasy VII (USA) (Disc 1).bin', size: 1, crc32: '00000001' },
+      { name: 'Final Fantasy VII (USA) (Disc 2).bin', size: 1, crc32: '00000002' },
+    ]);
+
+    const results = await resolveGames(MULTI_DISC_DAT, 'dat2', ['ff7']);
+    removeSource('direct-psx');
+
+    expect(results[0]?.gameName).toBe('Final Fantasy VII (USA)');
+    expect(results[0]?.roms).toHaveLength(3);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[1]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[2]?.sources).toHaveLength(0);
   });
 });
