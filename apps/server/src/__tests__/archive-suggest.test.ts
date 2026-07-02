@@ -14,10 +14,20 @@ vi.mock('../services/archive-org/search.js', () => ({
 }));
 vi.mock('../services/archive-org/metadata.js', () => ({
   getIndex: vi.fn(),
+  getItemInfo: vi.fn(),
+  resolveDownloadUrl: vi.fn((id: string, file: string, zip?: string) =>
+    zip
+      ? `https://archive.org/download/${id}/${zip}/${file}`
+      : `https://archive.org/download/${id}/${file}`,
+  ),
+}));
+vi.mock('../services/archive-org/url-check.js', () => ({
+  urlExists: vi.fn(),
 }));
 
 import { searchArchive } from '../services/archive-org/search.js';
-import { getIndex } from '../services/archive-org/metadata.js';
+import { getIndex, getItemInfo } from '../services/archive-org/metadata.js';
+import { urlExists } from '../services/archive-org/url-check.js';
 
 function makeDat(gameCount: number): DatFile {
   return {
@@ -126,6 +136,11 @@ describe('scoreIndex', () => {
     expect(scoreIndex(files, SAMPLE)).toBe(0.25);
   });
 
+  it('matches files nested in subdirectories by basename', () => {
+    const files = [file('SNES/roms/Game A (USA).sfc'), file('sub/Game B (USA).zip')];
+    expect(scoreIndex(files, SAMPLE)).toBe(0.5);
+  });
+
   it('combines match types and caps at 1', () => {
     const files = [
       file('x.bin', 'aaaaaaaa'),
@@ -146,6 +161,14 @@ describe('suggestSources', () => {
   beforeEach(() => {
     vi.mocked(searchArchive).mockReset();
     vi.mocked(getIndex).mockReset();
+    // Default: public item whose file list comes from the getIndex mock
+    vi.mocked(getItemInfo)
+      .mockReset()
+      .mockImplementation(async (id: string) => ({
+        files: await getIndex(id),
+        restricted: false,
+      }));
+    vi.mocked(urlExists).mockReset().mockResolvedValue(false);
   });
 
   it('keeps covered candidates, drops zero-coverage and unreachable ones', async () => {
@@ -209,12 +232,63 @@ describe('suggestSources', () => {
 
     const suggestions = await suggestSources(dat);
     expect(suggestions.map((s) => s.identifier)).toEqual(['the-fullset']);
-    // only the 10 biggest candidates were fetched, and the fullset was among them
-    expect(vi.mocked(getIndex)).toHaveBeenCalledTimes(10);
+    // the biggest candidates were fetched first (chunks of 3, stop at 10 scored)
+    expect(vi.mocked(getIndex).mock.calls.length).toBeLessThanOrEqual(12);
+    expect(vi.mocked(getIndex)).toHaveBeenCalledWith('the-fullset');
+  });
+
+  it('skips access-restricted items and scores the next candidates', async () => {
+    const dat = makeDat(4);
+    const goodFiles = dat.games.map((g) => file(g.roms[0]!.name, g.roms[0]!.crc));
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'restricted-fullset', title: 'R', description: '', itemSize: 999_999_999 },
+      { identifier: 'public-set', title: 'P', description: '', itemSize: 1000 },
+    ]);
+    vi.mocked(getItemInfo).mockImplementation((id: string) =>
+      Promise.resolve({ files: goodFiles, restricted: id === 'restricted-fullset' }),
+    );
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions.map((s) => s.identifier)).toEqual(['public-set']);
   });
 
   it('throws when every search query fails', async () => {
     vi.mocked(searchArchive).mockRejectedValue(new Error('archive.org search returned 503'));
     await expect(suggestSources(makeDat(2))).rejects.toThrow('503');
+  });
+
+  it('scores one-zip-per-system collections by HEAD-probing the system zip', async () => {
+    const dat = makeDat(8);
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'proper1g1r-like', title: '1G1R collection', description: '' },
+    ]);
+    // Index has nothing matching individual ROMs — just per-system ZIPs in a subdir
+    vi.mocked(getIndex).mockResolvedValue([
+      file('ROMs/Nintendo - Super Nintendo Entertainment System.zip'),
+      file('ROMs/Sega - Mega Drive - Genesis.zip'),
+      file('DATs/Nintendo - Super Nintendo Entertainment System.zip'),
+    ]);
+    vi.mocked(urlExists).mockResolvedValue(true);
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions).toHaveLength(1);
+    expect(suggestions[0]?.identifier).toBe('proper1g1r-like');
+    expect(suggestions[0]?.coverage).toBe(1);
+    expect(suggestions[0]?.layout).toBe('zip-collection');
+    // Probed inside the system ZIP, not some unrelated one
+    const probedUrls = vi.mocked(urlExists).mock.calls.map((c) => c[0]);
+    expect(probedUrls.every((u) => u.includes('Super Nintendo'))).toBe(true);
+  });
+
+  it('does not probe collections without a system-matching zip', async () => {
+    const dat = makeDat(4);
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'unrelated', title: 'Unrelated', description: '' },
+    ]);
+    vi.mocked(getIndex).mockResolvedValue([file('Some Other Thing.zip')]);
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions).toHaveLength(0);
+    expect(vi.mocked(urlExists)).not.toHaveBeenCalled();
   });
 });

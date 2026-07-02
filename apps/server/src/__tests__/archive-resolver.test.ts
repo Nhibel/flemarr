@@ -100,6 +100,20 @@ describe('resolveGames — direct layout', () => {
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
   });
+
+  it('matches files nested in subdirectories by basename', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'direct-snes',
+      layout: 'direct',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: 'snes/us/Super Mario World (USA).sfc', size: 524288 },
+    ]);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+  });
 });
 
 describe('resolveGames — zip-collection layout', () => {
@@ -137,6 +151,26 @@ describe('resolveGames — zip-collection layout', () => {
     );
   });
 
+  it('prioritizes a ZIP named after the system over unrelated ZIPs', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'zip-snes',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: 'random-extras.zip', size: 1, format: 'ZIP' },
+      {
+        name: 'ROMs/Nintendo - Super Nintendo Entertainment System.zip',
+        size: 999,
+        format: 'ZIP',
+      },
+    ]);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(vi.mocked(urlExists).mock.calls[0]?.[0]).toContain('Super%20Nintendo');
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('Super%20Nintendo');
+  });
+
   it('falls back to the next ZIP when the first candidate 404s', async () => {
     addSource('Nintendo - Super Nintendo Entertainment System', {
       identifier: 'zip-snes',
@@ -147,7 +181,11 @@ describe('resolveGames — zip-collection layout', () => {
       { name: 'part1.zip', size: 1, format: 'ZIP' },
       { name: 'part2.zip', size: 1, format: 'ZIP' },
     ]);
-    vi.mocked(urlExists).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    // part1 rejected on both entry layouts (plain and folder-prefixed)
+    vi.mocked(urlExists)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);

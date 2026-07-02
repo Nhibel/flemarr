@@ -3,6 +3,8 @@ import type { ResolvedGame, ResolvedSource } from '@shared/archive.js';
 import { getSources } from './sources.js';
 import { getIndex, resolveDownloadUrl } from './metadata.js';
 import { urlExists } from './url-check.js';
+import { baseName, stripExtension, zipMatchesSystem } from './system-name.js';
+import { logger } from '@/lib/logger.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
 const NEGATIVE_TTL_MS = 15 * 60 * 1000;
@@ -37,12 +39,12 @@ export function clearResolverCache(): void {
 }
 
 // Match a rom against a flat list of archive files.
-// Priority: CRC match, then exact filename match.
+// Priority: CRC match, then filename match (subdirectory paths compare by basename).
 function findMatch(romName: string, romCrc: string, files: ArchiveFile[]): ArchiveFile | undefined {
   const crcLower = romCrc.toLowerCase();
   const byCrc = files.find((f) => f.crc32?.toLowerCase() === crcLower);
   if (byCrc) return byCrc;
-  return files.find((f) => f.name === romName);
+  return files.find((f) => baseName(f.name) === romName);
 }
 
 // For zip-collection sources, find the ZIP files in the index.
@@ -52,24 +54,24 @@ function findZipFiles(files: ArchiveFile[]): ArchiveFile[] {
   );
 }
 
-function stripExtension(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(0, dot) : name;
-}
-
-// Per-game-zip uploads name each ZIP after the ROM it contains — a basename
-// match is almost certainly the right archive, so it goes first in line.
-function orderZipCandidates(zips: ArchiveFile[], romName: string): ArchiveFile[] {
+// Rank ZIPs by likelihood of containing the ROM:
+// 1. named after the ROM (per-game-zip uploads),
+// 2. named after the system (one-zip-per-system collections),
+// 3. everything else.
+function orderZipCandidates(zips: ArchiveFile[], romName: string, system: string): ArchiveFile[] {
   const romBase = stripExtension(romName);
-  return [
-    ...zips.filter((z) => stripExtension(z.name) === romBase),
-    ...zips.filter((z) => stripExtension(z.name) !== romBase),
-  ];
+  const rank = (z: ArchiveFile): number => {
+    if (stripExtension(baseName(z.name)) === romBase) return 0;
+    if (zipMatchesSystem(z.name, system)) return 1;
+    return 2;
+  };
+  return [...zips].sort((a, b) => rank(a) - rank(b));
 }
 
 async function resolveRomInSource(
   romName: string,
   romCrc: string,
+  system: string,
   source: { identifier: string; layout: 'direct' | 'zip-collection' },
   files: ArchiveFile[],
 ): Promise<ResolvedSource | null> {
@@ -85,13 +87,21 @@ async function resolveRomInSource(
 
   // zip-collection — probe candidate ZIPs (best first) and keep the first
   // one that actually contains the ROM, instead of guessing blindly.
-  const candidates = orderZipCandidates(findZipFiles(files), romName).slice(0, MAX_ZIP_HEAD_CHECKS);
+  const candidates = orderZipCandidates(findZipFiles(files), romName, system).slice(
+    0,
+    MAX_ZIP_HEAD_CHECKS,
+  );
   for (const zip of candidates) {
-    const downloadUrl = resolveDownloadUrl(source.identifier, romName, zip.name);
-    if (await urlExists(downloadUrl)) {
-      return { identifier: source.identifier, downloadUrl, container: 'zip-entry' };
+    // ZIPs often prefix entries with a folder named like the archive itself
+    const folderPrefix = stripExtension(baseName(zip.name));
+    for (const entryPath of [romName, `${folderPrefix}/${romName}`]) {
+      const downloadUrl = resolveDownloadUrl(source.identifier, entryPath, zip.name);
+      if (await urlExists(downloadUrl)) {
+        return { identifier: source.identifier, downloadUrl, container: 'zip-entry' };
+      }
     }
   }
+  logger.debug({ romName, identifier: source.identifier }, 'rom not found in zip candidates');
   return null;
 }
 
@@ -115,7 +125,7 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
         // Source unreachable — skip, don't fail the whole resolution
         continue;
       }
-      const resolved = await resolveRomInSource(rom.name, rom.crc, source, files);
+      const resolved = await resolveRomInSource(rom.name, rom.crc, dat.system, source, files);
       if (resolved) resolvedSources.push(resolved);
     }
     roms.push({ romName: rom.name, expectedCrc: rom.crc, sources: resolvedSources });

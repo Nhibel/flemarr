@@ -1,8 +1,18 @@
 import type { DatFile } from '@shared/dat.js';
 import type { ArchiveFile, ArchiveLayout, SearchResult } from '@shared/archive.js';
 import { searchArchive } from './search.js';
-import { getIndex } from './metadata.js';
+import { getItemInfo, resolveDownloadUrl } from './metadata.js';
+import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
+import { urlExists } from './url-check.js';
+import {
+  systemNameVariants,
+  mentionsSystem,
+  baseName,
+  stripExtension,
+  zipMatchesSystem,
+} from './system-name.js';
+import { logger } from '@/lib/logger.js';
 
 export interface SourceSuggestion {
   identifier: string;
@@ -17,49 +27,16 @@ export interface SourceSuggestion {
 const SAMPLE_SIZE = 50;
 const MAX_QUERIES = 4;
 const MAX_SCORED_CANDIDATES = 10;
+const MAX_ATTEMPTS = 18;
 const SCORING_CONCURRENCY = 3;
 const MIN_COVERAGE = 0.05;
 const MAX_RESULTS = 8;
 
-// Common shorthand used by uploaders — the DAT's official name rarely matches
-// how collections are titled on archive.org.
-const SYSTEM_ALIASES: Record<string, string[]> = {
-  'Super Nintendo Entertainment System': ['SNES'],
-  'Nintendo Entertainment System': ['NES'],
-  'Game Boy Advance': ['GBA'],
-  'Game Boy Color': ['GBC'],
-  'Nintendo 64': ['N64'],
-  'Nintendo DS': ['NDS'],
-  'Mega Drive - Genesis': ['Genesis', 'Mega Drive'],
-  'Mega CD & Sega CD': ['Sega CD'],
-  'Master System - Mark III': ['Master System'],
-  'Game Gear': ['Game Gear'],
-  PlayStation: ['PSX', 'PS1'],
-  'PlayStation 2': ['PS2'],
-  'PlayStation Portable': ['PSP'],
-  Saturn: ['Sega Saturn'],
-  Dreamcast: ['Sega Dreamcast'],
-};
-
-/**
- * "Nintendo - Super Nintendo Entertainment System (Retool)"
- * → "Super Nintendo Entertainment System": drop the vendor prefix and any
- * trailing parenthesized tags — "(Retool)" in a query poisons the results.
- */
-export function normalizeSystemName(system: string): string {
-  let name = system.replace(/^[^-]+-\s*/, '').trim() || system;
-  for (;;) {
-    const stripped = name.replace(/\s*\([^)]*\)$/, '').trim();
-    if (stripped === name || stripped === '') break;
-    name = stripped;
-  }
-  return name || system;
-}
+export { normalizeSystemName } from './system-name.js';
 
 export function buildSearchQueries(system: string, source: DatFile['source']): string[] {
-  const short = normalizeSystemName(system);
   const authority = source === 'redump' ? 'Redump' : 'No-Intro';
-  const names = [short, ...(SYSTEM_ALIASES[short] ?? [])];
+  const names = systemNameVariants(system);
 
   const queries: string[] = [];
   for (const name of names) queries.push(`${authority} ${name}`);
@@ -80,15 +57,11 @@ export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; cr
   return sample;
 }
 
-function stripExtension(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot > 0 ? name.slice(0, dot) : name;
-}
-
 /**
  * Fraction of the sample present in the item's file list. A ROM counts as
- * found on a CRC32 match, an exact filename match, or a ZIP named after it
- * (per-game-zip collections store "Game.sfc" as "Game.zip").
+ * found on a CRC32 match, a filename match (subdirectory paths compare by
+ * basename), or a ZIP named after it (per-game-zip collections store
+ * "Game.sfc" as "Game.zip").
  */
 export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: string }[]): number {
   if (sample.length === 0) return 0;
@@ -98,9 +71,9 @@ export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: st
   const zipBasenames = new Set<string>();
   for (const f of files) {
     if (f.crc32) crcs.add(f.crc32.toLowerCase());
-    names.add(f.name);
+    names.add(baseName(f.name));
     if (f.name.toLowerCase().endsWith('.zip')) {
-      zipBasenames.add(stripExtension(f.name));
+      zipBasenames.add(stripExtension(baseName(f.name)));
     }
   }
 
@@ -117,22 +90,94 @@ export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: st
   return found / sample.length;
 }
 
+const PROBE_COUNT = 4;
+
+/**
+ * Collections like proper1g1r-collection ship one ZIP per system
+ * ("ROMs/Nintendo - Super Nintendo….zip") — nothing in the index matches
+ * individual ROMs, so coverage is measured by HEAD-probing a few sample
+ * ROMs inside the ZIP whose name matches the system.
+ */
+export async function probeSystemZip(
+  identifier: string,
+  files: ArchiveFile[],
+  system: string,
+  sample: { name: string; crc: string }[],
+): Promise<number | null> {
+  if (sample.length === 0) return null;
+
+  const systemZips = files
+    .filter((f) => f.name.toLowerCase().endsWith('.zip') && zipMatchesSystem(f.name, system))
+    .sort((a, b) => b.size - a.size);
+  const zip = systemZips[0];
+  if (zip === undefined) return null;
+
+  const stride = Math.max(1, Math.floor(sample.length / PROBE_COUNT));
+  const probes = Array.from(
+    { length: Math.min(PROBE_COUNT, sample.length) },
+    (_, i) => sample[i * stride],
+  ).filter((r): r is { name: string; crc: string } => r !== undefined);
+
+  // ZIPs often prefix their entries with a folder named like the archive
+  // ("Super Nintendo….zip" → "Super Nintendo…/rom.sfc") — try both layouts.
+  const folderPrefix = stripExtension(baseName(zip.name));
+  let hits = 0;
+  for (const rom of probes) {
+    if (
+      (await urlExists(resolveDownloadUrl(identifier, rom.name, zip.name))) ||
+      (await urlExists(resolveDownloadUrl(identifier, `${folderPrefix}/${rom.name}`, zip.name)))
+    ) {
+      hits++;
+    }
+  }
+  logger.debug({ identifier, zip: zip.name, probes: probes.length, hits }, 'system zip probed');
+  return hits / probes.length;
+}
+
 async function scoreCandidate(
   candidate: SearchResult,
   sample: { name: string; crc: string }[],
+  system: string,
 ): Promise<SourceSuggestion | null> {
-  let files: ArchiveFile[];
+  let info: ArchiveItemInfo;
   try {
-    files = await getIndex(candidate.identifier);
+    info = await getItemInfo(candidate.identifier);
   } catch {
     return null; // unreachable item — skip, don't fail the whole suggestion run
   }
+
+  // Login-only items can't serve anonymous per-file downloads — most big
+  // fullsets are in this category, don't waste probes (or the user's time).
+  if (info.restricted) {
+    logger.info({ identifier: candidate.identifier }, 'candidate skipped: access-restricted');
+    return null;
+  }
+  const files = info.files;
+
+  let coverage = scoreIndex(files, sample);
+  let layout = detectLayout(files);
+
+  // Static matching found nothing — the collection may still hold the set
+  // in a per-system ZIP; measure real coverage with a few HEAD probes.
+  if (coverage < MIN_COVERAGE) {
+    const probed = await probeSystemZip(candidate.identifier, files, system, sample);
+    if (probed !== null && probed > coverage) {
+      coverage = probed;
+      layout = 'zip-collection';
+    }
+  }
+
+  logger.info(
+    { identifier: candidate.identifier, coverage, layout, fileCount: files.length },
+    'candidate scored',
+  );
+
   return {
     identifier: candidate.identifier,
     title: candidate.title,
-    layout: detectLayout(files),
+    layout,
     fileCount: files.length,
-    coverage: scoreIndex(files, sample),
+    coverage,
     sampleSize: sample.length,
   };
 }
@@ -145,6 +190,7 @@ async function scoreCandidate(
 export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> {
   const sample = sampleRoms(dat);
   const queries = buildSearchQueries(dat.system, dat.source);
+  logger.info({ system: dat.system, queries }, 'suggestion run started');
 
   const candidates = new Map<string, SearchResult>();
   let lastError: unknown = null;
@@ -154,24 +200,47 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
         if (!candidates.has(result.identifier)) candidates.set(result.identifier, result);
       }
     } catch (err) {
+      logger.warn(
+        { query, err: err instanceof Error ? err.message : String(err) },
+        'search failed',
+      );
       lastError = err;
     }
   }
   if (candidates.size === 0 && lastError !== null) throw lastError;
 
-  const ordered = [...candidates.values()]
-    .sort((a, b) => (b.itemSize ?? 0) - (a.itemSize ?? 0))
-    .slice(0, MAX_SCORED_CANDIDATES);
+  // Candidates whose identifier/title mention the system (or an alias) go
+  // first — a dedicated "no-intro_snes" item beats a generic mega-pack —
+  // then bigger items first (a full set weighs GBs, a single game doesn't).
+  const relevant = (c: SearchResult): number =>
+    mentionsSystem(`${c.identifier} ${c.title}`, dat.system) ? 1 : 0;
+  const ordered = [...candidates.values()].sort(
+    (a, b) => relevant(b) - relevant(a) || (b.itemSize ?? 0) - (a.itemSize ?? 0),
+  );
+  logger.info({ candidates: candidates.size }, 'candidates gathered');
 
+  // Restricted/unreachable candidates don't consume a scoring slot — keep
+  // going down the list until enough are actually scored.
   const suggestions: SourceSuggestion[] = [];
-  for (let i = 0; i < ordered.length; i += SCORING_CONCURRENCY) {
+  let attempts = 0;
+  for (
+    let i = 0;
+    i < ordered.length && suggestions.length < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
+    i += SCORING_CONCURRENCY
+  ) {
     const chunk = ordered.slice(i, i + SCORING_CONCURRENCY);
-    const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample)));
+    attempts += chunk.length;
+    const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample, dat.system)));
     suggestions.push(...scored.filter((s): s is SourceSuggestion => s !== null));
   }
 
-  return suggestions
+  const kept = suggestions
     .filter((s) => s.coverage >= MIN_COVERAGE)
     .sort((a, b) => b.coverage - a.coverage)
     .slice(0, MAX_RESULTS);
+  logger.info(
+    { kept: kept.map((s) => ({ id: s.identifier, coverage: s.coverage })) },
+    'suggestion run finished',
+  );
+  return kept;
 }

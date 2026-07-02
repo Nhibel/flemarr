@@ -82,4 +82,15 @@ describe('resolveDownloadUrl', () => {
     const url = resolveDownloadUrl('my collection/v2', 'game.rom');
     expect(url).toContain('my%20collection%2Fv2');
   });
+
+  it('keeps path separators in zip/file paths (subdirectory items)', () => {
+    const url = resolveDownloadUrl(
+      'proper1g1r-collection',
+      'Super Mario World (USA).sfc',
+      'ROMs/Nintendo - Super Nintendo Entertainment System.zip',
+    );
+    expect(url).toBe(
+      'https://archive.org/download/proper1g1r-collection/ROMs/Nintendo%20-%20Super%20Nintendo%20Entertainment%20System.zip/Super%20Mario%20World%20(USA).sfc',
+    );
+  });
 });

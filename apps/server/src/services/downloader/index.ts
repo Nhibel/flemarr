@@ -6,6 +6,7 @@ import { getSettings } from '@/services/settings/index.js';
 import { downloadFile } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
+import { logger } from '@/lib/logger.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 
@@ -107,6 +108,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
         break;
       }
       try {
+        logger.info({ romName: item.romName, url }, 'download started');
         result = await downloadFile({
           url,
           tempPath: item.tempPath,
@@ -117,6 +119,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
         break;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
+        logger.warn({ romName: item.romName, url, error: lastError }, 'download source failed');
         result = 'exhausted';
       }
     }
@@ -127,6 +130,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
         assertWithinRoot(dest, destinationDir);
         await rename(item.tempPath, dest);
         item.status = 'done';
+        logger.info({ romName: item.romName, dest }, 'download done');
         job.events.push({ type: 'file-done', gameId: item.gameId, romName: item.romName });
         recordDownload({
           gameId: item.gameId,
@@ -153,6 +157,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
       result === 'crc-mismatch'
         ? 'CRC mismatch'
         : `Download failed${lastError ? ` (${lastError})` : ''}`;
+    logger.warn({ romName: item.romName, reason }, 'download failed');
     job.events.push({ type: 'file-failed', gameId: item.gameId, romName: item.romName, reason });
     recordDownload({
       gameId: item.gameId,
