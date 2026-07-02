@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: Settings = {
   fresh1g1rPreset: 'PropeR',
   downloaderConcurrency: 2,
   systemPaths: {},
+  archiveOrgAccessKey: '',
+  archiveOrgSecretKey: '',
 };
 
 beforeEach(() => {

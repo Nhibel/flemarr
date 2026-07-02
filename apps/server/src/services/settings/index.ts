@@ -5,10 +5,16 @@ import { getDb } from '@/lib/db.js';
 
 const DEFAULTS: Settings = settingsSchema.parse({});
 
-function readScalars(db: Database): { fresh1g1rPreset: string; downloaderConcurrency: number } {
+function readScalars(db: Database): {
+  fresh1g1rPreset: string;
+  downloaderConcurrency: number;
+  archiveOrgAccessKey: string;
+  archiveOrgSecretKey: string;
+} {
   const rows = db
     .prepare(
-      `SELECT key, value FROM settings WHERE key IN ('fresh1g1r_preset', 'downloader_concurrency')`,
+      `SELECT key, value FROM settings WHERE key IN
+       ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key', 'archive_org_secret_key')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -18,6 +24,8 @@ function readScalars(db: Database): { fresh1g1rPreset: string; downloaderConcurr
     downloaderConcurrency: map['downloader_concurrency']
       ? Number(map['downloader_concurrency'])
       : DEFAULTS.downloaderConcurrency,
+    archiveOrgAccessKey: map['archive_org_access_key'] ?? '',
+    archiveOrgSecretKey: map['archive_org_secret_key'] ?? '',
   };
 }
 
@@ -36,6 +44,8 @@ export function getSettings(db: Database = getDb()): Settings {
     fresh1g1rPreset: scalars.fresh1g1rPreset,
     downloaderConcurrency: scalars.downloaderConcurrency,
     systemPaths,
+    archiveOrgAccessKey: scalars.archiveOrgAccessKey,
+    archiveOrgSecretKey: scalars.archiveOrgSecretKey,
   });
 }
 
@@ -49,6 +59,12 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.downloaderConcurrency !== undefined) {
     upsert.run('downloader_concurrency', String(patch.downloaderConcurrency));
+  }
+  if (patch.archiveOrgAccessKey !== undefined) {
+    upsert.run('archive_org_access_key', patch.archiveOrgAccessKey);
+  }
+  if (patch.archiveOrgSecretKey !== undefined) {
+    upsert.run('archive_org_secret_key', patch.archiveOrgSecretKey);
   }
   if (patch.systemPaths !== undefined) {
     const upsertPath = db.prepare(

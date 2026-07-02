@@ -1,3 +1,4 @@
+import { archiveFetch } from './fetch.js';
 import { logger } from '@/lib/logger.js';
 
 const TTL_OK_MS = 60 * 60 * 1000;
@@ -16,7 +17,7 @@ export async function urlExists(url: string): Promise<boolean> {
   let ok = false;
   let status: number | string = 'network-error';
   try {
-    const res = await fetch(url, {
+    const res = await archiveFetch(url, {
       method: 'HEAD',
       redirect: 'follow',
       signal: AbortSignal.timeout(10_000),

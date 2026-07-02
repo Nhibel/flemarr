@@ -5,6 +5,7 @@ import { getItemInfo, resolveDownloadUrl } from './metadata.js';
 import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
 import { urlExists } from './url-check.js';
+import { hasArchiveCredentials } from './fetch.js';
 import {
   systemNameVariants,
   mentionsSystem,
@@ -147,8 +148,10 @@ async function scoreCandidate(
   }
 
   // Login-only items can't serve anonymous per-file downloads — most big
-  // fullsets are in this category, don't waste probes (or the user's time).
-  if (info.restricted) {
+  // fullsets are in this category. With archive.org credentials configured
+  // they become reachable, so they're scored like any other candidate
+  // (the HEAD probes validate real access anyway).
+  if (info.restricted && !hasArchiveCredentials()) {
     logger.info({ identifier: candidate.identifier }, 'candidate skipped: access-restricted');
     return null;
   }

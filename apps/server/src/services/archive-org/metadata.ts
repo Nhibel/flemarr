@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ArchiveFile } from '@shared/archive.js';
+import { archiveFetch } from './fetch.js';
 import { logger } from '@/lib/logger.js';
 
 const METADATA_TTL_MS = 24 * 60 * 60 * 1000;
@@ -39,7 +40,7 @@ export async function getItemInfo(identifier: string): Promise<ArchiveItemInfo> 
 
   const start = Date.now();
   const url = `https://archive.org/metadata/${encodeURIComponent(identifier)}`;
-  const res = await fetch(url);
+  const res = await archiveFetch(url);
   if (!res.ok) {
     logger.warn({ identifier, status: res.status }, 'metadata fetch failed');
     throw new Error(`archive.org metadata fetch failed: ${res.status} for ${identifier}`);

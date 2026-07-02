@@ -252,6 +252,25 @@ describe('suggestSources', () => {
     expect(suggestions.map((s) => s.identifier)).toEqual(['public-set']);
   });
 
+  it('scores restricted items when archive.org credentials are configured', async () => {
+    const { updateSettings } = await import('../services/settings/index.js');
+    updateSettings({ archiveOrgAccessKey: 'ak', archiveOrgSecretKey: 'sk' });
+    try {
+      const dat = makeDat(4);
+      const goodFiles = dat.games.map((g) => file(g.roms[0]!.name, g.roms[0]!.crc));
+      vi.mocked(searchArchive).mockResolvedValue([
+        { identifier: 'restricted-fullset', title: 'R', description: '', itemSize: 999_999_999 },
+      ]);
+      vi.mocked(getItemInfo).mockResolvedValue({ files: goodFiles, restricted: true });
+
+      const suggestions = await suggestSources(dat);
+      expect(suggestions.map((s) => s.identifier)).toEqual(['restricted-fullset']);
+      expect(suggestions[0]?.coverage).toBe(1);
+    } finally {
+      updateSettings({ archiveOrgAccessKey: '', archiveOrgSecretKey: '' });
+    }
+  });
+
   it('throws when every search query fails', async () => {
     vi.mocked(searchArchive).mockRejectedValue(new Error('archive.org search returned 503'));
     await expect(suggestSources(makeDat(2))).rejects.toThrow('503');

@@ -5,6 +5,10 @@ export const settingsSchema = z.object({
   fresh1g1rPreset: fresh1g1rPresetSchema.default('PropeR'),
   downloaderConcurrency: z.number().int().min(1).max(8).default(2),
   systemPaths: z.record(z.string(), z.string()).default({}),
+  // archive.org S3-like API keys (archive.org/account/s3.php) — unlock
+  // downloads from access-restricted items. Empty = anonymous access.
+  archiveOrgAccessKey: z.string().default(''),
+  archiveOrgSecretKey: z.string().default(''),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

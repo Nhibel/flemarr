@@ -87,6 +87,8 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   const [newSystem, setNewSystem] = useState('');
   const [newPath, setNewPath] = useState('');
   const [validation, setValidation] = useState<ValidationState>('idle');
+  const [accessKey, setAccessKey] = useState<string | null>(null);
+  const [secretKey, setSecretKey] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -140,6 +142,23 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
 
   const handleRemovePath = (system: string) => {
     mutation.mutate({ systemPaths: { [system]: '' } });
+  };
+
+  // Local state is null until the user edits — the displayed value falls back
+  // to what's stored in settings.
+  const shownAccessKey = accessKey ?? settings.archiveOrgAccessKey;
+  const shownSecretKey = secretKey ?? settings.archiveOrgSecretKey;
+  const keysDirty =
+    shownAccessKey !== settings.archiveOrgAccessKey ||
+    shownSecretKey !== settings.archiveOrgSecretKey;
+
+  const handleSaveKeys = () => {
+    mutation.mutate({
+      archiveOrgAccessKey: shownAccessKey.trim(),
+      archiveOrgSecretKey: shownSecretKey.trim(),
+    });
+    setAccessKey(null);
+    setSecretKey(null);
   };
 
   const inputClass = css({
@@ -266,6 +285,66 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      {/* archive.org credentials */}
+      <section className={sectionClass}>
+        <h2
+          className={css({
+            fontSize: 'base',
+            fontWeight: 'semibold',
+            color: 'fg.default',
+            mb: '1',
+          })}
+        >
+          Compte archive.org
+        </h2>
+        <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
+          Clés API S3 (archive.org/account/s3.php) — débloquent les collections à accès restreint
+          (la plupart des gros sets No-Intro/Redump). Stockées en clair dans la base locale.
+        </p>
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', maxW: 'md' })}>
+          <input
+            type="text"
+            placeholder="Access key"
+            value={shownAccessKey}
+            onChange={(e) => setAccessKey(e.target.value)}
+            className={cx(css({ fontFamily: 'mono' }), inputClass)}
+          />
+          <input
+            type="password"
+            placeholder="Secret key"
+            value={shownSecretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+            className={cx(css({ fontFamily: 'mono' }), inputClass)}
+          />
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+            <button
+              onClick={handleSaveKeys}
+              disabled={!keysDirty || mutation.isPending}
+              className={css({
+                alignSelf: 'flex-start',
+                px: '4',
+                py: '1.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                bg: 'blue.500',
+                color: 'white',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { bg: 'blue.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              Enregistrer les clés
+            </button>
+            {settings.archiveOrgAccessKey !== '' && !keysDirty && (
+              <span className={css({ fontSize: 'xs', color: 'green.600' })}>
+                ✓ Clés configurées
+              </span>
+            )}
+          </div>
         </div>
       </section>
 

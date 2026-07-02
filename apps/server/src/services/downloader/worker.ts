@@ -2,6 +2,7 @@ import { createWriteStream, unlink } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { Crc32Accumulator } from '@/lib/crc32.js';
+import { archiveFetch } from '@/services/archive-org/fetch.js';
 
 export type WorkerResult = 'done' | 'crc-mismatch' | 'cancelled' | 'error';
 
@@ -46,7 +47,7 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
   let attempt = 0;
   for (;;) {
     try {
-      res = await fetch(url, { signal });
+      res = await archiveFetch(url, { signal });
     } catch (err) {
       if (signal.aborted) return 'cancelled';
       throw err;
