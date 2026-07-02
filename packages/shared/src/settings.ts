@@ -9,6 +9,10 @@ export const settingsSchema = z.object({
   // downloads from access-restricted items. Empty = anonymous access.
   archiveOrgAccessKey: z.string().default(''),
   archiveOrgSecretKey: z.string().default(''),
+  // Session cookies obtained via the xauthn login exchange — the datanodes
+  // check these (not the S3 header) for restricted zip-view downloads.
+  archiveOrgLoggedInUser: z.string().default(''),
+  archiveOrgLoggedInSig: z.string().default(''),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

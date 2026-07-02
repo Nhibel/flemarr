@@ -18,6 +18,8 @@ const DEFAULT_SETTINGS: Settings = {
   systemPaths: {},
   archiveOrgAccessKey: '',
   archiveOrgSecretKey: '',
+  archiveOrgLoggedInUser: '',
+  archiveOrgLoggedInSig: '',
 };
 
 beforeEach(() => {

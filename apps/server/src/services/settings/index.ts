@@ -10,11 +10,14 @@ function readScalars(db: Database): {
   downloaderConcurrency: number;
   archiveOrgAccessKey: string;
   archiveOrgSecretKey: string;
+  archiveOrgLoggedInUser: string;
+  archiveOrgLoggedInSig: string;
 } {
   const rows = db
     .prepare(
       `SELECT key, value FROM settings WHERE key IN
-       ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key', 'archive_org_secret_key')`,
+       ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key',
+        'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -26,6 +29,8 @@ function readScalars(db: Database): {
       : DEFAULTS.downloaderConcurrency,
     archiveOrgAccessKey: map['archive_org_access_key'] ?? '',
     archiveOrgSecretKey: map['archive_org_secret_key'] ?? '',
+    archiveOrgLoggedInUser: map['archive_org_logged_in_user'] ?? '',
+    archiveOrgLoggedInSig: map['archive_org_logged_in_sig'] ?? '',
   };
 }
 
@@ -46,6 +51,8 @@ export function getSettings(db: Database = getDb()): Settings {
     systemPaths,
     archiveOrgAccessKey: scalars.archiveOrgAccessKey,
     archiveOrgSecretKey: scalars.archiveOrgSecretKey,
+    archiveOrgLoggedInUser: scalars.archiveOrgLoggedInUser,
+    archiveOrgLoggedInSig: scalars.archiveOrgLoggedInSig,
   });
 }
 
@@ -65,6 +72,12 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.archiveOrgSecretKey !== undefined) {
     upsert.run('archive_org_secret_key', patch.archiveOrgSecretKey);
+  }
+  if (patch.archiveOrgLoggedInUser !== undefined) {
+    upsert.run('archive_org_logged_in_user', patch.archiveOrgLoggedInUser);
+  }
+  if (patch.archiveOrgLoggedInSig !== undefined) {
+    upsert.run('archive_org_logged_in_sig', patch.archiveOrgLoggedInSig);
   }
   if (patch.systemPaths !== undefined) {
     const upsertPath = db.prepare(

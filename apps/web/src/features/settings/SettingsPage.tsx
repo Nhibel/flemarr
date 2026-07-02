@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
-import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
+import { getSettings, updateSettings, validateDir, archiveLogin } from '@/lib/api.js';
 import type { Settings } from '@/lib/api.js';
 import { PathInput } from '@/components/PathInput.js';
 
@@ -89,6 +89,10 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   const [validation, setValidation] = useState<ValidationState>('idle');
   const [accessKey, setAccessKey] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginState, setLoginState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -160,6 +164,23 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
     setAccessKey(null);
     setSecretKey(null);
   };
+
+  const handleLogin = async () => {
+    if (!loginEmail.trim() || !loginPassword) return;
+    setLoginState('pending');
+    setLoginError(null);
+    try {
+      await archiveLogin(loginEmail.trim(), loginPassword);
+      setLoginState('done');
+      setLoginPassword('');
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+    } catch (err) {
+      setLoginState('error');
+      setLoginError(err instanceof Error ? err.message : 'Erreur de connexion');
+    }
+  };
+
+  const isLoggedIn = settings.archiveOrgLoggedInUser !== '';
 
   const inputClass = css({
     px: '3',
@@ -301,8 +322,68 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
           Compte archive.org
         </h2>
         <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
-          Clés API S3 (archive.org/account/s3.php) — débloquent les collections à accès restreint
-          (la plupart des gros sets No-Intro/Redump). Stockées en clair dans la base locale.
+          Débloque les collections à accès restreint (la plupart des gros sets No-Intro/Redump). Le
+          mot de passe est échangé une fois contre des clés API et des cookies de session — il
+          n'est jamais stocké. Clés et cookies sont gardés en clair dans la base locale.
+        </p>
+
+        {isLoggedIn && (
+          <p className={css({ fontSize: 'sm', color: 'green.600', mb: '3' })}>
+            ✓ Connecté à archive.org (cookies de session actifs)
+          </p>
+        )}
+
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', maxW: 'md', mb: '4' })}>
+          <input
+            type="email"
+            placeholder="Email archive.org"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            className={inputClass}
+          />
+          <input
+            type="password"
+            placeholder="Mot de passe archive.org"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleLogin();
+            }}
+            className={inputClass}
+          />
+          <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+            <button
+              onClick={() => void handleLogin()}
+              disabled={loginState === 'pending' || !loginEmail.trim() || !loginPassword}
+              className={css({
+                alignSelf: 'flex-start',
+                px: '4',
+                py: '1.5',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                bg: 'blue.500',
+                color: 'white',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { bg: 'blue.600' },
+                _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+              })}
+            >
+              {loginState === 'pending' ? 'Connexion…' : 'Se connecter'}
+            </button>
+            {loginState === 'done' && (
+              <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Connexion réussie</span>
+            )}
+          </div>
+          {loginError && (
+            <p role="alert" className={css({ fontSize: 'xs', color: 'red.600' })}>
+              {loginError}
+            </p>
+          )}
+        </div>
+
+        <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '2' })}>
+          Ou saisie manuelle des clés S3 (archive.org/account/s3.php) :
         </p>
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', maxW: 'md' })}>
           <input

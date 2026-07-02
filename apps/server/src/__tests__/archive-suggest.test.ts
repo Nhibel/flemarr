@@ -201,13 +201,18 @@ describe('suggestSources', () => {
         { identifier: 'from-query-1', title: 'A', description: '' },
         { identifier: 'from-query-2', title: 'B', description: '' },
       ]);
-    vi.mocked(getIndex).mockResolvedValue(goodFiles);
+    vi.mocked(getIndex).mockImplementation((id: string) =>
+      Promise.resolve(id.startsWith('from-query') ? goodFiles : [file('unrelated.iso')]),
+    );
 
     const suggestions = await suggestSources(dat);
     expect(vi.mocked(searchArchive).mock.calls.length).toBeGreaterThan(1);
     expect(suggestions.map((s) => s.identifier).sort()).toEqual(['from-query-1', 'from-query-2']);
     // deduped: from-query-1 scored once despite appearing in every query
-    expect(vi.mocked(getIndex)).toHaveBeenCalledTimes(2);
+    const fromQueryCalls = vi
+      .mocked(getIndex)
+      .mock.calls.filter((c) => String(c[0]).startsWith('from-query'));
+    expect(fromQueryCalls).toHaveLength(2);
   });
 
   it('scores big items first when there are more candidates than slots', async () => {
@@ -245,7 +250,10 @@ describe('suggestSources', () => {
       { identifier: 'public-set', title: 'P', description: '', itemSize: 1000 },
     ]);
     vi.mocked(getItemInfo).mockImplementation((id: string) =>
-      Promise.resolve({ files: goodFiles, restricted: id === 'restricted-fullset' }),
+      Promise.resolve({
+        files: id === 'public-set' ? goodFiles : [file('unrelated.iso')],
+        restricted: id === 'restricted-fullset',
+      }),
     );
 
     const suggestions = await suggestSources(dat);
@@ -261,7 +269,12 @@ describe('suggestSources', () => {
       vi.mocked(searchArchive).mockResolvedValue([
         { identifier: 'restricted-fullset', title: 'R', description: '', itemSize: 999_999_999 },
       ]);
-      vi.mocked(getItemInfo).mockResolvedValue({ files: goodFiles, restricted: true });
+      vi.mocked(getItemInfo).mockImplementation((id: string) =>
+        Promise.resolve({
+          files: id === 'restricted-fullset' ? goodFiles : [file('unrelated.iso')],
+          restricted: true,
+        }),
+      );
 
       const suggestions = await suggestSources(dat);
       expect(suggestions.map((s) => s.identifier)).toEqual(['restricted-fullset']);
@@ -276,17 +289,43 @@ describe('suggestSources', () => {
     await expect(suggestSources(makeDat(2))).rejects.toThrow('503');
   });
 
+  it('injects known multi-system collections even when search misses them', async () => {
+    const dat = makeDat(4);
+    vi.mocked(searchArchive).mockResolvedValue([]); // search finds nothing at all
+    vi.mocked(getItemInfo).mockImplementation((id: string) =>
+      Promise.resolve({
+        files:
+          id === 'ni-roms'
+            ? [file('roms/Nintendo - Super Nintendo Entertainment System.zip')]
+            : [file('unrelated.iso')],
+        restricted: false,
+      }),
+    );
+    vi.mocked(urlExists).mockResolvedValue(true);
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions.map((s) => s.identifier)).toEqual(['ni-roms']);
+    expect(suggestions[0]?.coverage).toBe(1);
+    expect(suggestions[0]?.layout).toBe('zip-collection');
+  });
+
   it('scores one-zip-per-system collections by HEAD-probing the system zip', async () => {
     const dat = makeDat(8);
     vi.mocked(searchArchive).mockResolvedValue([
       { identifier: 'proper1g1r-like', title: '1G1R collection', description: '' },
     ]);
     // Index has nothing matching individual ROMs — just per-system ZIPs in a subdir
-    vi.mocked(getIndex).mockResolvedValue([
-      file('ROMs/Nintendo - Super Nintendo Entertainment System.zip'),
-      file('ROMs/Sega - Mega Drive - Genesis.zip'),
-      file('DATs/Nintendo - Super Nintendo Entertainment System.zip'),
-    ]);
+    vi.mocked(getIndex).mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 'proper1g1r-like'
+          ? [
+              file('ROMs/Nintendo - Super Nintendo Entertainment System.zip'),
+              file('ROMs/Sega - Mega Drive - Genesis.zip'),
+              file('DATs/Nintendo - Super Nintendo Entertainment System.zip'),
+            ]
+          : [file('unrelated.iso')],
+      ),
+    );
     vi.mocked(urlExists).mockResolvedValue(true);
 
     const suggestions = await suggestSources(dat);

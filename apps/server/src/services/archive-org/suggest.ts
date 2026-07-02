@@ -6,6 +6,7 @@ import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
 import { urlExists } from './url-check.js';
 import { hasArchiveCredentials } from './fetch.js';
+import { KNOWN_MULTI_SYSTEM_IDENTIFIERS } from './known-sources.js';
 import {
   systemNameVariants,
   mentionsSystem,
@@ -212,11 +213,25 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   }
   if (candidates.size === 0 && lastError !== null) throw lastError;
 
-  // Candidates whose identifier/title mention the system (or an alias) go
-  // first — a dedicated "no-intro_snes" item beats a generic mega-pack —
-  // then bigger items first (a full set weighs GBs, a single game doesn't).
+  // Known multi-system collections never match a per-system search query —
+  // inject them as candidates; scoring validates them like the others.
+  for (const id of KNOWN_MULTI_SYSTEM_IDENTIFIERS) {
+    if (!candidates.has(id)) {
+      candidates.set(id, { identifier: id, title: id, description: '' });
+    }
+  }
+  const seeded = new Set(KNOWN_MULTI_SYSTEM_IDENTIFIERS);
+
+  // Curated multi-system identifiers first (no itemSize — they'd sink),
+  // then candidates whose identifier/title mention the system (or an alias)
+  // — a dedicated "no-intro_snes" item beats a generic mega-pack — then
+  // bigger items first (a full set weighs GBs, a single game doesn't).
   const relevant = (c: SearchResult): number =>
-    mentionsSystem(`${c.identifier} ${c.title}`, dat.system) ? 1 : 0;
+    seeded.has(c.identifier)
+      ? 2
+      : mentionsSystem(`${c.identifier} ${c.title}`, dat.system)
+        ? 1
+        : 0;
   const ordered = [...candidates.values()].sort(
     (a, b) => relevant(b) - relevant(a) || (b.itemSize ?? 0) - (a.itemSize ?? 0),
   );

@@ -146,6 +146,19 @@ export async function previewIndex(identifier: string): Promise<IndexResponse> {
   return parseResponse(res, indexResponseSchema);
 }
 
+export async function archiveLogin(email: string, password: string): Promise<void> {
+  const res = await fetch('/api/archive/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const json: unknown = await res.json();
+    const err = errorResponseSchema.safeParse(json);
+    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
+  }
+}
+
 export async function suggestSources(datId: string): Promise<SuggestResponse> {
   const res = await fetch('/api/archive/suggest', {
     method: 'POST',

@@ -66,6 +66,17 @@ export const searchResponseSchema = z.object({
 });
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
 
+// archive.org account login (exchanged for API keys + session cookies,
+// the password itself is never stored)
+export const archiveLoginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+export type ArchiveLoginRequest = z.infer<typeof archiveLoginRequestSchema>;
+
+export const archiveLoginResponseSchema = z.object({ ok: z.boolean() });
+export type ArchiveLoginResponse = z.infer<typeof archiveLoginResponseSchema>;
+
 // Suggestions
 export const suggestRequestSchema = z.object({
   datId: z.string().min(1),

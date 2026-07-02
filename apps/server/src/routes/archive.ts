@@ -4,7 +4,9 @@ import {
   indexRequestSchema,
   resolveRequestSchema,
   suggestRequestSchema,
+  archiveLoginRequestSchema,
 } from '@shared/archive.js';
+import { exchangeArchiveLogin, ArchiveLoginError } from '@/services/archive-org/login.js';
 import {
   getSources,
   getAllSystems,
@@ -143,6 +145,49 @@ archiveRoute.get('/archive/search', async (c) => {
   }
 
   return c.json({ results });
+});
+
+// Exchange archive.org email+password for API keys and session cookies.
+// The password transits here once and is never stored.
+archiveRoute.post('/archive/login', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } }, 400);
+  }
+
+  const parsed = archiveLoginRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.issues[0]?.message ?? 'Invalid body',
+        },
+      },
+      400,
+    );
+  }
+
+  try {
+    await exchangeArchiveLogin(parsed.data.email, parsed.data.password);
+  } catch (err) {
+    if (err instanceof ArchiveLoginError) {
+      return c.json({ error: { code: 'LOGIN_FAILED', message: err.message } }, 401);
+    }
+    return c.json(
+      {
+        error: {
+          code: 'FETCH_ERROR',
+          message: err instanceof Error ? err.message : 'Login exchange failed',
+        },
+      },
+      502,
+    );
+  }
+
+  return c.json({ ok: true });
 });
 
 // Suggest sources for a DAT: search + score candidates against the DAT

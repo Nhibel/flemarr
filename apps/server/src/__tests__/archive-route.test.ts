@@ -24,9 +24,15 @@ vi.mock('../services/archive-org/suggest.js', () => ({
   suggestSources: vi.fn(),
 }));
 
+vi.mock('../services/archive-org/login.js', () => {
+  class ArchiveLoginError extends Error {}
+  return { exchangeArchiveLogin: vi.fn(), ArchiveLoginError };
+});
+
 import { getIndex } from '../services/archive-org/metadata.js';
 import { resolveGames, clearResolverCache } from '../services/archive-org/resolver.js';
 import { suggestSources } from '../services/archive-org/suggest.js';
+import { exchangeArchiveLogin, ArchiveLoginError } from '../services/archive-org/login.js';
 
 const app = new Hono().route('/api', archiveRoute);
 
@@ -206,6 +212,39 @@ describe('POST /api/archive/resolve', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { results: { gameId: string }[] };
     expect(body.results[0]?.gameId).toBe('smw');
+  });
+});
+
+describe('POST /api/archive/login', () => {
+  it('returns 400 for a malformed email', async () => {
+    const res = await app.request('/api/archive/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'not-an-email', password: 'x' }),
+    });
+    expect(res.status).toBe(400);
+    expect(vi.mocked(exchangeArchiveLogin)).not.toHaveBeenCalled();
+  });
+
+  it('returns 200 on successful exchange', async () => {
+    vi.mocked(exchangeArchiveLogin).mockResolvedValue(undefined);
+    const res = await app.request('/api/archive/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'a@b.com', password: 'pw' }),
+    });
+    expect(res.status).toBe(200);
+    expect(vi.mocked(exchangeArchiveLogin)).toHaveBeenCalledWith('a@b.com', 'pw');
+  });
+
+  it('returns 401 when archive.org rejects the credentials', async () => {
+    vi.mocked(exchangeArchiveLogin).mockRejectedValue(new ArchiveLoginError('bad password'));
+    const res = await app.request('/api/archive/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'a@b.com', password: 'wrong' }),
+    });
+    expect(res.status).toBe(401);
   });
 });
 

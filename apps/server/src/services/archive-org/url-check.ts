@@ -19,7 +19,6 @@ export async function urlExists(url: string): Promise<boolean> {
   try {
     const res = await archiveFetch(url, {
       method: 'HEAD',
-      redirect: 'follow',
       signal: AbortSignal.timeout(10_000),
     });
     status = res.status;
