@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { writeFile, mkdir, rm, access } from 'node:fs/promises';
+import { mkdir, rm, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { computeCrc32Buffer } from '../lib/crc32.js';
@@ -89,7 +89,6 @@ describe('downloadFile', () => {
   });
 
   it('returns cancelled and deletes temp file when signal is aborted', async () => {
-    const content = Buffer.from('x'.repeat(1024));
     const tempPath = join(TMP, 'cancelled.rom.tmp');
     const controller = new AbortController();
 

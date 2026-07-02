@@ -165,11 +165,11 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
 
   const validationHint =
     validation === 'valid'
-      ? { text: '✓ Dossier trouvé', color: 'green.600' }
+      ? { text: '✓ Dossier trouvé', ok: true }
       : validation === 'not-found'
-        ? { text: '✗ Chemin introuvable', color: 'red.600' }
+        ? { text: '✗ Chemin introuvable', ok: false }
         : validation === 'not-dir'
-          ? { text: "✗ Ce chemin existe mais n'est pas un dossier", color: 'red.600' }
+          ? { text: "✗ Ce chemin existe mais n'est pas un dossier", ok: false }
           : null;
 
   return (
@@ -448,7 +448,12 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
             </button>
           </div>
           {validationHint && (
-            <p className={css({ fontSize: 'xs', color: validationHint.color })}>
+            <p
+              className={css({
+                fontSize: 'xs',
+                color: validationHint.ok ? 'green.600' : 'red.600',
+              })}
+            >
               {validationHint.text}
             </p>
           )}
