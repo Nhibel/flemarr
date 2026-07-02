@@ -48,9 +48,10 @@ export const renameEntrySchema = z.object({
 });
 export type RenameEntry = z.infer<typeof renameEntrySchema>;
 
+// No client-supplied root: the server validates every path against the
+// configured system paths (settings), per the fs-safety rules in ARCHITECTURE.md.
 export const renameRequestSchema = z.object({
   renames: z.array(renameEntrySchema).min(1),
-  root: z.string().min(1),
 });
 export type RenameRequest = z.infer<typeof renameRequestSchema>;
 

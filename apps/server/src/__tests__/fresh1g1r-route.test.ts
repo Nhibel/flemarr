@@ -20,6 +20,8 @@ const MOCK_SOURCES = [
   },
 ];
 
+const VALID_SHA = 'a'.repeat(40);
+
 const MOCK_SUMMARY = {
   id: 'dat-001',
   system: 'Nintendo - Super Nintendo Entertainment System',
@@ -83,12 +85,22 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for a malformed sha (not 40-hex)', async () => {
+    const res = await app.request('/api/dats/from-fresh1g1r', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preset: 'PropeR', path: 'a/b.dat', sha: '../../../evil' }),
+    });
+    expect(res.status).toBe(400);
+    expect(vi.mocked(fetchDat)).not.toHaveBeenCalled();
+  });
+
   it('returns 201 with DAT summary on success', async () => {
     vi.mocked(fetchDat).mockResolvedValue(MOCK_SUMMARY);
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/test.dat', sha: 'abc123' }),
+      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/test.dat', sha: VALID_SHA }),
     });
     expect(res.status).toBe(201);
     const body = (await res.json()) as { system: string; gameCount: number };
@@ -101,7 +113,7 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/missing.dat', sha: 'xyz' }),
+      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/missing.dat', sha: VALID_SHA }),
     });
     expect(res.status).toBe(502);
   });

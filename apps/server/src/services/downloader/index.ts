@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { rename, rm } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { assertWithinRoot } from '@/lib/fs-safety.js';
+import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { downloadFile } from './worker.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
@@ -28,7 +28,8 @@ export const downloadJobs = new Map<string, DownloadJobState>();
 export async function startDownload(request: DownloadRequest): Promise<string> {
   const { items, destinationDir } = request;
 
-  assertWithinRoot(destinationDir, destinationDir); // validates it's a real absolute path
+  // Configured roots only (ARCHITECTURE.md) — refuse destinations outside settings.systemPaths
+  assertWithinConfiguredRoots(destinationDir, Object.values(getSettings().systemPaths));
 
   const jobId = randomUUID();
   const controller = new AbortController();

@@ -1,14 +1,17 @@
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 import type { Fresh1g1rPreset, DatSourceEntry } from '@shared/fresh1g1r.js';
 import type { DatSummary } from '@shared/dat.js';
 import { parseDat, addDat } from '@/services/dat/index.js';
+import { dataDir } from '@/lib/db.js';
 
 const REPO = 'UnluckyForSome/Fresh1G1R';
 const BRANCH = 'main';
-const CACHE_DIR = join(homedir(), '.rom-curator', 'cache');
+
+function cacheDir(): string {
+  return join(dataDir(), 'cache');
+}
 
 const githubFileSchema = z.object({
   name: z.string(),
@@ -28,13 +31,9 @@ function rawUrl(path: string): string {
   return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURI(path)}`;
 }
 
-async function ensureCacheDir(): Promise<void> {
-  await mkdir(CACHE_DIR, { recursive: true });
-}
-
 async function readCache(sha: string): Promise<string | null> {
   try {
-    const content = await readFile(join(CACHE_DIR, `${sha}.dat`), 'utf8');
+    const content = await readFile(join(cacheDir(), `${sha}.dat`), 'utf8');
     return content;
   } catch {
     return null;
@@ -42,8 +41,8 @@ async function readCache(sha: string): Promise<string | null> {
 }
 
 async function writeCache(sha: string, content: string): Promise<void> {
-  await ensureCacheDir();
-  await writeFile(join(CACHE_DIR, `${sha}.dat`), content, 'utf8');
+  await mkdir(cacheDir(), { recursive: true });
+  await writeFile(join(cacheDir(), `${sha}.dat`), content, 'utf8');
 }
 
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSourceEntry[]> {

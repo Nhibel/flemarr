@@ -81,7 +81,7 @@ export function ScanPage({ datId }: Props) {
       .map((e) => ({ from: e.filePath, to: e.canonicalName }));
 
     try {
-      const result = await requestRenames({ renames: entries, root: scan.directory });
+      const result = await requestRenames({ renames: entries });
       setRenameResult({ done: result.done.length, failed: result.failed.length });
       if (result.failed.length === 0) {
         // Re-scan to refresh results

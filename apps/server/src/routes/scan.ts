@@ -1,12 +1,31 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { rename } from 'node:fs/promises';
+import { rename, access } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { scanRequestSchema, renameRequestSchema } from '@shared/scan.js';
 import { runScan, scanJobs } from '@/services/scanner/index.js';
-import { assertWithinRoot, PathTraversalError } from '@/lib/fs-safety.js';
+import {
+  assertWithinConfiguredRoots,
+  PathTraversalError,
+  NoRootsConfiguredError,
+} from '@/lib/fs-safety.js';
+import { getSettings } from '@/services/settings/index.js';
 
 export const scanRoute = new Hono();
+
+function configuredRoots(): string[] {
+  return Object.values(getSettings().systemPaths);
+}
+
+function rootsErrorResponse(err: unknown): { code: string; message: string; status: 400 } | null {
+  if (err instanceof NoRootsConfiguredError) {
+    return { code: 'NO_ROOTS_CONFIGURED', message: err.message, status: 400 };
+  }
+  if (err instanceof PathTraversalError) {
+    return { code: 'PATH_TRAVERSAL', message: err.message, status: 400 };
+  }
+  return null;
+}
 
 scanRoute.post('/scan', async (c) => {
   let body: unknown;
@@ -22,6 +41,14 @@ scanRoute.post('/scan', async (c) => {
   }
 
   const { datId, directory } = parsed.data;
+
+  try {
+    assertWithinConfiguredRoots(directory, configuredRoots());
+  } catch (err) {
+    const known = rootsErrorResponse(err);
+    if (known) return c.json({ error: { code: known.code, message: known.message } }, known.status);
+    throw err;
+  }
 
   let jobId: string;
   try {
@@ -78,19 +105,48 @@ scanRoute.post('/scan/rename', async (c) => {
     return c.json({ error: { code: 'BAD_REQUEST', message: parsed.error.message } }, 400);
   }
 
-  const { renames, root } = parsed.data;
+  const { renames } = parsed.data;
+  const roots = configuredRoots();
 
   // Validate all paths before touching the filesystem
   for (const { from, to } of renames) {
     try {
-      assertWithinRoot(from, root);
-      assertWithinRoot(join(dirname(from), to), root);
+      assertWithinConfiguredRoots(from, roots);
+      assertWithinConfiguredRoots(join(dirname(from), to), roots);
     } catch (err) {
-      if (err instanceof PathTraversalError) {
-        return c.json({ error: { code: 'PATH_TRAVERSAL', message: err.message } }, 400);
-      }
+      const known = rootsErrorResponse(err);
+      if (known)
+        return c.json({ error: { code: known.code, message: known.message } }, known.status);
       throw err;
     }
+  }
+
+  // Refuse the whole batch if any destination already exists or is duplicated
+  // within the batch — a rename would silently overwrite the existing file.
+  const destinations = renames.map(({ from, to }) => join(dirname(from), to));
+  const seen = new Set<string>();
+  const collisions: string[] = [];
+  for (const dest of destinations) {
+    if (seen.has(dest)) collisions.push(dest);
+    seen.add(dest);
+    try {
+      await access(dest);
+      collisions.push(dest);
+    } catch {
+      // destination free — ok
+    }
+  }
+  if (collisions.length > 0) {
+    return c.json(
+      {
+        error: {
+          code: 'DESTINATION_COLLISION',
+          message: `Destination already exists: ${collisions.join(', ')}`,
+          details: { collisions },
+        },
+      },
+      409,
+    );
   }
 
   const done: typeof renames = [];

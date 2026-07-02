@@ -6,11 +6,15 @@ import { applyMigrations } from '@/lib/migrations.js';
 
 let _db: Database | null = null;
 
+export function dataDir(): string {
+  return process.env['ROM_CURATOR_DATA_DIR'] ?? join(homedir(), '.rom-curator');
+}
+
 export function getDb(): Database {
   if (_db) return _db;
-  const dataDir = join(homedir(), '.rom-curator');
-  mkdirSync(dataDir, { recursive: true });
-  _db = new DatabaseConstructor(join(dataDir, 'rom-curator.db'));
+  const dir = dataDir();
+  mkdirSync(dir, { recursive: true });
+  _db = new DatabaseConstructor(join(dir, 'rom-curator.db'));
   applyMigrations(_db);
   return _db;
 }

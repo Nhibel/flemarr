@@ -21,7 +21,9 @@ export type ListSourcesResponse = z.infer<typeof listSourcesResponseSchema>;
 export const fetchDatRequestSchema = z.object({
   preset: fresh1g1rPresetSchema,
   path: z.string().min(1),
-  sha: z.string().min(1),
+  // Git blob SHA — also used as cache filename, so the format must be strict
+  // (an unconstrained string would allow path traversal in the cache dir).
+  sha: z.string().regex(/^[0-9a-f]{40}$/),
 });
 export type FetchDatRequest = z.infer<typeof fetchDatRequestSchema>;
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { downloadRequestSchema } from '@shared/download.js';
 import { startDownload, cancelJob, downloadJobs } from '@/services/downloader/index.js';
+import { PathTraversalError, NoRootsConfiguredError } from '@/lib/fs-safety.js';
 
 export const downloadsRoute = new Hono();
 
@@ -30,6 +31,12 @@ downloadsRoute.post('/downloads', async (c) => {
   try {
     jobId = await startDownload(parsed.data);
   } catch (err) {
+    if (err instanceof NoRootsConfiguredError) {
+      return c.json({ error: { code: 'NO_ROOTS_CONFIGURED', message: err.message } }, 400);
+    }
+    if (err instanceof PathTraversalError) {
+      return c.json({ error: { code: 'PATH_TRAVERSAL', message: err.message } }, 400);
+    }
     return c.json(
       {
         error: {

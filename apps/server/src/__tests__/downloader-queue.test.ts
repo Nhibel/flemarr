@@ -3,6 +3,7 @@ import { mkdir, rm, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startDownload, cancelJob, downloadJobs } from '../services/downloader/index.js';
+import { updateSettings } from '../services/settings/index.js';
 import type { DownloadRequest } from '@shared/download.js';
 
 vi.mock('../services/downloader/worker.js', () => ({
@@ -22,6 +23,7 @@ const ITEM = {
 
 beforeEach(async () => {
   await mkdir(TMP, { recursive: true });
+updateSettings({ systemPaths: { test: TMP } });
   vi.mocked(downloadFile).mockReset();
   downloadJobs.clear();
 });
