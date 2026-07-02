@@ -55,6 +55,9 @@ export const searchResultSchema = z.object({
   identifier: z.string(),
   title: z.string(),
   description: z.string(),
+  // Total size of the archive.org item in bytes — a full ROM set weighs GBs,
+  // which separates real collections from single-game uploads.
+  itemSize: z.number().optional(),
 });
 export type SearchResult = z.infer<typeof searchResultSchema>;
 

@@ -7,7 +7,9 @@ const searchSchema = z.object({
       z.object({
         identifier: z.string(),
         title: z.string().optional(),
-        description: z.string().optional(),
+        // archive.org sometimes returns titles/descriptions as arrays
+        description: z.union([z.string(), z.array(z.string())]).optional(),
+        item_size: z.number().optional(),
       }),
     ),
   }),
@@ -18,7 +20,7 @@ export async function searchArchive(query: string, rows = 20): Promise<SearchRes
   const url =
     `https://archive.org/advancedsearch.php?` +
     `q=${encodeURIComponent(query)}&output=json&rows=${rows}` +
-    `&fl[]=identifier&fl[]=title&fl[]=description` +
+    `&fl[]=identifier&fl[]=title&fl[]=description&fl[]=item_size` +
     `&sort[]=downloads+desc`;
 
   const res = await fetch(url);
@@ -31,6 +33,7 @@ export async function searchArchive(query: string, rows = 20): Promise<SearchRes
   return parsed.data.response.docs.map((d) => ({
     identifier: d.identifier,
     title: d.title ?? d.identifier,
-    description: d.description ?? '',
+    description: Array.isArray(d.description) ? (d.description[0] ?? '') : (d.description ?? ''),
+    itemSize: d.item_size,
   }));
 }

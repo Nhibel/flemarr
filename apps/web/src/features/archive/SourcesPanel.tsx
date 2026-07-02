@@ -49,9 +49,16 @@ export function SourcesPanel({
   );
 }
 
-// "Nintendo - Super Nintendo Entertainment System" → "Super Nintendo Entertainment System"
+// "Nintendo - Super Nintendo Entertainment System (Retool)" → "Super Nintendo
+// Entertainment System" — vendor prefix and trailing tags pollute the search
 function shortSystemName(system: string): string {
-  return system.replace(/^[^-]+-\s*/, '').trim() || system;
+  let name = system.replace(/^[^-]+-\s*/, '').trim() || system;
+  for (;;) {
+    const stripped = name.replace(/\s*\([^)]*\)$/, '').trim();
+    if (stripped === name || stripped === '') break;
+    name = stripped;
+  }
+  return name || system;
 }
 
 export function defaultSearchQuery(system: string, source: DatSource): string {
