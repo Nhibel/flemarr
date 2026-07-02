@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { DatUpload } from '@/features/dat-loader/DatUpload.js';
@@ -13,6 +13,8 @@ import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames, listDats } from '@/lib/api.js';
+import { computeMissingGameIds } from '@/lib/missing-games.js';
+import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { useTheme } from '@/lib/use-theme.js';
 import type { DatUploadResponse } from '@shared/api.js';
@@ -275,6 +277,7 @@ interface GameViewProps {
 function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
+  const [lastScan, setLastScan] = useState<ScanResult | null>(null);
 
   const handleQueueDownload = (job: QueuedDownload) => {
     setDownloadJobs((prev) => [...prev, job]);
@@ -301,6 +304,12 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
   } = useGameFilters(games);
 
   const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(dat.id, filtered);
+
+  // Selected games the last scan didn't find on disk — null until a scan ran
+  const missingGameIds = useMemo(
+    () => (lastScan ? computeMissingGameIds(selected, games, lastScan) : null),
+    [lastScan, selected, games],
+  );
 
   return (
     <main className={css({ maxW: '5xl', mx: 'auto', mt: '8', px: '6', pb: '12' })}>
@@ -402,7 +411,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
 
       {/* Scanner tab — kept mounted to preserve scan progress */}
       <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
-        <ScanPage datId={dat.id} />
+        <ScanPage datId={dat.id} onScanComplete={setLastScan} />
       </div>
 
       {/* Sources tab — kept mounted to preserve resolve results */}
@@ -410,7 +419,9 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
         <SourcesPanel
           datId={dat.id}
           system={dat.system}
+          source={dat.source}
           selectedGameIds={[...selected]}
+          missingGameIds={missingGameIds}
           onQueueDownload={handleQueueDownload}
         />
       </div>

@@ -46,6 +46,7 @@ export const indexResponseSchema = z.object({
   identifier: z.string(),
   fileCount: z.number(),
   preview: z.array(archiveFileSchema),
+  suggestedLayout: archiveLayoutSchema,
 });
 export type IndexResponse = z.infer<typeof indexResponseSchema>;
 

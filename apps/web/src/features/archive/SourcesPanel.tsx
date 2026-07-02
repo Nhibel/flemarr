@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import {
@@ -9,34 +9,57 @@ import {
   previewIndex,
   resolveGames,
   startDownload,
+  getSettings,
 } from '@/lib/api.js';
 import type { ArchiveSource, ArchiveLayout, ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 
+type DatSource = 'no-intro' | 'redump';
+
 interface Props {
   datId: string;
   system: string;
+  source: DatSource;
   selectedGameIds: string[];
+  /** Selected games absent from the last scan — null when no scan ran yet */
+  missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
 }
 
-export function SourcesPanel({ datId, system, selectedGameIds, onQueueDownload }: Props) {
+export function SourcesPanel({
+  datId,
+  system,
+  source,
+  selectedGameIds,
+  missingGameIds,
+  onQueueDownload,
+}: Props) {
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}>
-      <SourcesManager system={system} />
+      <SourcesManager system={system} source={source} />
       <ResolvePanel
         datId={datId}
         system={system}
         selectedGameIds={selectedGameIds}
+        missingGameIds={missingGameIds}
         onQueueDownload={onQueueDownload}
       />
     </div>
   );
 }
 
+// "Nintendo - Super Nintendo Entertainment System" → "Super Nintendo Entertainment System"
+function shortSystemName(system: string): string {
+  return system.replace(/^[^-]+-\s*/, '').trim() || system;
+}
+
+export function defaultSearchQuery(system: string, source: DatSource): string {
+  return `${source === 'redump' ? 'Redump' : 'No-Intro'} ${shortSystemName(system)}`;
+}
+
 // ── Sources manager ────────────────────────────────────────────────────────────
 
-function SourcesManager({ system }: { system: string }) {
+function SourcesManager({ system, source }: { system: string; source: DatSource }) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
 
@@ -86,6 +109,7 @@ function SourcesManager({ system }: { system: string }) {
       {showAdd && (
         <AddSourceForm
           system={system}
+          source={source}
           onDone={() => {
             setShowAdd(false);
             void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
@@ -228,11 +252,21 @@ function LayoutBadge({ layout }: { layout: ArchiveLayout }) {
 
 // ── Add source form ────────────────────────────────────────────────────────────
 
-function AddSourceForm({ system, onDone }: { system: string; onDone: () => void }) {
+type LayoutChoice = ArchiveLayout | 'auto';
+
+function AddSourceForm({
+  system,
+  source,
+  onDone,
+}: {
+  system: string;
+  source: DatSource;
+  onDone: () => void;
+}) {
   const [identifier, setIdentifier] = useState('');
-  const [layout, setLayout] = useState<ArchiveLayout>('direct');
+  const [layout, setLayout] = useState<LayoutChoice>('auto');
   const [note, setNote] = useState('');
-  const [searchQ, setSearchQ] = useState('');
+  const [searchQ, setSearchQ] = useState(() => defaultSearchQuery(system, source));
   const [searchResults, setSearchResults] = useState<
     { identifier: string; title: string; description: string }[]
   >([]);
@@ -258,10 +292,23 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
     setSaving(true);
     setError(null);
     try {
-      await addSource(system, { identifier: identifier.trim(), layout, note });
+      let resolvedLayout: ArchiveLayout;
+      if (layout === 'auto') {
+        // The index fetch tells us how the collection stores its ROMs
+        const idx = await previewIndex(identifier.trim());
+        resolvedLayout = idx.suggestedLayout;
+      } else {
+        resolvedLayout = layout;
+      }
+      await addSource(system, { identifier: identifier.trim(), layout: resolvedLayout, note });
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur');
+      const message = err instanceof Error ? err.message : 'Erreur';
+      setError(
+        layout === 'auto'
+          ? `${message} — impossible de détecter le layout, choisissez-le manuellement`
+          : message,
+      );
       setSaving(false);
     }
   };
@@ -397,7 +444,7 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
           />
           <select
             value={layout}
-            onChange={(e) => setLayout(e.target.value as ArchiveLayout)}
+            onChange={(e) => setLayout(e.target.value as LayoutChoice)}
             className={css({
               px: '2.5',
               py: '1.5',
@@ -409,6 +456,7 @@ function AddSourceForm({ system, onDone }: { system: string; onDone: () => void 
               cursor: 'pointer',
             })}
           >
+            <option value="auto">layout auto</option>
             <option value="direct">direct</option>
             <option value="zip-collection">zip-collection</option>
           </select>
@@ -467,17 +515,21 @@ function ResolvePanel({
   datId,
   system,
   selectedGameIds,
+  missingGameIds,
   onQueueDownload,
 }: {
   datId: string;
   system: string;
   selectedGameIds: string[];
+  missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
 }) {
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinationDir, setDestinationDir] = useState('');
+  const [destTouched, setDestTouched] = useState(false);
+  const [excludeOwned, setExcludeOwned] = useState(true);
   const [queuing, setQueuing] = useState(false);
 
   const { data: sourcesData } = useQuery({
@@ -485,21 +537,37 @@ function ResolvePanel({
     queryFn: () => fetchSources(system),
   });
 
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+
+  // Downloads are confined to settings.systemPaths — prefill with the path
+  // configured for this system (or the only one configured) instead of
+  // letting the user type something the server will reject.
+  const paths = settings?.systemPaths ?? {};
+  const defaultDest =
+    paths[system] ?? (Object.values(paths).length === 1 ? Object.values(paths)[0] : undefined);
+  useEffect(() => {
+    if (defaultDest !== undefined && !destTouched) setDestinationDir(defaultDest);
+  }, [defaultDest, destTouched]);
+
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
+  const noPathsConfigured = settings !== undefined && Object.keys(paths).length === 0;
+
+  const effectiveGameIds =
+    excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
 
   const handleResolve = useCallback(async () => {
-    if (selectedGameIds.length === 0) return;
+    if (effectiveGameIds.length === 0) return;
     setResolving(true);
     setError(null);
     try {
-      const res = await resolveGames(datId, selectedGameIds);
+      const res = await resolveGames(datId, effectiveGameIds);
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
       setResolving(false);
     }
-  }, [datId, selectedGameIds]);
+  }, [datId, effectiveGameIds]);
 
   const handleDownload = useCallback(async () => {
     if (!result || !destinationDir.trim()) return;
@@ -537,7 +605,7 @@ function ResolvePanel({
         </h2>
         <button
           onClick={() => void handleResolve()}
-          disabled={resolving || selectedGameIds.length === 0 || !hasSources}
+          disabled={resolving || effectiveGameIds.length === 0 || !hasSources}
           className={css({
             px: '3',
             py: '1.5',
@@ -553,9 +621,32 @@ function ResolvePanel({
         >
           {resolving
             ? 'Recherche…'
-            : `Chercher les sources (${selectedGameIds.length} jeu${selectedGameIds.length !== 1 ? 'x' : ''})`}
+            : `Chercher les sources (${effectiveGameIds.length} jeu${effectiveGameIds.length !== 1 ? 'x' : ''})`}
         </button>
       </div>
+
+      {missingGameIds !== null && (
+        <label
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            mb: '3',
+            fontSize: 'sm',
+            color: 'fg.default',
+            cursor: 'pointer',
+          })}
+        >
+          <input
+            type="checkbox"
+            checked={excludeOwned}
+            onChange={(e) => setExcludeOwned(e.target.checked)}
+          />
+          Exclure les jeux déjà possédés d'après le dernier scan (
+          {selectedGameIds.length - missingGameIds.length} sur {selectedGameIds.length} possédé
+          {selectedGameIds.length - missingGameIds.length !== 1 ? 's' : ''})
+        </label>
+      )}
 
       {!hasSources && (
         <p className={css({ fontSize: 'sm', color: 'amber.600' })}>
@@ -566,6 +657,19 @@ function ResolvePanel({
       {selectedGameIds.length === 0 && hasSources && (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           Sélectionnez des jeux dans l'onglet Games pour lancer la résolution.
+        </p>
+      )}
+
+      {selectedGameIds.length > 0 && effectiveGameIds.length === 0 && hasSources && (
+        <p className={css({ fontSize: 'sm', color: 'green.600' })}>
+          Tous les jeux sélectionnés sont déjà présents sur le disque — rien à télécharger.
+        </p>
+      )}
+
+      {noPathsConfigured && (
+        <p className={css({ fontSize: 'sm', color: 'amber.600' })}>
+          Aucun dossier système configuré : les téléchargements seront refusés. Ajoutez un dossier
+          dans Paramètres.
         </p>
       )}
 
@@ -596,7 +700,10 @@ function ResolvePanel({
                 type="text"
                 placeholder="Dossier de destination (ex. /mnt/roms/snes)"
                 value={destinationDir}
-                onChange={(e) => setDestinationDir(e.target.value)}
+                onChange={(e) => {
+                  setDestTouched(true);
+                  setDestinationDir(e.target.value);
+                }}
                 className={css({
                   flex: 1,
                   px: '2.5',

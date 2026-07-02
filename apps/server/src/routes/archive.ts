@@ -12,6 +12,7 @@ import {
   removeSource,
 } from '@/services/archive-org/sources.js';
 import { getIndex } from '@/services/archive-org/metadata.js';
+import { detectLayout } from '@/services/archive-org/layout.js';
 import { resolveGames, clearResolverCache } from '@/services/archive-org/resolver.js';
 import { getDat } from '@/services/dat/index.js';
 
@@ -110,6 +111,7 @@ archiveRoute.post('/archive/index', async (c) => {
     identifier: parsed.data.identifier,
     fileCount: files.length,
     preview: files.slice(0, 20),
+    suggestedLayout: detectLayout(files),
   });
 });
 

@@ -7,6 +7,7 @@ import { scanEventSchema } from '@shared/scan.js';
 
 interface Props {
   datId: string;
+  onScanComplete?: (result: ScanResult) => void;
 }
 
 type ScanState =
@@ -15,7 +16,7 @@ type ScanState =
   | { phase: 'done'; result: ScanResult; directory: string }
   | { phase: 'error'; message: string };
 
-export function ScanPage({ datId }: Props) {
+export function ScanPage({ datId, onScanComplete }: Props) {
   const [directory, setDirectory] = useState('');
   const [scan, setScan] = useState<ScanState>({ phase: 'idle' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -50,6 +51,7 @@ export function ScanPage({ datId }: Props) {
         setScan({ phase: 'scanning', scanned: event.scanned, total: event.total });
       } else if (event.type === 'done') {
         setScan({ phase: 'done', result: event.result, directory: directory.trim() });
+        onScanComplete?.(event.result);
         es.close();
       } else if (event.type === 'error') {
         setScan({ phase: 'error', message: event.message });
@@ -61,7 +63,7 @@ export function ScanPage({ datId }: Props) {
       setScan({ phase: 'error', message: 'Connection to scan stream lost' });
       es.close();
     };
-  }, [datId, directory]);
+  }, [datId, directory, onScanComplete]);
 
   const toggleRename = useCallback((filePath: string) => {
     setSelected((s) => {
