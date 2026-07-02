@@ -20,8 +20,13 @@ vi.mock('../services/archive-org/resolver.js', () => ({
   clearResolverCache: vi.fn(),
 }));
 
+vi.mock('../services/archive-org/suggest.js', () => ({
+  suggestSources: vi.fn(),
+}));
+
 import { getIndex } from '../services/archive-org/metadata.js';
 import { resolveGames, clearResolverCache } from '../services/archive-org/resolver.js';
+import { suggestSources } from '../services/archive-org/suggest.js';
 
 const app = new Hono().route('/api', archiveRoute);
 
@@ -202,5 +207,50 @@ describe('POST /api/archive/resolve', () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { results: { gameId: string }[] };
     expect(body.results[0]?.gameId).toBe('smw');
+  });
+});
+
+describe('POST /api/archive/suggest', () => {
+  it('returns 404 for unknown datId', async () => {
+    const res = await app.request('/api/archive/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datId: 'nonexistent' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns ranked suggestions for a known DAT', async () => {
+    const { id } = addDat(FIXTURE_DAT);
+    vi.mocked(suggestSources).mockResolvedValue([
+      {
+        identifier: 'good-collection',
+        title: 'Good',
+        layout: 'direct',
+        fileCount: 3000,
+        coverage: 0.96,
+        sampleSize: 50,
+      },
+    ]);
+    const res = await app.request('/api/archive/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datId: id }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { suggestions: { identifier: string; coverage: number }[] };
+    expect(body.suggestions[0]?.identifier).toBe('good-collection');
+    expect(body.suggestions[0]?.coverage).toBe(0.96);
+  });
+
+  it('returns 502 when the suggestion run fails', async () => {
+    const { id } = addDat(FIXTURE_DAT);
+    vi.mocked(suggestSources).mockRejectedValue(new Error('archive.org search returned 503'));
+    const res = await app.request('/api/archive/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datId: id }),
+    });
+    expect(res.status).toBe(502);
   });
 });

@@ -10,8 +10,9 @@ import {
   resolveGames,
   startDownload,
   getSettings,
+  suggestSources,
 } from '@/lib/api.js';
-import type { ArchiveSource, ArchiveLayout, ResolveResponse } from '@/lib/api.js';
+import type { ArchiveSource, ArchiveLayout, ResolveResponse, SuggestResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 
 type DatSource = 'no-intro' | 'redump';
@@ -36,7 +37,7 @@ export function SourcesPanel({
 }: Props) {
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}>
-      <SourcesManager system={system} source={source} />
+      <SourcesManager datId={datId} system={system} source={source} />
       <ResolvePanel
         datId={datId}
         system={system}
@@ -59,9 +60,20 @@ export function defaultSearchQuery(system: string, source: DatSource): string {
 
 // ── Sources manager ────────────────────────────────────────────────────────────
 
-function SourcesManager({ system, source }: { system: string; source: DatSource }) {
+function SourcesManager({
+  datId,
+  system,
+  source,
+}: {
+  datId: string;
+  system: string;
+  source: DatSource;
+}) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestResponse['suggestions'] | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ['archive-sources', system],
@@ -72,6 +84,25 @@ function SourcesManager({ system, source }: { system: string; source: DatSource 
     mutationFn: (identifier: string) => deleteSource(identifier),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] }),
   });
+
+  const handleSuggest = async () => {
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const res = await suggestSources(datId);
+      setSuggestions(res.suggestions);
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const handleAdopt = async (s: SuggestResponse['suggestions'][number]) => {
+    await addSource(system, { identifier: s.identifier, layout: s.layout, note: s.title });
+    setSuggestions((prev) => prev?.filter((x) => x.identifier !== s.identifier) ?? null);
+    void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
+  };
 
   const sources = data?.sources ?? [];
 
@@ -89,6 +120,24 @@ function SourcesManager({ system, source }: { system: string; source: DatSource 
           Sources pour {system}
         </h2>
         <button
+          onClick={() => void handleSuggest()}
+          disabled={suggesting}
+          className={css({
+            px: '3',
+            py: '1.5',
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            bg: 'violet.500',
+            color: 'white',
+            borderRadius: 'md',
+            cursor: 'pointer',
+            _hover: { bg: 'violet.600' },
+            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {suggesting ? 'Analyse…' : '✨ Suggérer des sources'}
+        </button>
+        <button
           onClick={() => setShowAdd((v) => !v)}
           className={css({
             px: '3',
@@ -105,6 +154,36 @@ function SourcesManager({ system, source }: { system: string; source: DatSource 
           {showAdd ? 'Annuler' : '+ Ajouter'}
         </button>
       </div>
+
+      {suggestError && (
+        <p role="alert" className={css({ fontSize: 'sm', color: 'red.600', mb: '3' })}>
+          {suggestError}
+        </p>
+      )}
+
+      {suggestions !== null && (
+        <div className={css({ mb: '4' })}>
+          {suggestions.length === 0 ? (
+            <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
+              Aucune collection candidate trouvée sur archive.org pour ce système.
+            </p>
+          ) : (
+            <div
+              className={css({
+                border: '1px solid',
+                borderColor: 'violet.200',
+                borderRadius: 'md',
+                overflow: 'hidden',
+                _dark: { borderColor: 'violet.800' },
+              })}
+            >
+              {suggestions.map((s) => (
+                <SuggestionRow key={s.identifier} suggestion={s} onAdopt={() => handleAdopt(s)} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showAdd && (
         <AddSourceForm
@@ -133,6 +212,89 @@ function SourcesManager({ system, source }: { system: string; source: DatSource 
         </div>
       )}
     </section>
+  );
+}
+
+function SuggestionRow({
+  suggestion,
+  onAdopt,
+}: {
+  suggestion: SuggestResponse['suggestions'][number];
+  onAdopt: () => Promise<void>;
+}) {
+  const [adopting, setAdopting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pct = Math.round(suggestion.coverage * 100);
+  const pctColor = pct >= 80 ? 'green.600' : pct >= 40 ? 'amber.600' : 'red.600';
+
+  const handleAdopt = async () => {
+    setAdopting(true);
+    setError(null);
+    try {
+      await onAdopt();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+      setAdopting(false);
+    }
+  };
+
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '3',
+        px: '3',
+        py: '2.5',
+        borderBottom: '1px solid',
+        borderColor: 'bd.subtle',
+        bg: 'bg.page',
+        _last: { borderBottom: 'none' },
+      })}
+    >
+      <div className={css({ flex: 1, minW: 0 })}>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
+          <span
+            className={css({
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              color: 'fg.heading',
+              fontFamily: 'mono',
+              truncate: true,
+            })}
+          >
+            {suggestion.identifier}
+          </span>
+          <LayoutBadge layout={suggestion.layout} />
+        </div>
+        <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>
+          <span className={css({ fontWeight: 'semibold', color: pctColor })}>
+            {pct} % de couverture
+          </span>{' '}
+          (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
+        </p>
+        {error && <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>{error}</p>}
+      </div>
+      <button
+        onClick={() => void handleAdopt()}
+        disabled={adopting}
+        className={css({
+          px: '3',
+          py: '1',
+          fontSize: 'xs',
+          fontWeight: 'medium',
+          borderRadius: 'md',
+          cursor: 'pointer',
+          bg: 'violet.500',
+          color: 'white',
+          flexShrink: 0,
+          _hover: { bg: 'violet.600' },
+          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+        })}
+      >
+        {adopting ? '…' : 'Adopter'}
+      </button>
+    </div>
   );
 }
 

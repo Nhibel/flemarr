@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
 import {
   addSourceRequestSchema,
   indexRequestSchema,
   resolveRequestSchema,
+  suggestRequestSchema,
 } from '@shared/archive.js';
 import {
   getSources,
@@ -13,6 +13,8 @@ import {
 } from '@/services/archive-org/sources.js';
 import { getIndex } from '@/services/archive-org/metadata.js';
 import { detectLayout } from '@/services/archive-org/layout.js';
+import { searchArchive } from '@/services/archive-org/search.js';
+import { suggestSources } from '@/services/archive-org/suggest.js';
 import { resolveGames, clearResolverCache } from '@/services/archive-org/resolver.js';
 import { getDat } from '@/services/dat/index.js';
 
@@ -125,36 +127,9 @@ archiveRoute.get('/archive/search', async (c) => {
     );
   }
 
-  const searchSchema = z.object({
-    response: z.object({
-      docs: z.array(
-        z.object({
-          identifier: z.string(),
-          title: z.string().optional(),
-          description: z.string().optional(),
-        }),
-      ),
-    }),
-  });
-
-  const url =
-    `https://archive.org/advancedsearch.php?` +
-    `q=${encodeURIComponent(q)}&output=json&rows=20` +
-    `&fl[]=identifier&fl[]=title&fl[]=description` +
-    `&sort[]=downloads+desc`;
-
   let results;
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`archive.org search returned ${res.status}`);
-    const raw: unknown = await res.json();
-    const parsed2 = searchSchema.safeParse(raw);
-    if (!parsed2.success) throw new Error('Unexpected search response shape');
-    results = parsed2.data.response.docs.map((d) => ({
-      identifier: d.identifier,
-      title: d.title ?? d.identifier,
-      description: d.description ?? '',
-    }));
+    results = await searchArchive(q.trim());
   } catch (err) {
     return c.json(
       {
@@ -168,6 +143,54 @@ archiveRoute.get('/archive/search', async (c) => {
   }
 
   return c.json({ results });
+});
+
+// Suggest sources for a DAT: search + score candidates against the DAT
+archiveRoute.post('/archive/suggest', async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } }, 400);
+  }
+
+  const parsed = suggestRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.issues[0]?.message ?? 'Invalid body',
+        },
+      },
+      400,
+    );
+  }
+
+  const dat = getDat(parsed.data.datId);
+  if (!dat) {
+    return c.json(
+      { error: { code: 'NOT_FOUND', message: `DAT ${parsed.data.datId} not found` } },
+      404,
+    );
+  }
+
+  let suggestions;
+  try {
+    suggestions = await suggestSources(dat);
+  } catch (err) {
+    return c.json(
+      {
+        error: {
+          code: 'FETCH_ERROR',
+          message: err instanceof Error ? err.message : 'Suggestion failed',
+        },
+      },
+      502,
+    );
+  }
+
+  return c.json({ suggestions });
 });
 
 // Resolve selected games to download URLs

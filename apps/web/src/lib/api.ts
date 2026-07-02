@@ -20,6 +20,7 @@ import {
   searchResponseSchema,
   indexResponseSchema,
   resolveResponseSchema,
+  suggestResponseSchema,
 } from '@shared/archive.js';
 import type {
   ArchiveSource,
@@ -28,6 +29,7 @@ import type {
   SearchResponse,
   IndexResponse,
   ResolveResponse,
+  SuggestResponse,
 } from '@shared/archive.js';
 
 export type {
@@ -37,6 +39,7 @@ export type {
   SearchResponse,
   IndexResponse,
   ResolveResponse,
+  SuggestResponse,
   DownloadRequest,
   DownloadEvent,
   Fresh1g1rPreset,
@@ -132,6 +135,15 @@ export async function previewIndex(identifier: string): Promise<IndexResponse> {
     body: JSON.stringify({ identifier }),
   });
   return parseResponse(res, indexResponseSchema);
+}
+
+export async function suggestSources(datId: string): Promise<SuggestResponse> {
+  const res = await fetch('/api/archive/suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ datId }),
+  });
+  return parseResponse(res, suggestResponseSchema);
 }
 
 export async function resolveGames(datId: string, gameIds: string[]): Promise<ResolveResponse> {

@@ -63,6 +63,27 @@ export const searchResponseSchema = z.object({
 });
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
 
+// Suggestions
+export const suggestRequestSchema = z.object({
+  datId: z.string().min(1),
+});
+export type SuggestRequest = z.infer<typeof suggestRequestSchema>;
+
+export const sourceSuggestionSchema = z.object({
+  identifier: z.string(),
+  title: z.string(),
+  layout: archiveLayoutSchema,
+  fileCount: z.number(),
+  coverage: z.number().min(0).max(1),
+  sampleSize: z.number(),
+});
+export type SourceSuggestionDto = z.infer<typeof sourceSuggestionSchema>;
+
+export const suggestResponseSchema = z.object({
+  suggestions: z.array(sourceSuggestionSchema),
+});
+export type SuggestResponse = z.infer<typeof suggestResponseSchema>;
+
 // Resolve
 export const resolveRequestSchema = z.object({
   datId: z.string().min(1),
