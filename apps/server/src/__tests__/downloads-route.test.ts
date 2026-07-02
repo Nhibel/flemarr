@@ -20,7 +20,7 @@ const VALID_BODY = {
       gameId: 'smw',
       romName: 'Super Mario World (USA).sfc',
       expectedCrc: 'b19ed489',
-      downloadUrl: 'https://archive.org/download/test/game.sfc',
+      downloadUrls: ['https://archive.org/download/test/game.sfc'],
     },
   ],
   destinationDir: '/roms/snes',

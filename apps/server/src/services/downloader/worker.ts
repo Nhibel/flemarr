@@ -17,17 +17,54 @@ async function deleteFile(path: string): Promise<void> {
   await new Promise<void>((resolve) => unlink(path, () => resolve()));
 }
 
+// archive.org signals overload with 429/503 — back off and retry the same
+// URL instead of failing the file outright.
+const RETRYABLE_STATUS = new Set([429, 503]);
+const MAX_RETRIES = 2;
+const MAX_RETRY_WAIT_S = 30;
+
+function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new Error('aborted'));
+      },
+      { once: true },
+    );
+  });
+}
+
 export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerResult> {
   const { url, tempPath, expectedCrc, signal, onProgress } = opts;
 
   await mkdir(dirname(tempPath), { recursive: true });
 
   let res: Response;
-  try {
-    res = await fetch(url, { signal });
-  } catch (err) {
-    if (signal.aborted) return 'cancelled';
-    throw err;
+  let attempt = 0;
+  for (;;) {
+    try {
+      res = await fetch(url, { signal });
+    } catch (err) {
+      if (signal.aborted) return 'cancelled';
+      throw err;
+    }
+
+    if (!RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) break;
+
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds =
+      retryAfter !== null && Number.isFinite(Number(retryAfter))
+        ? Math.min(Number(retryAfter), MAX_RETRY_WAIT_S)
+        : (attempt + 1) * 5;
+    try {
+      await abortableSleep(waitSeconds * 1000, signal);
+    } catch {
+      return 'cancelled';
+    }
+    attempt++;
   }
 
   if (!res.ok) {

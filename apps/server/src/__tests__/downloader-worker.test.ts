@@ -158,3 +158,57 @@ describe('downloadFile', () => {
     expect(result).toBe('done');
   });
 });
+
+describe('downloadFile — rate limiting', () => {
+  function make429() {
+    return {
+      ok: false,
+      status: 429,
+      headers: { get: (h: string) => (h === 'retry-after' ? '0' : null) },
+      body: null,
+    };
+  }
+
+  it('retries on 429 and succeeds when the server recovers', async () => {
+    const content = Buffer.from('rate limited rom');
+    const crc = computeCrc32Buffer(content);
+    const tempPath = join(TMP, 'retry.rom.tmp');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(make429())
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: (h: string) => (h === 'content-length' ? String(content.length) : null) },
+        body: makeReadableStream([content]),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await downloadFile({
+      url: 'https://example.com/retry.rom',
+      tempPath,
+      expectedCrc: crc,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    expect(result).toBe('done');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after repeated 429s', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(make429());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      downloadFile({
+        url: 'https://example.com/throttled.rom',
+        tempPath: join(TMP, 'throttled.rom.tmp'),
+        expectedCrc: 'aabbccdd',
+        signal: AbortSignal.timeout(5000),
+      }),
+    ).rejects.toThrow('HTTP 429');
+    // initial attempt + 2 retries
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});

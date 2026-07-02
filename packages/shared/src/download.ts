@@ -4,7 +4,9 @@ export const downloadItemSchema = z.object({
   gameId: z.string().min(1),
   romName: z.string().min(1),
   expectedCrc: z.string().length(8),
-  downloadUrl: z.string().url(),
+  // Ordered candidates — the downloader falls back to the next URL on
+  // HTTP/network failure (never on CRC mismatch: bad source, user decides).
+  downloadUrls: z.array(z.string().url()).min(1),
 });
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 

@@ -2,9 +2,13 @@ import type { DatFile } from '@shared/dat.js';
 import type { ResolvedGame, ResolvedSource } from '@shared/archive.js';
 import { getSources } from './sources.js';
 import { getIndex, resolveDownloadUrl } from './metadata.js';
+import { urlExists } from './url-check.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
 const NEGATIVE_TTL_MS = 15 * 60 * 1000;
+// Upper bound on HEAD checks per game and per source — keeps a resolve run
+// over a big monolithic-ZIP collection from stalling on dozens of requests.
+const MAX_ZIP_HEAD_CHECKS = 5;
 
 interface ResultCacheEntry {
   result: ResolvedGame;
@@ -48,6 +52,21 @@ function findZipFiles(files: ArchiveFile[]): ArchiveFile[] {
   );
 }
 
+function stripExtension(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(0, dot) : name;
+}
+
+// Per-game-zip uploads name each ZIP after the ROM it contains — a basename
+// match is almost certainly the right archive, so it goes first in line.
+function orderZipCandidates(zips: ArchiveFile[], romName: string): ArchiveFile[] {
+  const romBase = stripExtension(romName);
+  return [
+    ...zips.filter((z) => stripExtension(z.name) === romBase),
+    ...zips.filter((z) => stripExtension(z.name) !== romBase),
+  ];
+}
+
 async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGame> {
   const game = dat.games.find((g) => g.id === gameId);
   if (!game) {
@@ -83,14 +102,22 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
         });
       }
     } else {
-      // zip-collection — generate candidate URLs for each ZIP in the collection
-      const zips = findZipFiles(files);
-      for (const zip of zips) {
-        resolvedSources.push({
-          identifier: source.identifier,
-          downloadUrl: resolveDownloadUrl(source.identifier, rom.name, zip.name),
-          container: 'zip-entry',
-        });
+      // zip-collection — probe candidate ZIPs (best first) and keep the first
+      // one that actually contains the ROM, instead of guessing blindly.
+      const candidates = orderZipCandidates(findZipFiles(files), rom.name).slice(
+        0,
+        MAX_ZIP_HEAD_CHECKS,
+      );
+      for (const zip of candidates) {
+        const downloadUrl = resolveDownloadUrl(source.identifier, rom.name, zip.name);
+        if (await urlExists(downloadUrl)) {
+          resolvedSources.push({
+            identifier: source.identifier,
+            downloadUrl,
+            container: 'zip-entry',
+          });
+          break;
+        }
       }
     }
   }

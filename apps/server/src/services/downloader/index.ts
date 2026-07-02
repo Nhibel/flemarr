@@ -4,6 +4,7 @@ import { join, basename } from 'node:path';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { downloadFile } from './worker.js';
+import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
@@ -12,7 +13,7 @@ interface DownloadItemState {
   gameId: string;
   romName: string;
   expectedCrc: string;
-  downloadUrl: string;
+  downloadUrls: string[];
   status: 'queued' | 'downloading' | 'done' | 'failed';
   tempPath: string;
 }
@@ -81,22 +82,41 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
     item.status = 'downloading';
     let lastProgressAt = 0;
 
-    try {
-      const result = await downloadFile({
-        url: item.downloadUrl,
-        tempPath: item.tempPath,
-        expectedCrc: item.expectedCrc,
-        signal,
-        onProgress: (bytesDownloaded, totalBytes) => {
-          const now = Date.now();
-          const isLast = totalBytes > 0 && bytesDownloaded >= totalBytes;
-          if (!isLast && now - lastProgressAt < PROGRESS_THROTTLE_MS) return;
-          lastProgressAt = now;
-          job.events.push({ type: 'progress', gameId: item.gameId, bytesDownloaded, totalBytes });
-        },
-      });
+    const onProgress = (bytesDownloaded: number, totalBytes: number): void => {
+      const now = Date.now();
+      const isLast = totalBytes > 0 && bytesDownloaded >= totalBytes;
+      if (!isLast && now - lastProgressAt < PROGRESS_THROTTLE_MS) return;
+      lastProgressAt = now;
+      job.events.push({ type: 'progress', gameId: item.gameId, bytesDownloaded, totalBytes });
+    };
 
-      if (result === 'done') {
+    // Try candidate URLs in order. HTTP/network failures fall through to the
+    // next source; done, cancelled and crc-mismatch are final (a CRC mismatch
+    // means a bad source, not a glitch — per docs/archive-org-strategy.md).
+    let result: WorkerResult | 'exhausted' = 'exhausted';
+    let lastError = '';
+    for (const url of item.downloadUrls) {
+      if (signal.aborted) {
+        result = 'cancelled';
+        break;
+      }
+      try {
+        result = await downloadFile({
+          url,
+          tempPath: item.tempPath,
+          expectedCrc: item.expectedCrc,
+          signal,
+          onProgress,
+        });
+        break;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        result = 'exhausted';
+      }
+    }
+
+    if (result === 'done') {
+      try {
         const dest = join(destinationDir, item.romName);
         assertWithinRoot(dest, destinationDir);
         await rename(item.tempPath, dest);
@@ -110,46 +130,33 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
           expectedCrc: item.expectedCrc,
           status: 'done',
         });
-      } else if (result === 'cancelled') {
-        item.status = 'failed';
-      } else {
-        item.status = 'failed';
-        const reason = result === 'crc-mismatch' ? 'CRC mismatch' : 'Download failed';
-        job.events.push({
-          type: 'file-failed',
-          gameId: item.gameId,
-          romName: item.romName,
-          reason,
-        });
-        recordDownload({
-          gameId: item.gameId,
-          romName: item.romName,
-          datId,
-          destination: join(destinationDir, item.romName),
-          expectedCrc: item.expectedCrc,
-          status: 'failed',
-          errorMessage: reason,
-        });
+        return;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        result = 'exhausted';
       }
-    } catch (err) {
-      item.status = 'failed';
-      const reason = err instanceof Error ? err.message : 'Unknown error';
-      job.events.push({
-        type: 'file-failed',
-        gameId: item.gameId,
-        romName: item.romName,
-        reason,
-      });
-      recordDownload({
-        gameId: item.gameId,
-        romName: item.romName,
-        datId,
-        destination: join(destinationDir, item.romName),
-        expectedCrc: item.expectedCrc,
-        status: 'failed',
-        errorMessage: reason,
-      });
     }
+
+    if (result === 'cancelled') {
+      item.status = 'failed';
+      return;
+    }
+
+    item.status = 'failed';
+    const reason =
+      result === 'crc-mismatch'
+        ? 'CRC mismatch'
+        : `Download failed${lastError ? ` (${lastError})` : ''}`;
+    job.events.push({ type: 'file-failed', gameId: item.gameId, romName: item.romName, reason });
+    recordDownload({
+      gameId: item.gameId,
+      romName: item.romName,
+      datId,
+      destination: join(destinationDir, item.romName),
+      expectedCrc: item.expectedCrc,
+      status: 'failed',
+      errorMessage: reason,
+    });
   };
 
   for (const item of queue) {

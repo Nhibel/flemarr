@@ -18,7 +18,7 @@ const ITEM = {
   gameId: 'smw',
   romName: 'Super Mario World (USA).sfc',
   expectedCrc: 'b19ed489',
-  downloadUrl: 'https://archive.org/download/test/game.sfc',
+  downloadUrls: ['https://archive.org/download/test/game.sfc'],
 };
 
 beforeEach(async () => {
@@ -81,6 +81,57 @@ describe('startDownload', () => {
     if (failed?.type === 'file-failed') {
       expect(failed.reason).toBe('CRC mismatch');
     }
+  });
+
+  it('falls back to the next URL on HTTP failure', async () => {
+    vi.mocked(downloadFile)
+      .mockRejectedValueOnce(new Error('HTTP 404 fetching first-url'))
+      .mockResolvedValueOnce('done');
+
+    const jobId = await startDownload(
+      makeRequest({
+        items: [{ ...ITEM, downloadUrls: ['https://a.example/rom', 'https://b.example/rom'] }],
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(downloadFile)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(downloadFile).mock.calls[0]?.[0]?.url).toBe('https://a.example/rom');
+    expect(vi.mocked(downloadFile).mock.calls[1]?.[0]?.url).toBe('https://b.example/rom');
+    const job = downloadJobs.get(jobId)!;
+    expect(job.events.map((e) => e.type)).toContain('file-done');
+  });
+
+  it('does not fall back after a CRC mismatch', async () => {
+    vi.mocked(downloadFile).mockResolvedValue('crc-mismatch');
+
+    const jobId = await startDownload(
+      makeRequest({
+        items: [{ ...ITEM, downloadUrls: ['https://a.example/rom', 'https://b.example/rom'] }],
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(downloadFile)).toHaveBeenCalledTimes(1);
+    const job = downloadJobs.get(jobId)!;
+    const failed = job.events.find((e) => e.type === 'file-failed');
+    expect(failed).toBeDefined();
+  });
+
+  it('reports failure when every URL fails', async () => {
+    vi.mocked(downloadFile).mockRejectedValue(new Error('HTTP 404'));
+
+    const jobId = await startDownload(
+      makeRequest({
+        items: [{ ...ITEM, downloadUrls: ['https://a.example/rom', 'https://b.example/rom'] }],
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(downloadFile)).toHaveBeenCalledTimes(2);
+    const job = downloadJobs.get(jobId)!;
+    const failed = job.events.find((e) => e.type === 'file-failed');
+    expect(failed?.type === 'file-failed' && failed.reason).toContain('HTTP 404');
   });
 
   it('records download history for done and failed files', async () => {

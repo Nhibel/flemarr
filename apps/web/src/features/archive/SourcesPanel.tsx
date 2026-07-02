@@ -741,7 +741,7 @@ function ResolvePanel({
         gameId: r.gameId,
         romName: r.romName,
         expectedCrc: r.expectedCrc,
-        downloadUrl: r.sources[0]!.downloadUrl,
+        downloadUrls: r.sources.map((s) => s.downloadUrl),
       }));
       const jobId = await startDownload({ datId, items, destinationDir: destinationDir.trim() });
       onQueueDownload({ jobId, items, destinationDir: destinationDir.trim() });

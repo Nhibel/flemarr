@@ -14,7 +14,12 @@ vi.mock('../services/archive-org/metadata.js', () => ({
   clearCache: vi.fn(),
 }));
 
+vi.mock('../services/archive-org/url-check.js', () => ({
+  urlExists: vi.fn(),
+}));
+
 import { getIndex } from '../services/archive-org/metadata.js';
+import { urlExists } from '../services/archive-org/url-check.js';
 
 const FIXTURE_DAT: DatFile = {
   source: 'no-intro',
@@ -49,6 +54,7 @@ const ZIP_FILES: ArchiveFile[] = [{ name: 'No-Intro SNES.zip', size: 999999999, 
 beforeEach(() => {
   clearResolverCache();
   vi.mocked(getIndex).mockReset();
+  vi.mocked(urlExists).mockReset().mockResolvedValue(true);
   // Clean up any sources added in previous tests
   removeSource('direct-snes');
   removeSource('zip-snes');
@@ -97,7 +103,7 @@ describe('resolveGames — direct layout', () => {
 });
 
 describe('resolveGames — zip-collection layout', () => {
-  it('generates zip-entry URLs for each ZIP in the collection', async () => {
+  it('returns the first verified zip-entry URL', async () => {
     addSource('Nintendo - Super Nintendo Entertainment System', {
       identifier: 'zip-snes',
       layout: 'zip-collection',
@@ -109,6 +115,54 @@ describe('resolveGames — zip-collection layout', () => {
     expect(results[0]?.sources).toHaveLength(1);
     expect(results[0]?.sources[0]?.container).toBe('zip-entry');
     expect(results[0]?.sources[0]?.downloadUrl).toContain('No-Intro%20SNES.zip');
+  });
+
+  it('probes the ZIP named after the ROM first (per-game-zip uploads)', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'zip-snes',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: 'Aaaa First Alphabetically.zip', size: 1, format: 'ZIP' },
+      { name: 'Super Mario World (USA).zip', size: 1, format: 'ZIP' },
+    ]);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    // Only one HEAD needed: the basename-matching ZIP was probed first
+    expect(vi.mocked(urlExists)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(urlExists).mock.calls[0]?.[0]).toContain('Super%20Mario%20World%20(USA).zip');
+    expect(results[0]?.sources[0]?.downloadUrl).toContain('Super%20Mario%20World%20(USA).zip');
+  });
+
+  it('falls back to the next ZIP when the first candidate 404s', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'zip-snes',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: 'part1.zip', size: 1, format: 'ZIP' },
+      { name: 'part2.zip', size: 1, format: 'ZIP' },
+    ]);
+    vi.mocked(urlExists).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.sources).toHaveLength(1);
+    expect(results[0]?.sources[0]?.downloadUrl).toContain('part2.zip');
+  });
+
+  it('reports not found when no candidate ZIP contains the ROM', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'zip-snes',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue(ZIP_FILES);
+    vi.mocked(urlExists).mockResolvedValue(false);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.sources).toHaveLength(0);
   });
 });
 
