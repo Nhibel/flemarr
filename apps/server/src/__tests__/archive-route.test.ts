@@ -21,7 +21,7 @@ vi.mock('../services/archive-org/resolver.js', () => ({
 }));
 
 import { getIndex } from '../services/archive-org/metadata.js';
-import { resolveGames } from '../services/archive-org/resolver.js';
+import { resolveGames, clearResolverCache } from '../services/archive-org/resolver.js';
 
 const app = new Hono().route('/api', archiveRoute);
 
@@ -93,6 +93,20 @@ describe('POST /api/archive/sources', () => {
       }),
     });
     expect(res.status).toBe(201);
+    removeSource('test-id');
+  });
+
+  it('invalidates the resolver cache when a source is added', async () => {
+    vi.mocked(clearResolverCache).mockClear();
+    await app.request('/api/archive/sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: 'Nintendo - Super Nintendo Entertainment System',
+        source: { identifier: 'test-id', layout: 'direct', note: '' },
+      }),
+    });
+    expect(vi.mocked(clearResolverCache)).toHaveBeenCalled();
     removeSource('test-id');
   });
 });

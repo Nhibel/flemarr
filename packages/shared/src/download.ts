@@ -39,5 +39,6 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('cancelled') }),
   z.object({ type: z.literal('complete') }),
+  z.object({ type: z.literal('error'), message: z.string() }),
 ]);
 export type DownloadEvent = z.infer<typeof downloadEventSchema>;

@@ -12,7 +12,7 @@ import {
   removeSource,
 } from '@/services/archive-org/sources.js';
 import { getIndex } from '@/services/archive-org/metadata.js';
-import { resolveGames } from '@/services/archive-org/resolver.js';
+import { resolveGames, clearResolverCache } from '@/services/archive-org/resolver.js';
 import { getDat } from '@/services/dat/index.js';
 
 export const archiveRoute = new Hono();
@@ -53,6 +53,8 @@ archiveRoute.post('/archive/sources', async (c) => {
   }
 
   addSource(parsed.data.system, parsed.data.source);
+  // Cached resolve results are stale as soon as the source list changes
+  clearResolverCache();
   return c.json({ ok: true }, 201);
 });
 
@@ -63,6 +65,7 @@ archiveRoute.delete('/archive/sources/:identifier', (c) => {
   if (!removed) {
     return c.json({ error: { code: 'NOT_FOUND', message: `Source ${identifier} not found` } }, 404);
   }
+  clearResolverCache();
   return c.json({ ok: true });
 });
 

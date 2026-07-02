@@ -86,6 +86,9 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
       } else if (event.type === 'cancelled') {
         next.set(jobId, { ...job, items, status: 'cancelled' });
         return next;
+      } else if (event.type === 'error') {
+        next.set(jobId, { ...job, items, status: 'error' });
+        return next;
       }
 
       next.set(jobId, { ...job, items });
@@ -107,13 +110,19 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
         const parsed = downloadEventSchema.safeParse(JSON.parse(e.data as string) as unknown);
         if (!parsed.success) return;
         applyEvent(queued.jobId, parsed.data);
-        if (parsed.data.type === 'complete' || parsed.data.type === 'cancelled') {
+        if (
+          parsed.data.type === 'complete' ||
+          parsed.data.type === 'cancelled' ||
+          parsed.data.type === 'error'
+        ) {
           es.close();
         }
       };
 
+      // Connection lost — the job may still run server-side, but we can't
+      // observe it anymore; report an error instead of pretending it finished.
       es.onerror = () => {
-        applyEvent(queued.jobId, { type: 'complete' });
+        applyEvent(queued.jobId, { type: 'error', message: 'Connexion au flux perdue' });
         es.close();
       };
     });

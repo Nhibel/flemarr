@@ -21,9 +21,24 @@ export interface DownloadJobState {
   items: DownloadItemState[];
   events: DownloadEvent[];
   controller: AbortController;
+  completedAt?: number;
 }
 
 export const downloadJobs = new Map<string, DownloadJobState>();
+
+const JOB_RETENTION_MS = 30 * 60 * 1000;
+// One progress event per network chunk would grow job.events unbounded on
+// multi-GB files (and get replayed in full to every SSE client) — throttle.
+const PROGRESS_THROTTLE_MS = 250;
+
+function evictOldJobs(): void {
+  const cutoff = Date.now() - JOB_RETENTION_MS;
+  for (const [id, job] of downloadJobs) {
+    if (job.status !== 'running' && job.completedAt !== undefined && job.completedAt < cutoff) {
+      downloadJobs.delete(id);
+    }
+  }
+}
 
 export async function startDownload(request: DownloadRequest): Promise<string> {
   const { items, destinationDir } = request;
@@ -31,6 +46,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   // Configured roots only (ARCHITECTURE.md) — refuse destinations outside settings.systemPaths
   assertWithinConfiguredRoots(destinationDir, Object.values(getSettings().systemPaths));
 
+  evictOldJobs();
   const jobId = randomUUID();
   const controller = new AbortController();
 
@@ -62,6 +78,7 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
     if (signal.aborted) return;
 
     item.status = 'downloading';
+    let lastProgressAt = 0;
 
     try {
       const result = await downloadFile({
@@ -70,6 +87,10 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
         expectedCrc: item.expectedCrc,
         signal,
         onProgress: (bytesDownloaded, totalBytes) => {
+          const now = Date.now();
+          const isLast = totalBytes > 0 && bytesDownloaded >= totalBytes;
+          if (!isLast && now - lastProgressAt < PROGRESS_THROTTLE_MS) return;
+          lastProgressAt = now;
           job.events.push({ type: 'progress', gameId: item.gameId, bytesDownloaded, totalBytes });
         },
       });
@@ -123,6 +144,7 @@ async function runQueue(jobId: string, destinationDir: string): Promise<void> {
     job.status = 'done';
     job.events.push({ type: 'complete' });
   }
+  job.completedAt = Date.now();
 }
 
 export async function cancelJob(jobId: string): Promise<boolean> {

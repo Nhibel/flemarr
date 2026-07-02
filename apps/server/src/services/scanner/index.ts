@@ -8,18 +8,29 @@ import type { ScanResult, ScanEvent } from '@shared/scan.js';
 
 export type ScanJobState =
   | { status: 'running'; events: ScanEvent[] }
-  | { status: 'done'; events: ScanEvent[]; result: ScanResult }
-  | { status: 'error'; events: ScanEvent[]; message: string };
+  | { status: 'done'; events: ScanEvent[]; result: ScanResult; completedAt: number }
+  | { status: 'error'; events: ScanEvent[]; message: string; completedAt: number };
 
 const CONCURRENCY = Math.max(1, cpus().length);
 const PROGRESS_INTERVAL = 50;
+const JOB_RETENTION_MS = 30 * 60 * 1000;
 
 export const scanJobs = new Map<string, ScanJobState>();
+
+function evictOldJobs(): void {
+  const cutoff = Date.now() - JOB_RETENTION_MS;
+  for (const [id, job] of scanJobs) {
+    if (job.status !== 'running' && job.completedAt < cutoff) {
+      scanJobs.delete(id);
+    }
+  }
+}
 
 export async function runScan(datId: string, directory: string): Promise<string> {
   const dat = getDat(datId);
   if (dat === undefined) throw new Error(`DAT ${datId} not found`);
 
+  evictOldJobs();
   const jobId = randomUUID();
   const events: ScanEvent[] = [];
   scanJobs.set(jobId, { status: 'running', events });
@@ -58,12 +69,12 @@ export async function runScan(datId: string, directory: string): Promise<string>
       const result = matchFiles(results, crcIndex);
       const doneEvent: ScanEvent = { type: 'done', result };
       events.push(doneEvent);
-      scanJobs.set(jobId, { status: 'done', events, result });
+      scanJobs.set(jobId, { status: 'done', events, result, completedAt: Date.now() });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const errorEvent: ScanEvent = { type: 'error', message };
       events.push(errorEvent);
-      scanJobs.set(jobId, { status: 'error', events, message });
+      scanJobs.set(jobId, { status: 'error', events, message, completedAt: Date.now() });
     }
   })();
 
