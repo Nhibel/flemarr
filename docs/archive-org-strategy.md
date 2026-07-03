@@ -16,7 +16,7 @@ archive.org hosts ROM collections but is not designed as a ROM repository. The p
 
 ---
 
-## The three patterns we need to handle
+## The four cases we handle
 
 ### Pattern A — Direct file in the collection
 
@@ -42,9 +42,19 @@ The collection contains one or more big `.zip` files, and the ROM we want is a m
   Both `<archive.zip>` and `<path-inside-zip>` are URL-encoded path segments.
 - Example: `https://archive.org/download/no-intro-snes-2024-04/No-Intro%20SNES%202024-04.zip/Super%20Mario%20World%20%28USA%29.sfc`
 
-To use this pattern, we need to know the ZIP's internal layout. If the metadata doesn't expose it, we may need to fetch the ZIP central directory ourselves (HTTP range request to the end of the file — non-trivial but doable; defer this unless absolutely needed).
+To use this pattern, we need to know the ZIP's internal layout. The metadata rarely exposes it; instead we fetch the datanode's `view_archive.php` HTML listing for the ZIP (`https://<server>/view_archive.php?archive=<dir>/<zip>` — `server` and `dir` come from the item metadata) and parse the entry names out of it (`zip-listing.ts`). This works for restricted items too, and made central-directory parsing unnecessary.
 
-### Pattern C — Not found
+### Pattern C — Restricted re-zipped collections (`zip-view`)
+
+Some big collections (ni-roms, proper1g1r-collection, …) are access-restricted ("darked" for anonymous users) _and_ store one ZIP per system. The `archive.org/download/...` magic URL of Pattern B doesn't serve their members — but the datanode `view_archive.php` extract endpoint does, given session cookies:
+
+```
+https://<server>/view_archive.php?archive=<dir>/<zip>&file=<path-inside-zip>
+```
+
+The catch: the response is itself a small ZIP wrapping the requested ROM. The download item carries `extractFromZip: true` and the downloader unwraps the single entry (`fflate`) before CRC validation. In the shared schemas this is the `container: 'zip-view'` variant.
+
+### Pattern D — Not found
 
 The game isn't in any of the identifiers we know about. Surface this clearly in the UI: don't silently fail, don't pretend to download something that doesn't exist.
 
@@ -52,69 +62,59 @@ The game isn't in any of the identifiers we know about. Surface this clearly in 
 
 ## Source mapping
 
-Maintained as a hand-curated TypeScript file:
+No hand-curated mapping. Sources are **per-system rows in SQLite**, managed from the UI (`sources.ts` is the DB accessor). Each source is `{ identifier, layout: 'direct' | 'zip-collection', note }` — the layout is auto-detected from the index preview when the user adds one.
 
-```ts
-// apps/server/src/services/archive-org/sources.ts
+Two discovery paths feed the list:
 
-export type ArchiveSource = {
-  identifier: string;
-  // Human-readable note about what's in this identifier (helps debugging).
-  note: string;
-  // 'direct' = ROMs as individual files. 'zip-collection' = one or more big ZIPs.
-  layout: 'direct' | 'zip-collection';
-  // Optional hint for matching files against DAT entries (some uploads add prefixes).
-  filenameStrategy?: 'as-is' | 'strip-system-prefix';
-};
+1. **Full-text search** (`GET /api/archive/search`): queries archive.org's advancedsearch with the system name, sorted so multi-GB items (real collections) rank above single-game uploads.
+2. **Suggestions** (`POST /api/archive/suggest`, `suggest.ts`): scores candidate collections by probing how many of a random sample of the loaded DAT's ROMs they actually contain, and reports a coverage percentage. For one-ZIP-per-system collections the coverage is measured against the ZIP's inner `view_archive` listing — the same path the resolver uses, so scoring and resolution agree.
 
-export const SOURCES_BY_SYSTEM: Record<string, ArchiveSource[]> = {
-  'Nintendo - Super Nintendo Entertainment System': [
-    {
-      identifier: '<TO BE FILLED IN BY USER OR DURING PHASE 4>',
-      note: 'No-Intro SNES, individual files',
-      layout: 'direct',
-      filenameStrategy: 'as-is',
-    },
-  ],
-  // ... fill in as we go
-};
-```
+`known-sources.ts` seeds the suggestion run with multi-system collection _candidates_ (ni-roms, proper1g1r-collection, …) whose identifiers never mention a specific system, so search can't surface them. They are re-validated on every run — a dead or renamed identifier simply stops appearing. Collection identifiers changing over time is handled by this re-validation, not by keeping a curated list fresh.
 
-**This file is intentionally not pre-populated.** The user will fill it in during phase 4 based on what works at the time the app is built — collection identifiers change too often to hardcode them blindly here. The structure is the contract; the data is fresh.
+---
+
+## archive.org account
+
+Most large No-Intro/Redump collections are access-restricted; anonymous requests get 403s. The app supports authenticated access:
+
+- **Login** (`POST /api/archive/login`, `login.ts`): the email + password are sent once to the `xauthn` endpoint — the same exchange the official `ia configure` CLI does — and traded for S3 API keys and the `logged-in-user` / `logged-in-sig` session cookies. All four values are stored in settings; **the password is never stored or logged**.
+- **Every archive.org request** goes through `archiveFetch` (`fetch.ts`), which attaches `Authorization: LOW <access>:<secret>` and the session cookies. The datanodes check the _cookies_ (not the S3 header) for restricted `zip-view` extracts — both are sent.
+- **Redirects are followed manually**: undici strips the Authorization header on cross-origin redirects, but `archive.org/download/*` redirects to datanodes (`ia80xx.us.archive.org`) that need it — the header is re-attached as long as the target stays on `*.archive.org`.
+- Fallback: the settings page also accepts S3 keys and session cookies pasted manually (from `archive.org/account/s3.php` and browser DevTools) for the rare case where the xauthn exchange doesn't unlock an item.
 
 ---
 
 ## Caching
 
-- **Metadata responses** are cached in memory keyed by `identifier`, with a TTL of 24 hours. A collection's file list rarely changes day-to-day.
-- **Source resolution results** (which game maps to which file in which identifier) are cached keyed by `(system, gameId)` for the session — invalidated when the underlying DAT changes.
-- **Negative results** ("not found in any known source") are cached too, with a shorter TTL (15 minutes), so the UI doesn't re-hammer for every selection change.
+All caches are in-memory (safely lost on restart):
+
+- **Item metadata** (`metadata.ts`): keyed by `identifier`, 24-hour TTL. A collection's file list rarely changes day-to-day.
+- **ZIP inner listings** (`zip-listing.ts`): keyed by listing URL, 24-hour TTL.
+- **Resolve results** (`resolver.ts`): keyed by `(datId, gameId)` — 24 hours when every ROM of the game was found, 15 minutes otherwise, so "not found" doesn't re-hammer on every selection change but recovers quickly when a source is added.
+- **URL existence checks** (`url-check.ts`): HEAD probe results keyed by URL — 1 hour for hits, 15 minutes for misses.
 
 ---
 
-## API surface (backend, phase 4)
+## API surface (backend)
+
+Schemas live in `packages/shared/src/archive.ts`; routes in `apps/server/src/routes/archive.ts`.
 
 ```ts
-// GET /api/archive/sources?system=<system>
-// → { sources: ArchiveSource[] }
-
-// POST /api/archive/index
-// body: { identifier: string }
-// → { files: Array<{ name: string, size: number, crc32?: string, container: 'direct' | 'zip-entry', zipName?: string }> }
-
-// POST /api/archive/resolve
-// body: { datId: string, gameIds: string[] }
-// → {
-//     results: Array<{
-//       gameId: string,
-//       romName: string,
-//       expectedCrc: string,
-//       sources: Array<{ identifier: string, downloadUrl: string, container: 'direct' | 'zip-entry' }>
-//     }>
-//   }
+// GET    /api/archive/sources?system=<system>       → { system, sources: ArchiveSource[] }
+// POST   /api/archive/sources                       body: { system, source } — layout auto-detected upstream
+// DELETE /api/archive/sources/:identifier
+// POST   /api/archive/index                         body: { identifier }
+//        → { identifier, fileCount, preview: ArchiveFile[], suggestedLayout }
+// GET    /api/archive/search?q=<query>              → { results: [{ identifier, title, description, itemSize? }] }
+// POST   /api/archive/login                         body: { email, password } → { ok }
+// POST   /api/archive/suggest                       body: { datId }
+//        → { suggestions: [{ identifier, title, layout, fileCount, coverage, sampleSize }] }
+// POST   /api/archive/resolve                       body: { datId, gameIds }
+//        → { results: [{ gameId, gameName, roms: [{ romName, expectedCrc,
+//             sources: [{ identifier, downloadUrl, container: 'direct' | 'zip-entry' | 'zip-view' }] }] }] }
 ```
 
-The downloader (phase 5) consumes the `downloadUrl` values and never thinks about Pattern A vs B — that's resolved upstream.
+Resolve returns one entry per ROM of the game — multi-disc games resolve every disc. The downloader consumes the `downloadUrl` values ordered by preference and never thinks about Pattern A vs B; the only container distinction it acts on is `zip-view` (`extractFromZip`), because the fetched bytes must be unwrapped before CRC validation.
 
 ---
 
@@ -131,8 +131,8 @@ A CRC mismatch usually means the source is bad (re-encoded, corrupted, or the id
 
 ---
 
-## Things to defer (not phase 4)
+## Deferred / resolved
 
-- **ZIP central directory parsing.** Only relevant for Pattern B collections that don't expose their layout in metadata. If we hit this, build it then.
-- **Mirror selection.** Some uploaders mirror the same collection under multiple identifiers; preferring the fastest one is a phase 5+ optimization.
-- **Resume / range requests.** archive.org's range support varies; rely on full re-downloads first.
+- **ZIP central directory parsing** — never needed: the datanode `view_archive.php` listing covers every collection met so far, including restricted ones.
+- **Mirror selection.** Some uploaders mirror the same collection under multiple identifiers. Still deferred; the resolver simply returns every configured source as a fallback list.
+- **Resume / range requests.** Still deferred; archive.org's range support varies, failed downloads restart from scratch.

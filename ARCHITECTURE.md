@@ -18,7 +18,7 @@ Cross-cutting technical decisions and the reasoning behind them. When in doubt, 
                                 ┌─────────────────────┐
                                 │  local filesystem   │
                                 │  - ROM directories  │
-                                │  - SQLite (phase 7) │
+                                │  - SQLite           │
                                 │  - DAT cache        │
                                 └─────────────────────┘
 ```
@@ -44,6 +44,7 @@ Trade-off: smaller ecosystem of middleware. For the few things we'd want (CORS, 
 ## Why a separate `packages/shared`
 
 The Zod schemas for DAT entries, games, scan results, etc. are needed on both sides:
+
 - Backend uses them to validate parsed data and to build API responses.
 - Frontend uses them to validate API responses and to type the React layer.
 
@@ -61,9 +62,13 @@ Three workspaces (`web`, `server`, `shared`), one lockfile, one `pnpm install`. 
 
 ## State and data flow
 
-### Backend in-memory state (phases 1–5)
+### Backend persistence
 
-A `Map<datId, DatFile>` lives in memory. This is enough to ship phases 1–5. Persistence comes in phase 7.
+SQLite (`better-sqlite3`, hand-rolled SQL migrations in `apps/server/src/lib/migrations/`) stores everything that must survive a restart: parsed DATs, archive.org sources per system, download history, settings (including archive.org credentials). The database lives in `~/.rom-curator/` (`ROM_CURATOR_DATA_DIR` overrides it).
+
+In-memory state is reserved for caches (archive.org metadata, ZIP listings, resolve results) and running jobs (scan/download job maps) — all safely lost on restart.
+
+archive.org S3 keys and session cookies are stored in plaintext in the settings table. Deliberate: single-user homelab app, the SQLite file has the same trust level as the ROM directories next to it. The account password itself is never stored — it's exchanged once against keys and cookies (see `docs/archive-org-strategy.md`).
 
 ### Backend-to-frontend data shapes
 
@@ -91,16 +96,16 @@ Pattern:
 
 ```ts
 // in packages/shared
-export const scanRequest = z.object({
-  datId: z.string(),
+export const scanRequestSchema = z.object({
+  datId: z.string().min(1),
   directory: z.string().min(1),
 });
 
 // in apps/server/src/routes/scan.ts
-import { scanRequest } from '@shared/api';
+import { scanRequestSchema } from '@shared/scan.js';
 
 app.post('/api/scan', async (c) => {
-  const body = scanRequest.parse(await c.req.json());
+  const body = scanRequestSchema.parse(await c.req.json());
   // body is now fully typed and trusted
 });
 ```
@@ -123,7 +128,7 @@ Implement these checks in one place (`apps/server/src/lib/fs-safety.ts`) and use
 
 CRC32 is the practical identifier for ROM matching. It's what DAT files use as the primary key. We don't need a cryptographic hash for matching — we need a fast hash with the same algorithm the DAT used.
 
-- Use a streaming CRC32 implementation (e.g. `crc-32` on npm, or hand-rolled — it's 30 lines).
+- Streaming CRC32 is hand-rolled in `apps/server/src/lib/crc32.ts` (table-driven, ~30 lines, `Crc32Accumulator` for streams).
 - Stream the file: never load a full ROM into memory. PS2 ISOs can be multi-gigabyte.
 - For downloads, compute CRC32 on the fly as bytes arrive. On mismatch with the expected value from the DAT, delete and report failure.
 
@@ -141,7 +146,7 @@ SHA1 / MD5 from the DAT are validated only if the user explicitly requests deep 
 
 ## Logging
 
-- Backend: structured logs (`pino` is fine). Log every API request with method, path, status, duration. Log every external HTTP call (archive.org, GitHub) with target, status, duration.
+- Backend: structured logs via `pino` (`apps/server/src/lib/logger.ts`). Log every API request with method, path, status, duration. Log every external HTTP call (archive.org, GitHub) with target, status, duration. Never log credentials or cookies — paths and identifiers only.
 - Frontend: console only. Don't ship logs anywhere.
 - No PII to worry about (single-user homelab app), but still no need to log file contents — just paths.
 
@@ -161,6 +166,6 @@ SHA1 / MD5 from the DAT are validated only if the user explicitly requests deep 
 - **No Redux, Zustand, Jotai.** TanStack Query covers server state; React's built-ins cover the rest.
 - **No tRPC.** REST + Zod gives us typed clients without coupling the frontend build to the backend's TS.
 - **No GraphQL.** Overkill for ~15 endpoints.
-- **No ORM in phase 7.** SQLite + hand-written SQL or a tiny query builder (`kysely` is acceptable if we want types). No Prisma — too heavy for this.
+- **No ORM.** SQLite + hand-written SQL via `better-sqlite3`, hand-rolled migrations. Held up fine through phase 7; no query builder needed.
 - **No auth.** Single user, single machine. If the user later wants to expose this beyond their LAN, that's a separate phase that doesn't exist yet.
 - **No SSR / Next.js.** Already rejected, listed here so we don't drift back.
