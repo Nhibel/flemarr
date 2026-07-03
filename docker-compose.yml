@@ -1,0 +1,26 @@
+services:
+  rom-curator:
+    build: .
+    image: rom-curator:latest
+    container_name: rom-curator
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default: the app has NO authentication (see
+      # docs/security.md). Override BIND_ADDR (e.g. 0.0.0.0) only on a trusted
+      # LAN, and never expose to the internet without an authenticated reverse
+      # proxy or a VPN in front.
+      - '${BIND_ADDR:-127.0.0.1}:${PORT:-3000}:3000'
+    environment:
+      - PORT=3000
+      - ROM_CURATOR_DATA_DIR=/data
+    volumes:
+      # SQLite DB + DAT cache — survives container recreation.
+      - rom-curator-data:/data
+      # Bind-mount each system's ROM directory. The path INSIDE the container
+      # (right side) is what you enter under Settings → system paths; file
+      # writes are confined to these by fs-safety. Uncomment and adjust:
+      # - /srv/roms/snes:/roms/snes
+      # - /srv/roms/psx:/roms/psx
+
+volumes:
+  rom-curator-data:
