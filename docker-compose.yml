@@ -2,6 +2,10 @@ services:
   rom-curator:
     build: .
     image: rom-curator:latest
+    # Build the image locally from the Dockerfile — it is not published to any
+    # registry. Prevents `docker compose pull` (e.g. Portainer's "re-pull")
+    # from failing with "pull access denied for rom-curator".
+    pull_policy: build
     container_name: rom-curator
     restart: unless-stopped
     ports:
