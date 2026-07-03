@@ -46,14 +46,17 @@ export type {
   ListSourcesResponse,
 };
 
+/** Throws the server error-envelope message (or `HTTP <status>`) on non-2xx responses. */
+async function ensureOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  const json: unknown = await res.json().catch(() => undefined);
+  const err = errorResponseSchema.safeParse(json);
+  throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
+}
+
 async function parseResponse<T>(res: Response, schema: { parse(v: unknown): T }): Promise<T> {
-  const json: unknown = await res.json();
-  if (!res.ok) {
-    const err = errorResponseSchema.safeParse(json);
-    const message = err.success ? err.data.error.message : `HTTP ${res.status}`;
-    throw new Error(message);
-  }
-  return schema.parse(json);
+  await ensureOk(res);
+  return schema.parse(await res.json());
 }
 
 export async function uploadDat(file: File): Promise<DatUploadResponse> {
@@ -73,11 +76,7 @@ export async function listDats(): Promise<ListDatsResponse['dats']> {
 
 export async function deleteDat(datId: string): Promise<void> {
   const res = await fetch(`/api/dats/${encodeURIComponent(datId)}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const json: unknown = await res.json();
-    const err = errorResponseSchema.safeParse(json);
-    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
-  }
+  await ensureOk(res);
 }
 
 export async function fetchGames(datId: string): Promise<GamesResponse['games']> {
@@ -125,11 +124,7 @@ export async function deleteSource(identifier: string): Promise<void> {
   const res = await fetch(`/api/archive/sources/${encodeURIComponent(identifier)}`, {
     method: 'DELETE',
   });
-  if (!res.ok) {
-    const json: unknown = await res.json();
-    const err = errorResponseSchema.safeParse(json);
-    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
-  }
+  await ensureOk(res);
 }
 
 export async function searchArchive(q: string): Promise<SearchResponse> {
@@ -152,11 +147,7 @@ export async function archiveLogin(email: string, password: string): Promise<voi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) {
-    const json: unknown = await res.json();
-    const err = errorResponseSchema.safeParse(json);
-    throw new Error(err.success ? err.data.error.message : `HTTP ${res.status}`);
-  }
+  await ensureOk(res);
 }
 
 export async function suggestSources(datId: string): Promise<SuggestResponse> {
@@ -235,7 +226,7 @@ export async function validateDir(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await ensureOk(res);
   return res.json() as Promise<{ exists: boolean; isDirectory: boolean }>;
 }
 
