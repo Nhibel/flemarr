@@ -59,7 +59,3 @@ export async function getZipListing(
   cache.set(url, { entries, expiresAt: Date.now() + TTL_MS });
   return entries;
 }
-
-export function clearZipListingCache(): void {
-  cache.clear();
-}

@@ -4,7 +4,7 @@ import { datSummarySchema } from './dat.js';
 export const fresh1g1rPresetSchema = z.enum(['PropeR', 'McLean', 'Hearto']);
 export type Fresh1g1rPreset = z.infer<typeof fresh1g1rPresetSchema>;
 
-export const datSourceEntrySchema = z.object({
+const datSourceEntrySchema = z.object({
   name: z.string(),
   system: z.string(),
   path: z.string(),
@@ -28,4 +28,3 @@ export const fetchDatRequestSchema = z.object({
 export type FetchDatRequest = z.infer<typeof fetchDatRequestSchema>;
 
 export const fetchDatResponseSchema = datSummarySchema;
-export type FetchDatResponse = z.infer<typeof fetchDatResponseSchema>;

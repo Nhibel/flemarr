@@ -99,7 +99,7 @@ export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: st
  * datanode view_archive endpoint, which also reaches restricted items) — the
  * same path the resolver uses, so scoring and resolution agree.
  */
-export async function probeSystemZip(
+async function probeSystemZip(
   info: ArchiveItemInfo,
   system: string,
   sample: { name: string; crc: string }[],

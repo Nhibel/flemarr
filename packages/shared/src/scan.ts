@@ -4,14 +4,13 @@ export const scanRequestSchema = z.object({
   datId: z.string().min(1),
   directory: z.string().min(1),
 });
-export type ScanRequest = z.infer<typeof scanRequestSchema>;
 
 export const scanJobSchema = z.object({
   jobId: z.string(),
 });
 export type ScanJob = z.infer<typeof scanJobSchema>;
 
-export const scanMatchSchema = z.object({
+const scanMatchSchema = z.object({
   filePath: z.string(),
   gameName: z.string(),
   romName: z.string(),
@@ -19,7 +18,7 @@ export const scanMatchSchema = z.object({
 });
 export type ScanMatch = z.infer<typeof scanMatchSchema>;
 
-export const wrongNameEntrySchema = z.object({
+const wrongNameEntrySchema = z.object({
   filePath: z.string(),
   currentName: z.string(),
   canonicalName: z.string(),
@@ -28,7 +27,7 @@ export const wrongNameEntrySchema = z.object({
 });
 export type WrongNameEntry = z.infer<typeof wrongNameEntrySchema>;
 
-export const scanResultSchema = z.object({
+const scanResultSchema = z.object({
   matched: z.array(scanMatchSchema),
   wrongName: z.array(wrongNameEntrySchema),
   unmatched: z.array(z.string()),
@@ -42,11 +41,10 @@ export const scanEventSchema = z.discriminatedUnion('type', [
 ]);
 export type ScanEvent = z.infer<typeof scanEventSchema>;
 
-export const renameEntrySchema = z.object({
+const renameEntrySchema = z.object({
   from: z.string().min(1),
   to: z.string().min(1),
 });
-export type RenameEntry = z.infer<typeof renameEntrySchema>;
 
 // No client-supplied root: the server validates every path against the
 // configured system paths (settings), per the fs-safety rules in ARCHITECTURE.md.

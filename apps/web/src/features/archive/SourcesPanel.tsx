@@ -61,7 +61,7 @@ function shortSystemName(system: string): string {
   return name || system;
 }
 
-export function defaultSearchQuery(system: string, source: DatSource): string {
+function defaultSearchQuery(system: string, source: DatSource): string {
   return `${source === 'redump' ? 'Redump' : 'No-Intro'} ${shortSystemName(system)}`;
 }
 

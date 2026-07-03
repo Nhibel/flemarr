@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const downloadItemSchema = z.object({
+const downloadItemSchema = z.object({
   gameId: z.string().min(1),
   romName: z.string().min(1),
   expectedCrc: z.string().length(8),
@@ -11,8 +11,6 @@ export const downloadItemSchema = z.object({
   // collections) — the downloader extracts the single entry before validating.
   extractFromZip: z.boolean().default(false),
 });
-export type DownloadItem = z.infer<typeof downloadItemSchema>;
-
 export const downloadRequestSchema = z.object({
   datId: z.string().min(1),
   items: z.array(downloadItemSchema).min(1),
@@ -23,7 +21,6 @@ export type DownloadRequest = z.infer<typeof downloadRequestSchema>;
 export const downloadJobSchema = z.object({
   jobId: z.string(),
 });
-export type DownloadJob = z.infer<typeof downloadJobSchema>;
 
 export const downloadEventSchema = z.discriminatedUnion('type', [
   z.object({

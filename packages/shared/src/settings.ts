@@ -21,4 +21,3 @@ export const updateSettingsSchema = settingsSchema.partial();
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;
 
 export const settingsResponseSchema = settingsSchema;
-export type SettingsResponse = Settings;
