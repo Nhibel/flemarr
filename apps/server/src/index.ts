@@ -1,7 +1,8 @@
 import { serve } from '@hono/node-server';
 import { app } from '@/app.js';
-import { closeDb } from '@/lib/db.js';
+import { closeDb, dataDir } from '@/lib/db.js';
 import { serveWeb } from '@/lib/serve-web.js';
+import { libraryRoot } from '@/lib/library-root.js';
 
 const PORT = Number(process.env['PORT'] ?? 3000);
 
@@ -12,12 +13,25 @@ if (WEB_ROOT) {
   serveWeb(app, WEB_ROOT);
 }
 
+// Startup banner — visible in `docker logs` / Portainer to confirm the
+// container picked up its configuration (port, library root, data dir).
+const romsRoot = libraryRoot();
+console.log('rom-curator: starting…');
+console.log(`  port:      ${PORT}`);
+console.log(
+  `  ROM root:  ${romsRoot ?? '(ROMS_ROOT not set — directory browsing is not confined)'}`,
+);
+console.log(`  data dir:  ${dataDir()}`);
+console.log(
+  `  web UI:    ${WEB_ROOT ? `served from ${WEB_ROOT}` : '(not set — dev mode, served by Vite)'}`,
+);
+
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`Server running on http://localhost:${info.port}`);
+  console.log(`rom-curator: ready — http://localhost:${info.port}`);
 });
 
 function shutdown(signal: string): void {
-  console.log(`${signal} received, shutting down`);
+  console.log(`rom-curator: ${signal} received, shutting down`);
   server.close(() => {
     closeDb();
     process.exit(0);
