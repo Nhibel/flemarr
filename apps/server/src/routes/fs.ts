@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { isAbsolute, dirname, join } from 'node:path';
 import { stat, readdir } from 'node:fs/promises';
 import { validateDirRequestSchema } from '@shared/fs.js';
+import { parseJsonBody } from '@/lib/http.js';
 
 export const fsRoute = new Hono();
 
@@ -41,27 +42,10 @@ fsRoute.get('/fs/list-dirs', async (c) => {
 });
 
 fsRoute.post('/fs/validate-dir', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } }, 400);
-  }
+  const body = await parseJsonBody(c, validateDirRequestSchema);
+  if (!body.ok) return body.response;
 
-  const parsed = validateDirRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: parsed.error.issues[0]?.message ?? 'Invalid body',
-        },
-      },
-      400,
-    );
-  }
-
-  const { path } = parsed.data;
+  const { path } = body.data;
 
   if (!isAbsolute(path)) {
     return c.json({ exists: false, isDirectory: false });

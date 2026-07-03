@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { parseDat, addDat, getDat, listDats, deleteDat } from '@/services/dat/index.js';
+import { errorJson, errorMessage } from '@/lib/http.js';
 
 export const datsRoute = new Hono();
 
@@ -10,7 +11,7 @@ datsRoute.get('/dats', (c) => {
 datsRoute.delete('/dats/:id', (c) => {
   const id = c.req.param('id');
   if (!deleteDat(id)) {
-    return c.json({ error: { code: 'NOT_FOUND', message: `DAT ${id} not found` } }, 404);
+    return errorJson(c, 404, 'NOT_FOUND', `DAT ${id} not found`);
   }
   return c.json({ ok: true });
 });
@@ -27,22 +28,14 @@ datsRoute.post('/dats', async (c) => {
   }
 
   if (!body.trim()) {
-    return c.json({ error: { code: 'EMPTY_BODY', message: 'Request body is empty' } }, 400);
+    return errorJson(c, 400, 'EMPTY_BODY', 'Request body is empty');
   }
 
   let dat;
   try {
     dat = parseDat(body);
   } catch (err) {
-    return c.json(
-      {
-        error: {
-          code: 'PARSE_ERROR',
-          message: err instanceof Error ? err.message : 'Failed to parse DAT',
-        },
-      },
-      400,
-    );
+    return errorJson(c, 400, 'PARSE_ERROR', errorMessage(err, 'Failed to parse DAT'));
   }
 
   const summary = addDat(dat);
@@ -54,7 +47,7 @@ datsRoute.get('/dats/:id/games', (c) => {
   const dat = getDat(id);
 
   if (dat == null) {
-    return c.json({ error: { code: 'NOT_FOUND', message: `DAT ${id} not found` } }, 404);
+    return errorJson(c, 404, 'NOT_FOUND', `DAT ${id} not found`);
   }
 
   return c.json({ games: dat.games });

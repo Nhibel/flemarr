@@ -3,49 +3,25 @@ import { streamSSE } from 'hono/streaming';
 import { downloadRequestSchema } from '@shared/download.js';
 import { startDownload, cancelJob, downloadJobs } from '@/services/downloader/index.js';
 import { PathTraversalError, NoRootsConfiguredError } from '@/lib/fs-safety.js';
+import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
 export const downloadsRoute = new Hono();
 
 downloadsRoute.post('/downloads', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } }, 400);
-  }
-
-  const parsed = downloadRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: parsed.error.issues[0]?.message ?? 'Invalid body',
-        },
-      },
-      400,
-    );
-  }
+  const body = await parseJsonBody(c, downloadRequestSchema);
+  if (!body.ok) return body.response;
 
   let jobId: string;
   try {
-    jobId = await startDownload(parsed.data);
+    jobId = await startDownload(body.data);
   } catch (err) {
     if (err instanceof NoRootsConfiguredError) {
-      return c.json({ error: { code: 'NO_ROOTS_CONFIGURED', message: err.message } }, 400);
+      return errorJson(c, 400, 'NO_ROOTS_CONFIGURED', err.message);
     }
     if (err instanceof PathTraversalError) {
-      return c.json({ error: { code: 'PATH_TRAVERSAL', message: err.message } }, 400);
+      return errorJson(c, 400, 'PATH_TRAVERSAL', err.message);
     }
-    return c.json(
-      {
-        error: {
-          code: 'START_ERROR',
-          message: err instanceof Error ? err.message : 'Failed to start download',
-        },
-      },
-      500,
-    );
+    return errorJson(c, 500, 'START_ERROR', errorMessage(err, 'Failed to start download'));
   }
 
   return c.json({ jobId }, 202);
@@ -85,10 +61,7 @@ downloadsRoute.post('/downloads/:jobId/cancel', async (c) => {
   const cancelled = await cancelJob(jobId);
 
   if (!cancelled) {
-    return c.json(
-      { error: { code: 'NOT_FOUND', message: `Job ${jobId} not found or already finished` } },
-      404,
-    );
+    return errorJson(c, 404, 'NOT_FOUND', `Job ${jobId} not found or already finished`);
   }
 
   return c.json({ ok: true });

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { rename, access } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -10,6 +11,7 @@ import {
   NoRootsConfiguredError,
 } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
+import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
 export const scanRoute = new Hono();
 
@@ -17,36 +19,27 @@ function configuredRoots(): string[] {
   return Object.values(getSettings().systemPaths);
 }
 
-function rootsErrorResponse(err: unknown): { code: string; message: string; status: 400 } | null {
+function rootsErrorResponse(c: Context, err: unknown): Response | null {
   if (err instanceof NoRootsConfiguredError) {
-    return { code: 'NO_ROOTS_CONFIGURED', message: err.message, status: 400 };
+    return errorJson(c, 400, 'NO_ROOTS_CONFIGURED', err.message);
   }
   if (err instanceof PathTraversalError) {
-    return { code: 'PATH_TRAVERSAL', message: err.message, status: 400 };
+    return errorJson(c, 400, 'PATH_TRAVERSAL', err.message);
   }
   return null;
 }
 
 scanRoute.post('/scan', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } }, 400);
-  }
+  const body = await parseJsonBody(c, scanRequestSchema);
+  if (!body.ok) return body.response;
 
-  const parsed = scanRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: { code: 'BAD_REQUEST', message: parsed.error.message } }, 400);
-  }
-
-  const { datId, directory } = parsed.data;
+  const { datId, directory } = body.data;
 
   try {
     assertWithinConfiguredRoots(directory, configuredRoots());
   } catch (err) {
-    const known = rootsErrorResponse(err);
-    if (known) return c.json({ error: { code: known.code, message: known.message } }, known.status);
+    const known = rootsErrorResponse(c, err);
+    if (known) return known;
     throw err;
   }
 
@@ -54,9 +47,9 @@ scanRoute.post('/scan', async (c) => {
   try {
     jobId = await runScan(datId, directory);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Scan failed';
-    const code = message.includes('not found') ? 'NOT_FOUND' : 'SCAN_ERROR';
-    return c.json({ error: { code, message } }, code === 'NOT_FOUND' ? 404 : 500);
+    const message = errorMessage(err, 'Scan failed');
+    if (message.includes('not found')) return errorJson(c, 404, 'NOT_FOUND', message);
+    return errorJson(c, 500, 'SCAN_ERROR', message);
   }
 
   return c.json({ jobId }, 202);
@@ -93,19 +86,10 @@ scanRoute.get('/scan/:jobId/events', (c) => {
 });
 
 scanRoute.post('/scan/rename', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } }, 400);
-  }
+  const body = await parseJsonBody(c, renameRequestSchema);
+  if (!body.ok) return body.response;
 
-  const parsed = renameRequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: { code: 'BAD_REQUEST', message: parsed.error.message } }, 400);
-  }
-
-  const { renames } = parsed.data;
+  const { renames } = body.data;
   const roots = configuredRoots();
 
   // Validate all paths before touching the filesystem
@@ -114,9 +98,8 @@ scanRoute.post('/scan/rename', async (c) => {
       assertWithinConfiguredRoots(from, roots);
       assertWithinConfiguredRoots(join(dirname(from), to), roots);
     } catch (err) {
-      const known = rootsErrorResponse(err);
-      if (known)
-        return c.json({ error: { code: known.code, message: known.message } }, known.status);
+      const known = rootsErrorResponse(c, err);
+      if (known) return known;
       throw err;
     }
   }
@@ -137,15 +120,14 @@ scanRoute.post('/scan/rename', async (c) => {
     }
   }
   if (collisions.length > 0) {
-    return c.json(
-      {
-        error: {
-          code: 'DESTINATION_COLLISION',
-          message: `Destination already exists: ${collisions.join(', ')}`,
-          details: { collisions },
-        },
-      },
+    return errorJson(
+      c,
       409,
+      'DESTINATION_COLLISION',
+      `Destination already exists: ${collisions.join(', ')}`,
+      {
+        collisions,
+      },
     );
   }
 

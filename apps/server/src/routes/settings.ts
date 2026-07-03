@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { updateSettingsSchema } from '@shared/settings.js';
 import { getSettings, updateSettings } from '@/services/settings/index.js';
+import { parseJsonBody } from '@/lib/http.js';
 
 export const settingsRoute = new Hono();
 
@@ -9,25 +10,8 @@ settingsRoute.get('/settings', (c) => {
 });
 
 settingsRoute.patch('/settings', async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: { code: 'INVALID_JSON', message: 'Invalid JSON body' } }, 400);
-  }
+  const body = await parseJsonBody(c, updateSettingsSchema);
+  if (!body.ok) return body.response;
 
-  const parsed = updateSettingsSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: parsed.error.issues[0]?.message ?? 'Invalid body',
-        },
-      },
-      400,
-    );
-  }
-
-  return c.json(updateSettings(parsed.data));
+  return c.json(updateSettings(body.data));
 });
