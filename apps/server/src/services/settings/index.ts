@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import type { Settings, UpdateSettings } from '@shared/settings.js';
+import type { Settings, SettingsResponse, UpdateSettings } from '@shared/settings.js';
 import { settingsSchema } from '@shared/settings.js';
 import { getDb } from '@/lib/db.js';
 
@@ -54,6 +54,20 @@ export function getSettings(db: Database = getDb()): Settings {
     archiveOrgLoggedInUser: scalars.archiveOrgLoggedInUser,
     archiveOrgLoggedInSig: scalars.archiveOrgLoggedInSig,
   });
+}
+
+/**
+ * The view the API exposes: the archive.org credentials are write-only and
+ * never leave the server — the client only gets configured/not-configured.
+ */
+export function toSettingsResponse(s: Settings): SettingsResponse {
+  return {
+    fresh1g1rPreset: s.fresh1g1rPreset,
+    downloaderConcurrency: s.downloaderConcurrency,
+    systemPaths: s.systemPaths,
+    archiveOrgKeysConfigured: s.archiveOrgAccessKey !== '' && s.archiveOrgSecretKey !== '',
+    archiveOrgSessionConfigured: s.archiveOrgLoggedInUser !== '' && s.archiveOrgLoggedInSig !== '',
+  };
 }
 
 export function updateSettings(patch: UpdateSettings, db: Database = getDb()): Settings {

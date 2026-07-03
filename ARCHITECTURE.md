@@ -70,6 +70,8 @@ In-memory state is reserved for caches (archive.org metadata, ZIP listings, reso
 
 archive.org S3 keys and session cookies are stored in plaintext in the settings table. Deliberate: single-user homelab app, the SQLite file has the same trust level as the ROM directories next to it. The account password itself is never stored — it's exchanged once against keys and cookies (see `docs/archive-org-strategy.md`).
 
+Those credentials are **write-only across the API boundary**: the client submits them (login exchange or manual paste) but the `/api/settings` responses never echo them back. `getSettings()` returns the full `Settings` for internal use (the archive.org fetch layer needs the values); the route projects it through `toSettingsResponse()`, which replaces each secret with a `…Configured: boolean`. So a compromised browser or a shoulder-surfer can't read back keys/cookies that were entered earlier — a real gain even on a LAN, and free.
+
 ### Backend-to-frontend data shapes
 
 - Request and response bodies are typed via Zod schemas in `packages/shared`.

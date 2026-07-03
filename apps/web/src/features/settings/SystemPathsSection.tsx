@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { css } from '@/styled-system/css';
 import { validateDir } from '@/lib/api.js';
-import type { Settings, UpdateSettings } from '@/lib/api.js';
+import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { PathInput } from '@/components/PathInput.js';
 import { inputClass, sectionClass } from './styles.js';
 
@@ -12,7 +12,7 @@ export function SystemPathsSection({
   saving,
   onSave,
 }: {
-  settings: Settings;
+  settings: SettingsResponse;
   saving: boolean;
   onSave: (patch: UpdateSettings) => void;
 }) {

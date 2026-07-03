@@ -20,4 +20,14 @@ export type Settings = z.infer<typeof settingsSchema>;
 export const updateSettingsSchema = settingsSchema.partial();
 export type UpdateSettings = z.infer<typeof updateSettingsSchema>;
 
-export const settingsResponseSchema = settingsSchema;
+// What the settings API returns. The archive.org credentials are write-only:
+// the values never leave the server — the client only learns whether they
+// are configured.
+export const settingsResponseSchema = z.object({
+  fresh1g1rPreset: fresh1g1rPresetSchema,
+  downloaderConcurrency: z.number().int().min(1).max(8),
+  systemPaths: z.record(z.string(), z.string()),
+  archiveOrgKeysConfigured: z.boolean(),
+  archiveOrgSessionConfigured: z.boolean(),
+});
+export type SettingsResponse = z.infer<typeof settingsResponseSchema>;

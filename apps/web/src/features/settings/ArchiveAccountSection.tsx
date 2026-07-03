@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { archiveLogin } from '@/lib/api.js';
-import type { Settings, UpdateSettings } from '@/lib/api.js';
+import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { inputClass, sectionClass } from './styles.js';
 
 export function ArchiveAccountSection({
@@ -10,35 +10,29 @@ export function ArchiveAccountSection({
   saving,
   onSave,
 }: {
-  settings: Settings;
+  settings: SettingsResponse;
   saving: boolean;
   onSave: (patch: UpdateSettings) => void;
 }) {
   const queryClient = useQueryClient();
-  const [accessKey, setAccessKey] = useState<string | null>(null);
-  const [secretKey, setSecretKey] = useState<string | null>(null);
+  // Credentials are write-only: the server never returns them, so these
+  // inputs start empty and only ever carry new values the user types.
+  const [accessKey, setAccessKey] = useState('');
+  const [secretKey, setSecretKey] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginState, setLoginState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [cookieUser, setCookieUser] = useState<string | null>(null);
-  const [cookieSig, setCookieSig] = useState<string | null>(null);
-
-  // Local state is null until the user edits — the displayed value falls back
-  // to what's stored in settings.
-  const shownAccessKey = accessKey ?? settings.archiveOrgAccessKey;
-  const shownSecretKey = secretKey ?? settings.archiveOrgSecretKey;
-  const keysDirty =
-    shownAccessKey !== settings.archiveOrgAccessKey ||
-    shownSecretKey !== settings.archiveOrgSecretKey;
+  const [cookieUser, setCookieUser] = useState('');
+  const [cookieSig, setCookieSig] = useState('');
 
   const handleSaveKeys = () => {
     onSave({
-      archiveOrgAccessKey: shownAccessKey.trim(),
-      archiveOrgSecretKey: shownSecretKey.trim(),
+      archiveOrgAccessKey: accessKey.trim(),
+      archiveOrgSecretKey: secretKey.trim(),
     });
-    setAccessKey(null);
-    setSecretKey(null);
+    setAccessKey('');
+    setSecretKey('');
   };
 
   const handleLogin = async () => {
@@ -56,21 +50,13 @@ export function ArchiveAccountSection({
     }
   };
 
-  const isLoggedIn = settings.archiveOrgLoggedInUser !== '';
-
-  const shownCookieUser = cookieUser ?? settings.archiveOrgLoggedInUser;
-  const shownCookieSig = cookieSig ?? settings.archiveOrgLoggedInSig;
-  const cookiesDirty =
-    shownCookieUser !== settings.archiveOrgLoggedInUser ||
-    shownCookieSig !== settings.archiveOrgLoggedInSig;
-
   const handleSaveCookies = () => {
     onSave({
-      archiveOrgLoggedInUser: shownCookieUser.trim(),
-      archiveOrgLoggedInSig: shownCookieSig.trim(),
+      archiveOrgLoggedInUser: cookieUser.trim(),
+      archiveOrgLoggedInSig: cookieSig.trim(),
     });
-    setCookieUser(null);
-    setCookieSig(null);
+    setCookieUser('');
+    setCookieSig('');
   };
 
   return (
@@ -88,10 +74,11 @@ export function ArchiveAccountSection({
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
         Débloque les collections à accès restreint (la plupart des gros sets No-Intro/Redump). Le
         mot de passe est échangé une fois contre des clés API et des cookies de session — il n'est
-        jamais stocké. Clés et cookies sont gardés en clair dans la base locale.
+        jamais stocké. Clés et cookies restent côté serveur : ils ne sont jamais renvoyés au
+        navigateur.
       </p>
 
-      {isLoggedIn && (
+      {settings.archiveOrgSessionConfigured && (
         <p className={css({ fontSize: 'sm', color: 'green.600', mb: '3' })}>
           ✓ Connecté à archive.org (cookies de session actifs)
         </p>
@@ -154,22 +141,26 @@ export function ArchiveAccountSection({
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', maxW: 'md' })}>
         <input
           type="text"
-          placeholder="Access key"
-          value={shownAccessKey}
+          placeholder={
+            settings.archiveOrgKeysConfigured ? 'Access key (déjà configurée)' : 'Access key'
+          }
+          value={accessKey}
           onChange={(e) => setAccessKey(e.target.value)}
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
         <input
           type="password"
-          placeholder="Secret key"
-          value={shownSecretKey}
+          placeholder={
+            settings.archiveOrgKeysConfigured ? 'Secret key (déjà configurée)' : 'Secret key'
+          }
+          value={secretKey}
           onChange={(e) => setSecretKey(e.target.value)}
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
         <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
           <button
             onClick={handleSaveKeys}
-            disabled={!keysDirty || saving}
+            disabled={!accessKey.trim() || !secretKey.trim() || saving}
             className={css({
               alignSelf: 'flex-start',
               px: '4',
@@ -186,7 +177,7 @@ export function ArchiveAccountSection({
           >
             Enregistrer les clés
           </button>
-          {settings.archiveOrgAccessKey !== '' && !keysDirty && (
+          {settings.archiveOrgKeysConfigured && (
             <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Clés configurées</span>
           )}
         </div>
@@ -201,20 +192,20 @@ export function ArchiveAccountSection({
         <input
           type="text"
           placeholder="logged-in-user"
-          value={shownCookieUser}
+          value={cookieUser}
           onChange={(e) => setCookieUser(e.target.value)}
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
         <input
           type="password"
           placeholder="logged-in-sig"
-          value={shownCookieSig}
+          value={cookieSig}
           onChange={(e) => setCookieSig(e.target.value)}
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
         <button
           onClick={handleSaveCookies}
-          disabled={!cookiesDirty || saving}
+          disabled={!cookieUser.trim() || !cookieSig.trim() || saving}
           className={css({
             alignSelf: 'flex-start',
             px: '4',

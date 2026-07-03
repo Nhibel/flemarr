@@ -1,5 +1,5 @@
 import { css, cx } from '@/styled-system/css';
-import type { Settings, UpdateSettings } from '@/lib/api.js';
+import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { inputClass, sectionClass } from './styles.js';
 
 export function ConcurrencySection({
@@ -7,7 +7,7 @@ export function ConcurrencySection({
   saving,
   onSave,
 }: {
-  settings: Settings;
+  settings: SettingsResponse;
   saving: boolean;
   onSave: (patch: UpdateSettings) => void;
 }) {

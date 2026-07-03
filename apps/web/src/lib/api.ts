@@ -14,7 +14,7 @@ import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
 import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
 import { settingsResponseSchema } from '@shared/settings.js';
-import type { Settings, UpdateSettings } from '@shared/settings.js';
+import type { SettingsResponse, UpdateSettings } from '@shared/settings.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -202,12 +202,12 @@ export async function fetchDatFromFresh1g1r(request: FetchDatRequest): Promise<D
   return parseResponse(res, fetchDatResponseSchema);
 }
 
-export async function getSettings(): Promise<Settings> {
+export async function getSettings(): Promise<SettingsResponse> {
   const res = await fetch('/api/settings');
   return parseResponse(res, settingsResponseSchema);
 }
 
-export async function updateSettings(patch: UpdateSettings): Promise<Settings> {
+export async function updateSettings(patch: UpdateSettings): Promise<SettingsResponse> {
   const res = await fetch('/api/settings', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -216,7 +216,7 @@ export async function updateSettings(patch: UpdateSettings): Promise<Settings> {
   return parseResponse(res, settingsResponseSchema);
 }
 
-export type { Settings, UpdateSettings };
+export type { SettingsResponse, UpdateSettings };
 
 export async function validateDir(
   path: string,

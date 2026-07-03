@@ -1,8 +1,8 @@
 import { css } from '@/styled-system/css';
-import type { Settings, UpdateSettings } from '@/lib/api.js';
+import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { sectionClass } from './styles.js';
 
-type Fresh1g1rPreset = Settings['fresh1g1rPreset'];
+type Fresh1g1rPreset = SettingsResponse['fresh1g1rPreset'];
 const PRESETS: Fresh1g1rPreset[] = ['PropeR', 'McLean', 'Hearto'];
 const PRESET_DESCRIPTIONS: Record<Fresh1g1rPreset, string> = {
   McLean: 'Anglais uniquement, jeux licenciés seulement. Sélection la plus stricte.',
@@ -15,7 +15,7 @@ export function PresetSection({
   saving,
   onSave,
 }: {
-  settings: Settings;
+  settings: SettingsResponse;
   saving: boolean;
   onSave: (patch: UpdateSettings) => void;
 }) {

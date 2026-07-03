@@ -2,13 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { settingsRoute } from '../routes/settings.js';
 
-vi.mock('../services/settings/index.js', () => ({
-  getSettings: vi.fn(),
-  updateSettings: vi.fn(),
-}));
+// Keep the real toSettingsResponse (pure, no db) so the route strips
+// credentials as it does in production; only stub the db-backed readers.
+vi.mock('../services/settings/index.js', async (importActual) => {
+  const actual = await importActual<typeof import('../services/settings/index.js')>();
+  return {
+    ...actual,
+    getSettings: vi.fn(),
+    updateSettings: vi.fn(),
+  };
+});
 
 import { getSettings, updateSettings } from '../services/settings/index.js';
-import type { Settings } from '@shared/settings.js';
+import type { Settings, SettingsResponse } from '@shared/settings.js';
 
 const app = new Hono().route('/api', settingsRoute);
 
@@ -22,18 +28,34 @@ const DEFAULT_SETTINGS: Settings = {
   archiveOrgLoggedInSig: '',
 };
 
+// What the route exposes: credentials collapsed to configured/not-configured.
+const DEFAULT_RESPONSE: SettingsResponse = {
+  fresh1g1rPreset: 'PropeR',
+  downloaderConcurrency: 2,
+  systemPaths: {},
+  archiveOrgKeysConfigured: false,
+  archiveOrgSessionConfigured: false,
+};
+
 beforeEach(() => {
   vi.mocked(getSettings).mockReset();
   vi.mocked(updateSettings).mockReset();
 });
 
 describe('GET /api/settings', () => {
-  it('returns current settings', async () => {
-    vi.mocked(getSettings).mockReturnValue(DEFAULT_SETTINGS);
+  it('returns current settings without exposing credentials', async () => {
+    vi.mocked(getSettings).mockReturnValue({
+      ...DEFAULT_SETTINGS,
+      archiveOrgAccessKey: 'secret-access',
+      archiveOrgSecretKey: 'secret-secret',
+    });
     const res = await app.request('/api/settings');
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toEqual(DEFAULT_SETTINGS);
+    const body = (await res.json()) as Record<string, unknown>;
+    // The response reports the keys as configured but never returns their values.
+    expect(body).toEqual({ ...DEFAULT_RESPONSE, archiveOrgKeysConfigured: true });
+    expect(JSON.stringify(body)).not.toContain('secret-access');
+    expect(JSON.stringify(body)).not.toContain('secret-secret');
   });
 });
 
