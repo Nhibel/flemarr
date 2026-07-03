@@ -13,14 +13,16 @@ services:
     environment:
       - PORT=3000
       - ROM_CURATOR_DATA_DIR=/data
+      # The single library root. Browsing, scan and download are confined to
+      # it; in the app you navigate inside it to pick (or create) subfolders.
+      - ROMS_ROOT=/roms
     volumes:
       # SQLite DB + DAT cache — survives container recreation.
       - rom-curator-data:/data
-      # Bind-mount each system's ROM directory. The path INSIDE the container
-      # (right side) is what you enter under Settings → system paths; file
-      # writes are confined to these by fs-safety. Uncomment and adjust:
-      # - /srv/roms/snes:/roms/snes
-      # - /srv/roms/psx:/roms/psx
+      # Your ROM library, mounted at /roms. Set ROMS_HOST_DIR in .env to your
+      # library path; defaults to ./roms next to this file (created empty if
+      # absent, so the stack always comes up).
+      - ${ROMS_HOST_DIR:-./roms}:/roms
 
 volumes:
   rom-curator-data:

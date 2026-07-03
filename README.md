@@ -31,15 +31,13 @@ docker compose up -d --build
 
 The UI is then at `http://127.0.0.1:3000`. Data (the SQLite database and DAT cache) lives in the named volume `rom-curator-data`.
 
-### Mounting your ROM directories
+### Mounting your ROM library
 
-Bind-mount each system's folder into the container and configure the **in-container** path under Settings → system paths. File writes (renames, downloads) are confined to these paths. In `docker-compose.yml`:
+Point `ROMS_HOST_DIR` at the folder holding your ROM library; it is mounted at `/roms` in the container, and that path (`ROMS_ROOT=/roms`) is the single root everything is confined to. In the app you then **browse inside `/roms`** to pick — or create on the spot — the subfolder for each scan and each download. You never type absolute paths, and nothing can touch the filesystem outside the library.
 
-```yaml
-volumes:
-  - rom-curator-data:/data
-  - /srv/roms/snes:/roms/snes # then set "/roms/snes" in Settings
-  - /srv/roms/psx:/roms/psx
+```sh
+# .env
+ROMS_HOST_DIR=/srv/roms
 ```
 
 ### Configuration
@@ -48,6 +46,8 @@ volumes:
 | ---------------------- | ----------- | ------------------------------------------------------------------------ |
 | `BIND_ADDR`            | `127.0.0.1` | Host address the port binds to. Loopback by default (see security note). |
 | `PORT`                 | `3000`      | Host port the app is published on.                                       |
+| `ROMS_HOST_DIR`        | `./roms`    | Host directory holding your ROM library; mounted at `/roms`.             |
+| `ROMS_ROOT`            | `/roms`     | In-container library root that browsing/scan/download are confined to.   |
 | `ROM_CURATOR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file).   |
 
 ### Deploying on a homelab server

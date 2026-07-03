@@ -118,7 +118,7 @@ app.post('/api/scan', async (c) => {
 
 The scanner, renamer, and downloader all touch the user's filesystem. Three rules:
 
-1. **Configured roots only.** The user configures a list of allowed root directories (one per system). Operations refuse to touch anything outside those roots.
+1. **Configured roots only.** Every operation must target a path inside an allowed root. When `ROMS_ROOT` is set (the Docker deployment) it is _the_ single allowed root — the whole library lives under one bind-mounted tree, directory browsing is confined to it, and the UI only ever picks subfolders within it. When unset (local dev) the allowed roots fall back to the per-system paths from settings. This is centralized in `libraryRoots()` (`apps/server/src/lib/library-root.ts`), consumed by the scan/download guards and the `/fs` browse + create-dir routes.
 2. **No path traversal.** Resolve every user-provided path to its absolute form, then check that it's a prefix-match of an allowed root. Reject `..` segments before resolution.
 3. **Renames are local.** Renames never cross filesystems (because they'd stop being atomic). If a destination is on a different mount, fail explicitly rather than silently copy.
 
