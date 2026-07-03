@@ -7,12 +7,14 @@ export function Chip({
 }: {
   label: string;
   count: number;
-  color: 'green' | 'gray';
+  color: 'green' | 'amber' | 'gray';
 }) {
   const colorStyle = css.raw(
     color === 'green'
       ? { bg: 'green.50', borderColor: 'green.200', color: 'green.700' }
-      : { bg: 'bg.surface', borderColor: 'bd.default', color: 'fg.muted' },
+      : color === 'amber'
+        ? { bg: 'amber.50', borderColor: 'amber.200', color: 'amber.700' }
+        : { bg: 'bg.surface', borderColor: 'bd.default', color: 'fg.muted' },
   );
 
   return (

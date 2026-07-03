@@ -5,7 +5,7 @@ import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/ap
 import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
-import { Chip } from './Chip.js';
+import { Chip } from '@/components/Chip.js';
 
 export function ResolvePanel({
   datId,
