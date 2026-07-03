@@ -55,8 +55,12 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     staleTime: 30_000,
   });
 
-  const handleBlur = useCallback(() => {
-    setTimeout(() => setOpen(false), 150);
+  // Close only when focus leaves the whole component — moving focus to a child
+  // (a folder button, or the "new folder" field) must keep the panel open.
+  const handleContainerBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setOpen(false);
+    }
   }, []);
 
   const navigate = useCallback(
@@ -91,13 +95,15 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     (data.dirs.length > 0 || data.parent !== null || data.listedPath !== '');
 
   return (
-    <div className={css({ position: 'relative', flex: 1 })}>
+    <div
+      className={css({ position: 'relative', flex: 1 })}
+      onFocus={() => setOpen(true)}
+      onBlur={handleContainerBlur}
+    >
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onBlur={handleBlur}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={cx(css({ width: '100%' }), inputClassName)}
@@ -209,7 +215,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                   type="text"
                   value={newFolder}
                   placeholder="Nouveau dossier…"
-                  onMouseDown={(e) => e.stopPropagation()}
                   onChange={(e) => setNewFolder(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
