@@ -1,10 +1,10 @@
 import type { DatFile } from '@shared/dat.js';
 import type { ArchiveFile, ArchiveLayout, SearchResult } from '@shared/archive.js';
 import { searchArchive } from './search.js';
-import { getItemInfo, resolveDownloadUrl } from './metadata.js';
+import { getItemInfo } from './metadata.js';
 import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
-import { urlExists } from './url-check.js';
+import { getZipListing } from './zip-listing.js';
 import { hasArchiveCredentials } from './fetch.js';
 import { KNOWN_MULTI_SYSTEM_IDENTIFIERS } from './known-sources.js';
 import {
@@ -92,48 +92,39 @@ export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: st
   return found / sample.length;
 }
 
-const PROBE_COUNT = 4;
-
 /**
- * Collections like proper1g1r-collection ship one ZIP per system
- * ("ROMs/Nintendo - Super Nintendo….zip") — nothing in the index matches
- * individual ROMs, so coverage is measured by HEAD-probing a few sample
- * ROMs inside the ZIP whose name matches the system.
+ * Collections like proper1g1r-collection / ni-roms ship one ZIP per system
+ * ("roms/Sega - Mega Drive….zip"); nothing in the item's file list matches
+ * individual ROMs. Coverage is measured against the ZIP's inner listing (the
+ * datanode view_archive endpoint, which also reaches restricted items) — the
+ * same path the resolver uses, so scoring and resolution agree.
  */
 export async function probeSystemZip(
-  identifier: string,
-  files: ArchiveFile[],
+  info: ArchiveItemInfo,
   system: string,
   sample: { name: string; crc: string }[],
 ): Promise<number | null> {
-  if (sample.length === 0) return null;
+  if (sample.length === 0 || !info.server || !info.dir) return null;
 
-  const systemZips = files
+  const zip = info.files
     .filter((f) => f.name.toLowerCase().endsWith('.zip') && zipMatchesSystem(f.name, system))
-    .sort((a, b) => b.size - a.size);
-  const zip = systemZips[0];
+    .sort((a, b) => b.size - a.size)[0];
   if (zip === undefined) return null;
 
-  const stride = Math.max(1, Math.floor(sample.length / PROBE_COUNT));
-  const probes = Array.from(
-    { length: Math.min(PROBE_COUNT, sample.length) },
-    (_, i) => sample[i * stride],
-  ).filter((r): r is { name: string; crc: string } => r !== undefined);
-
-  // ZIPs often prefix their entries with a folder named like the archive
-  // ("Super Nintendo….zip" → "Super Nintendo…/rom.sfc") — try both layouts.
-  const folderPrefix = stripExtension(baseName(zip.name));
-  let hits = 0;
-  for (const rom of probes) {
-    if (
-      (await urlExists(resolveDownloadUrl(identifier, rom.name, zip.name))) ||
-      (await urlExists(resolveDownloadUrl(identifier, `${folderPrefix}/${rom.name}`, zip.name)))
-    ) {
-      hits++;
-    }
+  let entries: string[];
+  try {
+    entries = await getZipListing(info.server, info.dir, zip.name);
+  } catch {
+    return null;
   }
-  logger.debug({ identifier, zip: zip.name, probes: probes.length, hits }, 'system zip probed');
-  return hits / probes.length;
+  // Inner names are "<rom>.zip" (re-zipped) or the raw ROM — match by basename.
+  const innerBases = new Set(entries.map((e) => stripExtension(baseName(e))));
+  const hits = sample.filter((rom) => innerBases.has(stripExtension(rom.name))).length;
+  logger.debug(
+    { zip: zip.name, innerEntries: entries.length, sample: sample.length, hits },
+    'system zip listing scored',
+  );
+  return hits / sample.length;
 }
 
 async function scoreCandidate(
@@ -161,10 +152,10 @@ async function scoreCandidate(
   let coverage = scoreIndex(files, sample);
   let layout = detectLayout(files);
 
-  // Static matching found nothing — the collection may still hold the set
-  // in a per-system ZIP; measure real coverage with a few HEAD probes.
+  // Static matching found nothing — the collection may still hold the set in a
+  // per-system ZIP; measure real coverage against that ZIP's inner listing.
   if (coverage < MIN_COVERAGE) {
-    const probed = await probeSystemZip(candidate.identifier, files, system, sample);
+    const probed = await probeSystemZip(info, system, sample);
     if (probed !== null && probed > coverage) {
       coverage = probed;
       layout = 'zip-collection';
@@ -227,11 +218,7 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   // — a dedicated "no-intro_snes" item beats a generic mega-pack — then
   // bigger items first (a full set weighs GBs, a single game doesn't).
   const relevant = (c: SearchResult): number =>
-    seeded.has(c.identifier)
-      ? 2
-      : mentionsSystem(`${c.identifier} ${c.title}`, dat.system)
-        ? 1
-        : 0;
+    seeded.has(c.identifier) ? 2 : mentionsSystem(`${c.identifier} ${c.title}`, dat.system) ? 1 : 0;
   const ordered = [...candidates.values()].sort(
     (a, b) => relevant(b) - relevant(a) || (b.itemSize ?? 0) - (a.itemSize ?? 0),
   );

@@ -24,10 +24,14 @@ vi.mock('../services/archive-org/metadata.js', () => ({
 vi.mock('../services/archive-org/url-check.js', () => ({
   urlExists: vi.fn(),
 }));
+vi.mock('../services/archive-org/zip-listing.js', () => ({
+  getZipListing: vi.fn(),
+}));
 
 import { searchArchive } from '../services/archive-org/search.js';
 import { getIndex, getItemInfo } from '../services/archive-org/metadata.js';
 import { urlExists } from '../services/archive-org/url-check.js';
+import { getZipListing } from '../services/archive-org/zip-listing.js';
 
 function makeDat(gameCount: number): DatFile {
   return {
@@ -171,6 +175,7 @@ describe('suggestSources', () => {
         dir: '',
       }));
     vi.mocked(urlExists).mockReset().mockResolvedValue(false);
+    vi.mocked(getZipListing).mockReset().mockResolvedValue([]);
   });
 
   it('keeps covered candidates, drops zero-coverage and unreachable ones', async () => {
@@ -305,11 +310,14 @@ describe('suggestSources', () => {
             ? [file('roms/Nintendo - Super Nintendo Entertainment System.zip')]
             : [file('unrelated.iso')],
         restricted: false,
-        server: '',
-        dir: '',
+        server: id === 'ni-roms' ? 'ia800000.us.archive.org' : '',
+        dir: id === 'ni-roms' ? '/17/items/ni-roms' : '',
       }),
     );
-    vi.mocked(urlExists).mockResolvedValue(true);
+    // The system ZIP's inner listing re-zips every sample ROM as "<name>.zip"
+    vi.mocked(getZipListing).mockResolvedValue(
+      dat.games.map((g) => `${g.roms[0]!.name.replace(/\.\w+$/, '')}.zip`),
+    );
 
     const suggestions = await suggestSources(dat);
     expect(suggestions.map((s) => s.identifier)).toEqual(['ni-roms']);
@@ -317,33 +325,36 @@ describe('suggestSources', () => {
     expect(suggestions[0]?.layout).toBe('zip-collection');
   });
 
-  it('scores one-zip-per-system collections by HEAD-probing the system zip', async () => {
+  it('scores one-zip-per-system collections against the ZIP inner listing', async () => {
     const dat = makeDat(8);
     vi.mocked(searchArchive).mockResolvedValue([
       { identifier: 'proper1g1r-like', title: '1G1R collection', description: '' },
     ]);
     // Index has nothing matching individual ROMs — just per-system ZIPs in a subdir
-    vi.mocked(getIndex).mockImplementation((id: string) =>
-      Promise.resolve(
-        id === 'proper1g1r-like'
-          ? [
-              file('ROMs/Nintendo - Super Nintendo Entertainment System.zip'),
-              file('ROMs/Sega - Mega Drive - Genesis.zip'),
-              file('DATs/Nintendo - Super Nintendo Entertainment System.zip'),
-            ]
-          : [file('unrelated.iso')],
-      ),
+    vi.mocked(getItemInfo).mockImplementation((id: string) =>
+      Promise.resolve({
+        files:
+          id === 'proper1g1r-like'
+            ? [
+                file('ROMs/Nintendo - Super Nintendo Entertainment System.zip'),
+                file('ROMs/Sega - Mega Drive - Genesis.zip'),
+              ]
+            : [file('unrelated.iso')],
+        restricted: false,
+        server: 'ia800000.us.archive.org',
+        dir: '/17/items/proper1g1r-like',
+      }),
     );
-    vi.mocked(urlExists).mockResolvedValue(true);
+    // The SNES system ZIP lists the raw ROMs
+    vi.mocked(getZipListing).mockResolvedValue(dat.games.map((g) => g.roms[0]!.name));
 
     const suggestions = await suggestSources(dat);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]?.identifier).toBe('proper1g1r-like');
     expect(suggestions[0]?.coverage).toBe(1);
     expect(suggestions[0]?.layout).toBe('zip-collection');
-    // Probed inside the system ZIP, not some unrelated one
-    const probedUrls = vi.mocked(urlExists).mock.calls.map((c) => c[0]);
-    expect(probedUrls.every((u) => u.includes('Super Nintendo'))).toBe(true);
+    // Listed the system-matching ZIP, not an unrelated one
+    expect(vi.mocked(getZipListing).mock.calls[0]?.[2]).toContain('Super Nintendo');
   });
 
   it('does not probe collections without a system-matching zip', async () => {
@@ -355,6 +366,6 @@ describe('suggestSources', () => {
 
     const suggestions = await suggestSources(dat);
     expect(suggestions).toHaveLength(0);
-    expect(vi.mocked(urlExists)).not.toHaveBeenCalled();
+    expect(vi.mocked(getZipListing)).not.toHaveBeenCalled();
   });
 });
