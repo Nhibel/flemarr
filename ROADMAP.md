@@ -207,9 +207,16 @@ Package everything into a single Docker image deployable to the homelab.
 - Web app is served as static files by Hono (single port for both API and UI).
 - `docker-compose.yml` with a named volume for `~/.rom-curator/` and bind mounts for the user's ROM directories.
 - Document env vars in `.env.example` and in `README.md`.
+- Bind the published port to `127.0.0.1` (not `0.0.0.0`) by default, and state in the README that internet exposure requires the auth work in [docs/security.md](./docs/security.md) — the app has no authentication of its own.
 
 ### Acceptance criteria
 
 - [ ] `docker compose up` brings the app up on a single port, ready to use.
 - [ ] The image is under 250 MB.
 - [ ] No build tools or source code ship in the runtime image.
+
+---
+
+## Beyond phase 8 — Authentication (only if exposing beyond the LAN)
+
+Not planned as committed work, but tracked so it isn't forgotten. The app currently has **no authentication**; it is safe only on localhost or a trusted LAN. Making it reachable from the internet requires adding a gate first. The concrete risks, the options (VPN, authenticated reverse proxy, or a ~100-line single-password gate in the app), and the trade-offs are written up in [docs/security.md](./docs/security.md). Pick this up if and when internet exposure actually happens.

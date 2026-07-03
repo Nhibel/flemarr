@@ -152,7 +152,8 @@ The user (Camille) has explicitly stated preferences. Match them:
 
 ## Things that are out of scope (do not build)
 
-- User accounts, auth, multi-user support. This is a single-user homelab app.
+- Multi-user support, user accounts, roles. This is a single-user homelab app.
+  - Note: there is currently **no authentication of any kind** — the app is only safe on localhost or a trusted LAN. This is a consequence of the single-user/local assumption, **not** a decision that auth must never exist. Exposing the app to the internet requires adding auth (proxy-level or a single-password gate) first. See [docs/security.md](./docs/security.md).
 - Cloud storage, S3, anything paid.
 - Emulator integration — the app curates files, it doesn't run them.
 - Box art, screenshot scraping — out of initial scope, can be added later.
