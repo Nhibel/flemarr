@@ -1,0 +1,31 @@
+# Dependencies and build outputs — rebuilt inside the image
+**/node_modules
+**/dist
+**/build
+**/.turbo
+**/.vite
+**/styled-system
+*.tsbuildinfo
+
+# VCS and tooling
+.git
+.gitignore
+.claude
+.vscode
+.idea
+
+# Docker's own files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Local env, data, logs, coverage
+.env
+.env.*.local
+.rom-curator-data
+**/coverage
+**/*.log
+
+# OS cruft
+.DS_Store
+Thumbs.db
