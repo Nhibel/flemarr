@@ -9,3 +9,8 @@ export const listDirsResponseSchema = z.object({
   dirs: z.array(z.string()),
 });
 export type ListDirsResponse = z.infer<typeof listDirsResponseSchema>;
+
+export const createDirResponseSchema = z.object({
+  path: z.string(),
+});
+export type CreateDirResponse = z.infer<typeof createDirResponseSchema>;

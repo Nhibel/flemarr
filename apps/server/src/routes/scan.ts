@@ -10,13 +10,13 @@ import {
   PathTraversalError,
   NoRootsConfiguredError,
 } from '@/lib/fs-safety.js';
-import { getSettings } from '@/services/settings/index.js';
+import { libraryRoots } from '@/lib/library-root.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
 export const scanRoute = new Hono();
 
 function configuredRoots(): string[] {
-  return Object.values(getSettings().systemPaths);
+  return libraryRoots();
 }
 
 function rootsErrorResponse(c: Context, err: unknown): Response | null {

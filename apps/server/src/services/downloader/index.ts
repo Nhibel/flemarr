@@ -3,6 +3,7 @@ import { rename, rm } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
+import { libraryRoots } from '@/lib/library-root.js';
 import { downloadFile } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
@@ -47,8 +48,9 @@ function evictOldJobs(): void {
 export async function startDownload(request: DownloadRequest): Promise<string> {
   const { datId, items, destinationDir } = request;
 
-  // Configured roots only (ARCHITECTURE.md) — refuse destinations outside settings.systemPaths
-  assertWithinConfiguredRoots(destinationDir, Object.values(getSettings().systemPaths));
+  // Configured roots only (ARCHITECTURE.md) — refuse destinations outside the
+  // library root (ROMS_ROOT) or, when unset, the configured system paths.
+  assertWithinConfiguredRoots(destinationDir, libraryRoots());
 
   evictOldJobs();
   const jobId = randomUUID();
