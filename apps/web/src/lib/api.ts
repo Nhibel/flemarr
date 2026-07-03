@@ -1,5 +1,5 @@
-import { listDirsResponseSchema } from '@shared/fs.js';
-import type { ListDirsResponse } from '@shared/fs.js';
+import { listDirsResponseSchema, createDirResponseSchema } from '@shared/fs.js';
+import type { ListDirsResponse, CreateDirResponse } from '@shared/fs.js';
 import {
   datUploadResponseSchema,
   gamesResponseSchema,
@@ -236,4 +236,13 @@ export async function listDirs(path: string): Promise<ListDirsResponse> {
   return listDirsResponseSchema.parse(await res.json());
 }
 
-export type { ListDirsResponse };
+export async function createDir(path: string): Promise<CreateDirResponse> {
+  const res = await fetch('/api/fs/create-dir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  return parseResponse(res, createDirResponseSchema);
+}
+
+export type { ListDirsResponse, CreateDirResponse };

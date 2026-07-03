@@ -6,6 +6,7 @@ import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { Chip } from '@/components/Chip.js';
+import { PathInput } from '@/components/PathInput.js';
 
 export function ResolvePanel({
   datId,
@@ -228,16 +229,14 @@ export function ResolvePanel({
 
           {result.results.some((r) => r.roms.some((rom) => rom.sources.length > 0)) && (
             <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-              <input
-                type="text"
-                placeholder="Dossier de destination (ex. /mnt/roms/snes)"
+              <PathInput
                 value={destinationDir}
-                onChange={(e) => {
+                onChange={(v) => {
                   setDestTouched(true);
-                  setDestinationDir(e.target.value);
+                  setDestinationDir(v);
                 }}
-                className={css({
-                  flex: 1,
+                placeholder="Dossier de destination"
+                inputClassName={css({
                   px: '2.5',
                   py: '1.5',
                   fontSize: 'sm',

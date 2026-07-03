@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
-import { listDirs } from '@/lib/api.js';
+import { listDirs, createDir } from '@/lib/api.js';
 
 function pathBasename(p: string): string {
   return (
@@ -10,6 +10,13 @@ function pathBasename(p: string): string {
       .split(/[\\/]/)
       .pop() ?? p
   );
+}
+
+// Join a child name onto a listed directory, preserving its separator.
+function joinPath(base: string, name: string): string {
+  const trimmed = base.replace(/[\\/]+$/, '');
+  const sep = trimmed.includes('\\') ? '\\' : '/';
+  return `${trimmed}${sep}${name}`;
 }
 
 function FolderIcon() {
@@ -29,8 +36,12 @@ interface Props {
 }
 
 export function PathInput({ value, onChange, placeholder, inputClassName, onKeyDown }: Props) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [debouncedValue, setDebouncedValue] = useState(value);
+  const [newFolder, setNewFolder] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedValue(value), 250);
@@ -55,7 +66,29 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     [onChange],
   );
 
-  const showPanel = open && data != null && (data.dirs.length > 0 || data.parent !== null);
+  // Create a subfolder under the directory currently listed, then step into it.
+  const base = data?.listedPath ?? '';
+  const handleCreate = useCallback(async () => {
+    const name = newFolder.trim();
+    if (!name || !base) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const { path } = await createDir(joinPath(base, name));
+      setNewFolder('');
+      await queryClient.invalidateQueries({ queryKey: ['list-dirs'] });
+      navigate(path);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Création impossible');
+    } finally {
+      setCreating(false);
+    }
+  }, [newFolder, base, queryClient, navigate]);
+
+  const showPanel =
+    open &&
+    data != null &&
+    (data.dirs.length > 0 || data.parent !== null || data.listedPath !== '');
 
   return (
     <div className={css({ position: 'relative', flex: 1 })}>
@@ -82,7 +115,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
             borderColor: 'bd.default',
             borderRadius: 'md',
             boxShadow: 'lg',
-            maxH: '52',
+            maxH: '60',
             overflowY: 'auto',
           })}
         >
@@ -147,7 +180,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 cursor: 'pointer',
                 borderBottom: '1px solid',
                 borderColor: 'bd.subtle',
-                _last: { borderBottom: 'none' },
                 _hover: { bg: 'bg.surface' },
               })}
             >
@@ -157,6 +189,75 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
               {pathBasename(dir)}
             </button>
           ))}
+
+          {/* Create a subfolder in the directory currently shown */}
+          {base && (
+            <div
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1',
+                px: '3',
+                py: '2',
+                borderTop: '1px solid',
+                borderColor: 'bd.default',
+                bg: 'bg.surface',
+              })}
+            >
+              <div className={css({ display: 'flex', gap: '2' })}>
+                <input
+                  type="text"
+                  value={newFolder}
+                  placeholder="Nouveau dossier…"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setNewFolder(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleCreate();
+                    }
+                  }}
+                  className={css({
+                    flex: 1,
+                    minW: 0,
+                    px: '2',
+                    py: '1',
+                    fontSize: 'sm',
+                    border: '1px solid',
+                    borderColor: 'bd.strong',
+                    borderRadius: 'sm',
+                    bg: 'bg.page',
+                    outline: 'none',
+                  })}
+                />
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    void handleCreate();
+                  }}
+                  disabled={creating || !newFolder.trim()}
+                  className={css({
+                    px: '2.5',
+                    py: '1',
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    flexShrink: 0,
+                    bg: 'blue.500',
+                    color: 'white',
+                    borderRadius: 'sm',
+                    cursor: 'pointer',
+                    _hover: { bg: 'blue.600' },
+                    _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                  })}
+                >
+                  {creating ? '…' : '+ Créer'}
+                </button>
+              </div>
+              {createError && (
+                <span className={css({ fontSize: 'xs', color: 'red.600' })}>{createError}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
