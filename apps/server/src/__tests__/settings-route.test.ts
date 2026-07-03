@@ -35,6 +35,7 @@ const DEFAULT_RESPONSE: SettingsResponse = {
   systemPaths: {},
   archiveOrgKeysConfigured: false,
   archiveOrgSessionConfigured: false,
+  romsRoot: null,
 };
 
 beforeEach(() => {

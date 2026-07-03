@@ -60,13 +60,14 @@ export function getSettings(db: Database = getDb()): Settings {
  * The view the API exposes: the archive.org credentials are write-only and
  * never leave the server — the client only gets configured/not-configured.
  */
-export function toSettingsResponse(s: Settings): SettingsResponse {
+export function toSettingsResponse(s: Settings, romsRoot: string | null): SettingsResponse {
   return {
     fresh1g1rPreset: s.fresh1g1rPreset,
     downloaderConcurrency: s.downloaderConcurrency,
     systemPaths: s.systemPaths,
     archiveOrgKeysConfigured: s.archiveOrgAccessKey !== '' && s.archiveOrgSecretKey !== '',
     archiveOrgSessionConfigured: s.archiveOrgLoggedInUser !== '' && s.archiveOrgLoggedInSig !== '',
+    romsRoot,
   };
 }
 

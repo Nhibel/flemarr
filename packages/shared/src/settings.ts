@@ -29,5 +29,8 @@ export const settingsResponseSchema = z.object({
   systemPaths: z.record(z.string(), z.string()),
   archiveOrgKeysConfigured: z.boolean(),
   archiveOrgSessionConfigured: z.boolean(),
+  // The library root (ROMS_ROOT) the UI confines directory browsing to, or
+  // null when unset (local dev, browse anywhere).
+  romsRoot: z.string().nullable(),
 });
 export type SettingsResponse = z.infer<typeof settingsResponseSchema>;
