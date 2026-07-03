@@ -100,7 +100,7 @@ Scan a user-specified directory, hash files, match against a loaded DAT, propose
 ### Acceptance criteria
 
 - [x] CRC32 computation is fast enough to scan 5 000 files in under 30 seconds on a typical SSD.
-- [x] Renames are atomic per file; a batch reports per-entry failures and keeps going (deliberate deviation from the planned batch rollback: a half-renamed batch is recoverable by re-scanning, a rollback that itself fails is not).
+- [x] Renames are atomic per file and roll back on partial failure (best-effort rollback of completed renames, then the batch stops; the response reports `done` / `failed` / `rolledBack`).
 - [x] The scanner refuses to operate outside the configured root directory (path traversal guard).
 - [x] Unit tests cover the matcher with synthetic ROMs and a known DAT.
 
