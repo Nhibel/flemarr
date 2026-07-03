@@ -9,6 +9,10 @@ export interface ArchiveItemInfo {
   files: ArchiveFile[];
   /** Item requires login to download — unusable for anonymous per-file fetches */
   restricted: boolean;
+  /** Datanode host serving this item (e.g. ia802803.us.archive.org) */
+  server: string;
+  /** Absolute item path on the datanode (e.g. /17/items/ni-roms) */
+  dir: string;
 }
 
 interface CacheEntry {
@@ -29,6 +33,8 @@ const archiveOrgFileSchema = z.object({
 const archiveOrgMetadataSchema = z.object({
   files: z.array(archiveOrgFileSchema),
   metadata: z.object({ 'access-restricted-item': z.string().optional() }).optional(),
+  server: z.string().optional(),
+  dir: z.string().optional(),
 });
 
 export async function getItemInfo(identifier: string): Promise<ArchiveItemInfo> {
@@ -61,6 +67,8 @@ export async function getItemInfo(identifier: string): Promise<ArchiveItemInfo> 
       format: f.format,
     })),
     restricted: parsed.data.metadata?.['access-restricted-item'] === 'true',
+    server: parsed.data.server ?? '',
+    dir: parsed.data.dir ?? '',
   };
 
   logger.info(
@@ -94,6 +102,30 @@ export function resolveDownloadUrl(identifier: string, fileName: string, zipName
   }
   // Pattern A — direct file
   return `${base}/${encodePath(fileName)}`;
+}
+
+/**
+ * Datanode view_archive URL for extracting one entry from a ZIP. This is the
+ * only way to reach restricted/darked items (their /download/ path 403s), and
+ * it also serves public items. `server` and `dir` come from getItemInfo.
+ */
+export function resolveZipViewUrl(
+  server: string,
+  dir: string,
+  zipName: string,
+  innerPath: string,
+): string {
+  const archive = `${dir}/${zipName}`;
+  return (
+    `https://${server}/view_archive.php` +
+    `?archive=${encodeURIComponent(archive)}&file=${encodeURIComponent(innerPath)}`
+  );
+}
+
+/** view_archive HTML listing URL for a ZIP (enumerates its inner entries). */
+export function resolveZipListingUrl(server: string, dir: string, zipName: string): string {
+  const archive = `${dir}/${zipName}`;
+  return `https://${server}/view_archive.php?archive=${encodeURIComponent(archive)}`;
 }
 
 export function clearCache(identifier?: string): void {

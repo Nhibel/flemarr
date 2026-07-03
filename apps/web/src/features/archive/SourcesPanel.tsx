@@ -746,16 +746,25 @@ function ResolvePanel({
 
   const handleDownload = useCallback(async () => {
     if (!result || !destinationDir.trim()) return;
-    // One download item per resolved ROM — multi-disc games queue every disc
+    // One download item per resolved ROM — multi-disc games queue every disc.
+    // The preferred (first) source decides the extraction mode; fallback URLs
+    // are limited to sources of the same kind so extraction stays consistent.
     const items = result.results.flatMap((r) =>
       r.roms
         .filter((rom) => rom.sources.length > 0)
-        .map((rom) => ({
-          gameId: r.gameId,
-          romName: rom.romName,
-          expectedCrc: rom.expectedCrc,
-          downloadUrls: rom.sources.map((s) => s.downloadUrl),
-        })),
+        .map((rom) => {
+          const extractFromZip = rom.sources[0]!.container === 'zip-view';
+          const urls = rom.sources
+            .filter((s) => (s.container === 'zip-view') === extractFromZip)
+            .map((s) => s.downloadUrl);
+          return {
+            gameId: r.gameId,
+            romName: rom.romName,
+            expectedCrc: rom.expectedCrc,
+            downloadUrls: urls,
+            extractFromZip,
+          };
+        }),
     );
     if (items.length === 0) return;
     setQueuing(true);

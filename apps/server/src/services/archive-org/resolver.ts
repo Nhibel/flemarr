@@ -1,8 +1,10 @@
 import type { DatFile } from '@shared/dat.js';
 import type { ResolvedGame, ResolvedSource } from '@shared/archive.js';
 import { getSources } from './sources.js';
-import { getIndex, resolveDownloadUrl } from './metadata.js';
+import { getItemInfo, resolveDownloadUrl, resolveZipViewUrl } from './metadata.js';
+import type { ArchiveItemInfo } from './metadata.js';
 import { urlExists } from './url-check.js';
+import { getZipListing } from './zip-listing.js';
 import { baseName, stripExtension, zipMatchesSystem } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 import type { ArchiveFile } from '@shared/archive.js';
@@ -68,13 +70,50 @@ function orderZipCandidates(zips: ArchiveFile[], romName: string, system: string
   return [...zips].sort((a, b) => rank(a) - rank(b));
 }
 
+// Restricted/darked items: their /download/ path 403s, so resolve through the
+// datanode's view_archive by matching the ROM against the ZIP's inner listing.
+// The listing gives exact inner names (ni-roms re-zips "Game.md" as "Game.zip").
+async function resolveViaZipListing(
+  romName: string,
+  system: string,
+  identifier: string,
+  info: ArchiveItemInfo,
+): Promise<ResolvedSource | null> {
+  if (!info.server || !info.dir) return null;
+
+  const zips = orderZipCandidates(findZipFiles(info.files), romName, system).filter((z) =>
+    zipMatchesSystem(z.name, system),
+  );
+  const romBase = stripExtension(romName);
+
+  for (const zip of zips.slice(0, 2)) {
+    let entries: string[];
+    try {
+      entries = await getZipListing(info.server, info.dir, zip.name);
+    } catch {
+      continue;
+    }
+    // Match by basename: inner is "<rom>.zip" (re-zipped) or the raw ROM name.
+    const inner = entries.find((e) => stripExtension(baseName(e)) === romBase);
+    if (inner) {
+      return {
+        identifier,
+        downloadUrl: resolveZipViewUrl(info.server, info.dir, zip.name, inner),
+        container: 'zip-view',
+      };
+    }
+  }
+  return null;
+}
+
 async function resolveRomInSource(
   romName: string,
   romCrc: string,
   system: string,
   source: { identifier: string; layout: 'direct' | 'zip-collection' },
-  files: ArchiveFile[],
+  info: ArchiveItemInfo,
 ): Promise<ResolvedSource | null> {
+  const files = info.files;
   if (source.layout === 'direct') {
     const match = findMatch(romName, romCrc, files);
     if (!match) return null;
@@ -85,8 +124,14 @@ async function resolveRomInSource(
     };
   }
 
-  // zip-collection — probe candidate ZIPs (best first) and keep the first
-  // one that actually contains the ROM, instead of guessing blindly.
+  // Restricted items can't be HEAD-probed anonymously — go through the datanode
+  // listing instead.
+  if (info.restricted) {
+    return resolveViaZipListing(romName, system, source.identifier, info);
+  }
+
+  // Public zip-collection — probe candidate ZIPs (best first) and keep the
+  // first one that actually contains the ROM, instead of guessing blindly.
   const candidates = orderZipCandidates(findZipFiles(files), romName, system).slice(
     0,
     MAX_ZIP_HEAD_CHECKS,
@@ -118,14 +163,14 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
   for (const rom of game.roms) {
     const resolvedSources: ResolvedSource[] = [];
     for (const source of sources) {
-      let files: ArchiveFile[];
+      let info: ArchiveItemInfo;
       try {
-        files = await getIndex(source.identifier);
+        info = await getItemInfo(source.identifier);
       } catch {
         // Source unreachable — skip, don't fail the whole resolution
         continue;
       }
-      const resolved = await resolveRomInSource(rom.name, rom.crc, dat.system, source, files);
+      const resolved = await resolveRomInSource(rom.name, rom.crc, dat.system, source, info);
       if (resolved) resolvedSources.push(resolved);
     }
     roms.push({ romName: rom.name, expectedCrc: rom.crc, sources: resolvedSources });

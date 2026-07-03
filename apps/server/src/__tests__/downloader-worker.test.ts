@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdir, rm, access } from 'node:fs/promises';
+import { mkdir, rm, access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { zipSync } from 'fflate';
 import { computeCrc32Buffer } from '../lib/crc32.js';
 import { downloadFile } from '../services/downloader/worker.js';
 
@@ -210,5 +211,62 @@ describe('downloadFile — rate limiting', () => {
     ).rejects.toThrow('HTTP 429');
     // initial attempt + 2 retries
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('downloadFile — extractFromZip (nested-zip collections)', () => {
+  // A raw ROM wrapped in a ZIP, like ni-roms stores it
+  const ROM = Buffer.from('the actual super mario world rom bytes');
+  const ROM_CRC = computeCrc32Buffer(ROM);
+  const ZIP = Buffer.from(zipSync({ 'Super Mario World (USA).sfc': new Uint8Array(ROM) }));
+
+  it('extracts the inner ROM and writes it raw when its CRC matches', async () => {
+    const tempPath = join(TMP, 'wrapped.tmp');
+    mockFetchOk(ZIP);
+
+    const result = await downloadFile({
+      url: 'https://ia800000.us.archive.org/view_archive.php?x=1',
+      tempPath,
+      expectedCrc: ROM_CRC,
+      extractFromZip: true,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    expect(result).toBe('done');
+    // The temp file now holds the raw ROM, not the ZIP
+    const written = await readFile(tempPath);
+    expect(computeCrc32Buffer(written)).toBe(ROM_CRC);
+    expect(written.equals(ROM)).toBe(true);
+  });
+
+  it('returns crc-mismatch when the extracted ROM has the wrong CRC', async () => {
+    const tempPath = join(TMP, 'wrapped-bad.tmp');
+    mockFetchOk(ZIP);
+
+    const result = await downloadFile({
+      url: 'https://ia800000.us.archive.org/view_archive.php?x=1',
+      tempPath,
+      expectedCrc: 'ffffffff',
+      extractFromZip: true,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    expect(result).toBe('crc-mismatch');
+    await expect(access(tempPath)).rejects.toThrow();
+  });
+
+  it('throws when the downloaded bytes are not a valid ZIP', async () => {
+    const tempPath = join(TMP, 'not-a-zip.tmp');
+    mockFetchOk(Buffer.from('this is not a zip file'));
+
+    await expect(
+      downloadFile({
+        url: 'https://ia800000.us.archive.org/view_archive.php?x=1',
+        tempPath,
+        expectedCrc: ROM_CRC,
+        extractFromZip: true,
+        signal: AbortSignal.timeout(5000),
+      }),
+    ).rejects.toThrow('extract');
   });
 });

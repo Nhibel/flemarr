@@ -15,6 +15,7 @@ interface DownloadItemState {
   romName: string;
   expectedCrc: string;
   downloadUrls: string[];
+  extractFromZip: boolean;
   status: 'queued' | 'downloading' | 'done' | 'failed';
   tempPath: string;
 }
@@ -113,6 +114,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
           url,
           tempPath: item.tempPath,
           expectedCrc: item.expectedCrc,
+          extractFromZip: item.extractFromZip,
           signal,
           onProgress,
         });

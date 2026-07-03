@@ -6,10 +6,15 @@ import type { ArchiveFile } from '@shared/archive.js';
 
 vi.mock('../services/archive-org/metadata.js', () => ({
   getIndex: vi.fn(),
+  getItemInfo: vi.fn(),
   resolveDownloadUrl: vi.fn((id: string, file: string, zip?: string) =>
     zip
       ? `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(zip)}/${encodeURIComponent(file)}`
       : `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(file)}`,
+  ),
+  resolveZipViewUrl: vi.fn(
+    (server: string, dir: string, zip: string, inner: string) =>
+      `https://${server}/view_archive.php?archive=${encodeURIComponent(`${dir}/${zip}`)}&file=${encodeURIComponent(inner)}`,
   ),
   clearCache: vi.fn(),
 }));
@@ -18,8 +23,13 @@ vi.mock('../services/archive-org/url-check.js', () => ({
   urlExists: vi.fn(),
 }));
 
-import { getIndex } from '../services/archive-org/metadata.js';
+vi.mock('../services/archive-org/zip-listing.js', () => ({
+  getZipListing: vi.fn(),
+}));
+
+import { getIndex, getItemInfo } from '../services/archive-org/metadata.js';
 import { urlExists } from '../services/archive-org/url-check.js';
+import { getZipListing } from '../services/archive-org/zip-listing.js';
 
 const FIXTURE_DAT: DatFile = {
   source: 'no-intro',
@@ -54,10 +64,22 @@ const ZIP_FILES: ArchiveFile[] = [{ name: 'No-Intro SNES.zip', size: 999999999, 
 beforeEach(() => {
   clearResolverCache();
   vi.mocked(getIndex).mockReset();
+  vi.mocked(getZipListing).mockReset();
+  // resolveOneGame now consumes getItemInfo — default to a public item whose
+  // file list is whatever the getIndex mock was set to return.
+  vi.mocked(getItemInfo)
+    .mockReset()
+    .mockImplementation(async (id: string) => ({
+      files: await getIndex(id),
+      restricted: false,
+      server: '',
+      dir: '',
+    }));
   vi.mocked(urlExists).mockReset().mockResolvedValue(true);
   // Clean up any sources added in previous tests
   removeSource('direct-snes');
   removeSource('zip-snes');
+  removeSource('ni-like');
 });
 
 describe('resolveGames — direct layout', () => {
@@ -113,6 +135,49 @@ describe('resolveGames — direct layout', () => {
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+  });
+});
+
+describe('resolveGames — restricted item via datanode zip listing', () => {
+  it('resolves through view_archive matching the re-zipped inner name', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'ni-like',
+      layout: 'zip-collection',
+      note: '',
+    });
+    // Restricted item: file list is the per-system ZIPs, no per-ROM matches
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [{ name: 'roms/Nintendo - Super Nintendo Entertainment System.zip', size: 9e9 }],
+      restricted: true,
+      server: 'ia800000.us.archive.org',
+      dir: '/17/items/ni-like',
+    });
+    // Inside the system ZIP, the ROM is re-zipped as "<name>.zip"
+    vi.mocked(getZipListing).mockResolvedValue(['Super Mario World (USA).zip']);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    const src = results[0]?.roms[0]?.sources[0];
+    expect(src?.container).toBe('zip-view');
+    expect(src?.downloadUrl).toContain('ia800000.us.archive.org/view_archive.php');
+    expect(src?.downloadUrl).toContain('Super%20Mario%20World%20(USA).zip');
+  });
+
+  it('returns no source when the inner listing has no matching entry', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'ni-like',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [{ name: 'roms/Nintendo - Super Nintendo Entertainment System.zip', size: 9e9 }],
+      restricted: true,
+      server: 'ia800000.us.archive.org',
+      dir: '/17/items/ni-like',
+    });
+    vi.mocked(getZipListing).mockResolvedValue(['Some Other Game (USA).zip']);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
   });
 });
 

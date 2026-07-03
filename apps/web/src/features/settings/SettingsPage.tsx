@@ -93,6 +93,8 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginState, setLoginState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [cookieUser, setCookieUser] = useState<string | null>(null);
+  const [cookieSig, setCookieSig] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -181,6 +183,21 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   };
 
   const isLoggedIn = settings.archiveOrgLoggedInUser !== '';
+
+  const shownCookieUser = cookieUser ?? settings.archiveOrgLoggedInUser;
+  const shownCookieSig = cookieSig ?? settings.archiveOrgLoggedInSig;
+  const cookiesDirty =
+    shownCookieUser !== settings.archiveOrgLoggedInUser ||
+    shownCookieSig !== settings.archiveOrgLoggedInSig;
+
+  const handleSaveCookies = () => {
+    mutation.mutate({
+      archiveOrgLoggedInUser: shownCookieUser.trim(),
+      archiveOrgLoggedInSig: shownCookieSig.trim(),
+    });
+    setCookieUser(null);
+    setCookieSig(null);
+  };
 
   const inputClass = css({
     px: '3',
@@ -426,6 +443,47 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
               </span>
             )}
           </div>
+        </div>
+
+        <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '4', mb: '2' })}>
+          Cookies de session (fallback si la connexion ci-dessus ne débloque pas un item : copiez
+          les cookies <code>logged-in-user</code> et <code>logged-in-sig</code> depuis les DevTools
+          du navigateur, onglet Application → Cookies → archive.org) :
+        </p>
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', maxW: 'md' })}>
+          <input
+            type="text"
+            placeholder="logged-in-user"
+            value={shownCookieUser}
+            onChange={(e) => setCookieUser(e.target.value)}
+            className={cx(css({ fontFamily: 'mono' }), inputClass)}
+          />
+          <input
+            type="password"
+            placeholder="logged-in-sig"
+            value={shownCookieSig}
+            onChange={(e) => setCookieSig(e.target.value)}
+            className={cx(css({ fontFamily: 'mono' }), inputClass)}
+          />
+          <button
+            onClick={handleSaveCookies}
+            disabled={!cookiesDirty || mutation.isPending}
+            className={css({
+              alignSelf: 'flex-start',
+              px: '4',
+              py: '1.5',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              bg: 'blue.500',
+              color: 'white',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              _hover: { bg: 'blue.600' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            Enregistrer les cookies
+          </button>
         </div>
       </section>
 

@@ -108,7 +108,11 @@ export type ResolveRequest = z.infer<typeof resolveRequestSchema>;
 export const resolvedSourceSchema = z.object({
   identifier: z.string(),
   downloadUrl: z.string(),
-  container: z.enum(['direct', 'zip-entry']),
+  // direct: raw file. zip-entry: archive.org extracts a file from a ZIP on the
+  // fly (raw ROM). zip-view: datanode view_archive extract — the fetched file
+  // is itself a ZIP the downloader must open to reach the ROM (restricted/darked
+  // re-zipped collections like ni-roms).
+  container: z.enum(['direct', 'zip-entry', 'zip-view']),
 });
 export type ResolvedSource = z.infer<typeof resolvedSourceSchema>;
 

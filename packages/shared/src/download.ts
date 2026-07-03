@@ -7,6 +7,9 @@ export const downloadItemSchema = z.object({
   // Ordered candidates — the downloader falls back to the next URL on
   // HTTP/network failure (never on CRC mismatch: bad source, user decides).
   downloadUrls: z.array(z.string().url()).min(1),
+  // The fetched bytes are a ZIP wrapping the ROM (restricted re-zipped
+  // collections) — the downloader extracts the single entry before validating.
+  extractFromZip: z.boolean().default(false),
 });
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 

@@ -167,6 +167,8 @@ describe('suggestSources', () => {
       .mockImplementation(async (id: string) => ({
         files: await getIndex(id),
         restricted: false,
+        server: '',
+        dir: '',
       }));
     vi.mocked(urlExists).mockReset().mockResolvedValue(false);
   });
@@ -253,6 +255,8 @@ describe('suggestSources', () => {
       Promise.resolve({
         files: id === 'public-set' ? goodFiles : [file('unrelated.iso')],
         restricted: id === 'restricted-fullset',
+        server: '',
+        dir: '',
       }),
     );
 
@@ -273,6 +277,8 @@ describe('suggestSources', () => {
         Promise.resolve({
           files: id === 'restricted-fullset' ? goodFiles : [file('unrelated.iso')],
           restricted: true,
+          server: '',
+          dir: '',
         }),
       );
 
@@ -299,6 +305,8 @@ describe('suggestSources', () => {
             ? [file('roms/Nintendo - Super Nintendo Entertainment System.zip')]
             : [file('unrelated.iso')],
         restricted: false,
+        server: '',
+        dir: '',
       }),
     );
     vi.mocked(urlExists).mockResolvedValue(true);
