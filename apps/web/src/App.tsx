@@ -10,6 +10,7 @@ import { useGameFilters } from '@/features/game-list/use-game-filters.js';
 import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
+import { SystemFolderBar } from '@/components/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames, listDats, deleteDat } from '@/lib/api.js';
@@ -314,6 +315,9 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
         </button>
       </div>
 
+      {/* The system's library folder — single definition used by scanner and downloads */}
+      <SystemFolderBar system={dat.system} />
+
       {/* Tabs */}
       <div
         className={css({
@@ -380,7 +384,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
 
       {/* Scanner tab — kept mounted to preserve scan progress */}
       <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
-        <ScanPage datId={dat.id} onScanComplete={setLastScan} />
+        <ScanPage datId={dat.id} system={dat.system} onScanComplete={setLastScan} />
       </div>
 
       {/* Sources tab — kept mounted to preserve resolve results */}

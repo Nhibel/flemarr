@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { startScan, openScanEvents, requestRenames } from '@/lib/api.js';
-import { PathInput } from '@/components/PathInput.js';
 import { Chip } from '@/components/Chip.js';
+import { useSystemFolder } from '@/lib/use-system-folder.js';
 import type { ScanResult, WrongNameEntry, ScanEvent } from '@shared/scan.js';
 import { scanEventSchema } from '@shared/scan.js';
 
 interface Props {
   datId: string;
+  system: string;
   onScanComplete?: (result: ScanResult) => void;
 }
 
@@ -17,8 +18,9 @@ type ScanState =
   | { phase: 'done'; result: ScanResult; directory: string }
   | { phase: 'error'; message: string };
 
-export function ScanPage({ datId, onScanComplete }: Props) {
-  const [directory, setDirectory] = useState('');
+export function ScanPage({ datId, system, onScanComplete }: Props) {
+  // The directory to scan is the system's folder, chosen once in SystemFolderBar.
+  const { folder: directory, loaded } = useSystemFolder(system);
   const [scan, setScan] = useState<ScanState>({ phase: 'idle' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState(false);
@@ -26,7 +28,7 @@ export function ScanPage({ datId, onScanComplete }: Props) {
   const esRef = useRef<EventSource | null>(null);
 
   const handleScan = useCallback(async () => {
-    if (!directory.trim()) return;
+    if (!directory) return;
     esRef.current?.close();
     setSelected(new Set());
     setRenameResult(null);
@@ -34,7 +36,7 @@ export function ScanPage({ datId, onScanComplete }: Props) {
 
     let job: { jobId: string };
     try {
-      job = await startScan(datId, directory.trim());
+      job = await startScan(datId, directory);
     } catch (err) {
       setScan({ phase: 'error', message: err instanceof Error ? err.message : 'Scan failed' });
       return;
@@ -51,7 +53,7 @@ export function ScanPage({ datId, onScanComplete }: Props) {
       if (event.type === 'progress') {
         setScan({ phase: 'scanning', scanned: event.scanned, total: event.total });
       } else if (event.type === 'done') {
-        setScan({ phase: 'done', result: event.result, directory: directory.trim() });
+        setScan({ phase: 'done', result: event.result, directory });
         onScanComplete?.(event.result);
         es.close();
       } else if (event.type === 'error') {
@@ -99,29 +101,11 @@ export function ScanPage({ datId, onScanComplete }: Props) {
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-      {/* Directory input */}
-      <div className={css({ display: 'flex', gap: '2' })}>
-        <PathInput
-          value={directory}
-          onChange={setDirectory}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void handleScan();
-          }}
-          placeholder="Directory path (e.g. /mnt/roms/snes)"
-          inputClassName={css({
-            px: '3',
-            py: '2',
-            border: '1px solid',
-            borderColor: 'bd.strong',
-            borderRadius: 'md',
-            fontSize: 'sm',
-            outline: 'none',
-            _focusVisible: { borderColor: 'blue.400', ring: '2px', ringColor: 'blue.200' },
-          })}
-        />
+      {/* Scan control — the directory comes from the system folder (SystemFolderBar) */}
+      <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
         <button
           onClick={() => void handleScan()}
-          disabled={!directory.trim() || scan.phase === 'scanning'}
+          disabled={!directory || scan.phase === 'scanning'}
           className={css({
             px: '4',
             py: '2',
@@ -135,8 +119,27 @@ export function ScanPage({ datId, onScanComplete }: Props) {
             _disabled: { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
-          {scan.phase === 'scanning' ? 'Scanning…' : 'Scan'}
+          {scan.phase === 'scanning' ? 'Scan en cours…' : 'Scanner'}
         </button>
+        {directory ? (
+          <span
+            className={css({
+              fontSize: 'sm',
+              color: 'fg.faint',
+              fontFamily: 'mono',
+              minW: 0,
+              truncate: true,
+            })}
+          >
+            {directory}
+          </span>
+        ) : (
+          loaded && (
+            <span className={css({ fontSize: 'sm', color: 'amber.600' })}>
+              Définissez le dossier du système (bandeau en haut de page) pour lancer un scan.
+            </span>
+          )
+        )}
       </div>
 
       {/* Progress */}

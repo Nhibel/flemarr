@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/api.js';
+import { fetchSources, resolveGames, startDownload } from '@/lib/api.js';
 import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { Chip } from '@/components/Chip.js';
-import { PathInput } from '@/components/PathInput.js';
+import { useSystemFolder } from '@/lib/use-system-folder.js';
 
 export function ResolvePanel({
   datId,
@@ -24,8 +24,6 @@ export function ResolvePanel({
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [destinationDir, setDestinationDir] = useState('');
-  const [destTouched, setDestTouched] = useState(false);
   const [excludeOwned, setExcludeOwned] = useState(true);
   const [queuing, setQueuing] = useState(false);
 
@@ -34,20 +32,11 @@ export function ResolvePanel({
     queryFn: () => fetchSources(system),
   });
 
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
-
-  // Downloads are confined to settings.systemPaths — prefill with the path
-  // configured for this system (or the only one configured) instead of
-  // letting the user type something the server will reject.
-  const paths = settings?.systemPaths ?? {};
-  const defaultDest =
-    paths[system] ?? (Object.values(paths).length === 1 ? Object.values(paths)[0] : undefined);
-  useEffect(() => {
-    if (defaultDest !== undefined && !destTouched) setDestinationDir(defaultDest);
-  }, [defaultDest, destTouched]);
+  // Downloads go into the system's folder, chosen once in SystemFolderBar.
+  const { folder: destinationDir, loaded: settingsLoaded } = useSystemFolder(system);
 
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
-  const noPathsConfigured = settings !== undefined && Object.keys(paths).length === 0;
+  const noFolder = settingsLoaded && destinationDir === '';
 
   const effectiveGameIds =
     excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
@@ -73,7 +62,7 @@ export function ResolvePanel({
   }, [datId, effectiveGameIds]);
 
   const handleDownload = useCallback(async () => {
-    if (!result || !destinationDir.trim()) return;
+    if (!result || !destinationDir) return;
     // One download item per resolved ROM — multi-disc games queue every disc.
     // The preferred (first) source decides the extraction mode; fallback URLs
     // are limited to sources of the same kind so extraction stays consistent.
@@ -97,8 +86,8 @@ export function ResolvePanel({
     if (items.length === 0) return;
     setQueuing(true);
     try {
-      const jobId = await startDownload({ datId, items, destinationDir: destinationDir.trim() });
-      onQueueDownload({ jobId, items, destinationDir: destinationDir.trim() });
+      const jobId = await startDownload({ datId, items, destinationDir });
+      onQueueDownload({ jobId, items, destinationDir });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur au lancement');
     } finally {
@@ -182,10 +171,10 @@ export function ResolvePanel({
         </p>
       )}
 
-      {noPathsConfigured && (
+      {noFolder && (
         <p className={css({ fontSize: 'sm', color: 'amber.600' })}>
-          Aucun dossier système configuré : les téléchargements seront refusés. Ajoutez un dossier
-          dans Paramètres.
+          Aucun dossier défini pour ce système : les téléchargements seront refusés. Choisissez-le
+          dans le bandeau en haut de page.
         </p>
       )}
 
@@ -228,29 +217,10 @@ export function ResolvePanel({
           </div>
 
           {result.results.some((r) => r.roms.some((rom) => rom.sources.length > 0)) && (
-            <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-              <PathInput
-                value={destinationDir}
-                onChange={(v) => {
-                  setDestTouched(true);
-                  setDestinationDir(v);
-                }}
-                placeholder="Dossier de destination"
-                inputClassName={css({
-                  px: '2.5',
-                  py: '1.5',
-                  fontSize: 'sm',
-                  border: '1px solid',
-                  borderColor: 'bd.strong',
-                  borderRadius: 'md',
-                  bg: 'bg.page',
-                  outline: 'none',
-                  _focusVisible: { borderColor: 'blue.400' },
-                })}
-              />
+            <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
               <button
                 onClick={() => void handleDownload()}
-                disabled={queuing || !destinationDir.trim()}
+                disabled={queuing || !destinationDir}
                 className={css({
                   px: '3',
                   py: '1.5',
@@ -269,6 +239,19 @@ export function ResolvePanel({
                   ? 'Lancement…'
                   : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
               </button>
+              {destinationDir && (
+                <span
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'fg.faint',
+                    fontFamily: 'mono',
+                    minW: 0,
+                    truncate: true,
+                  })}
+                >
+                  → {destinationDir}
+                </span>
+              )}
             </div>
           )}
 
