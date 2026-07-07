@@ -33,11 +33,12 @@ The UI is then at `http://127.0.0.1:3000`. Data (the SQLite database and DAT cac
 
 ### Mounting your ROM library
 
-Point `ROMS_HOST_DIR` at the folder holding your ROM library; it is mounted at `/roms` in the container, and that path (`ROMS_ROOT=/roms`) is the single root everything is confined to. In the app you then **browse inside `/roms`** to pick — or create on the spot — the subfolder for each scan and each download. You never type absolute paths, and nothing can touch the filesystem outside the library.
+Point `ROMS_HOST_DIR` **directly at your library folder** (not at its parent); it is mounted at `/roms` in the container, and that path (`ROMS_ROOT=/roms`) is the single root everything is confined to. The UI shows paths relative to that root (`/` is the library itself), so the mount point name never appears. In the app you then pick — or create on the spot — the folder of each system once, in the bar at the top of the system view; scans and downloads both use it. Nothing can touch the filesystem outside the library.
 
 ```sh
 # .env
-ROMS_HOST_DIR=/srv/roms
+ROMS_HOST_DIR=/srv/roms   # the library folder itself — pointing at its parent
+                          # would nest everything one level deeper in the app
 ```
 
 ### Configuration
