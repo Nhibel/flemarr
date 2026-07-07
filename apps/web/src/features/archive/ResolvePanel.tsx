@@ -7,6 +7,8 @@ import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
+import { displayPath } from '@/lib/paths.js';
+import { useRomsRoot } from '@/lib/use-roms-root.js';
 
 export function ResolvePanel({
   datId,
@@ -34,6 +36,7 @@ export function ResolvePanel({
 
   // Downloads go into the system's folder, chosen once in SystemFolderBar.
   const { folder: destinationDir, loaded: settingsLoaded } = useSystemFolder(system);
+  const romsRoot = useRomsRoot();
 
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
   const noFolder = settingsLoaded && destinationDir === '';
@@ -249,7 +252,7 @@ export function ResolvePanel({
                     truncate: true,
                   })}
                 >
-                  → {destinationDir}
+                  → {displayPath(destinationDir, romsRoot)}
                 </span>
               )}
             </div>

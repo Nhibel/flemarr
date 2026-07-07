@@ -1,5 +1,6 @@
 import { css } from '@/styled-system/css';
 import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
+import { displayPath } from '@/lib/paths.js';
 import { sectionClass } from './styles.js';
 
 /**
@@ -87,7 +88,7 @@ export function SystemPathsSection({
                   truncate: true,
                 })}
               >
-                {path}
+                {displayPath(path, settings.romsRoot)}
               </span>
               <button
                 onClick={() => handleRemovePath(system)}

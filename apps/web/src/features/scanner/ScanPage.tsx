@@ -3,6 +3,8 @@ import { css } from '@/styled-system/css';
 import { startScan, openScanEvents, requestRenames } from '@/lib/api.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
+import { displayPath } from '@/lib/paths.js';
+import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult, WrongNameEntry, ScanEvent } from '@shared/scan.js';
 import { scanEventSchema } from '@shared/scan.js';
 
@@ -21,6 +23,7 @@ type ScanState =
 export function ScanPage({ datId, system, onScanComplete }: Props) {
   // The directory to scan is the system's folder, chosen once in SystemFolderBar.
   const { folder: directory, loaded } = useSystemFolder(system);
+  const romsRoot = useRomsRoot();
   const [scan, setScan] = useState<ScanState>({ phase: 'idle' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState(false);
@@ -131,7 +134,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
               truncate: true,
             })}
           >
-            {directory}
+            {displayPath(directory, romsRoot)}
           </span>
         ) : (
           loaded && (
@@ -188,6 +191,7 @@ function ScanResults({
   renaming,
   renameResult,
 }: ScanResultsProps) {
+  const romsRoot = useRomsRoot();
   const total = result.matched.length + result.wrongName.length + result.unmatched.length;
 
   return (
@@ -299,7 +303,7 @@ function ScanResults({
                   truncate: true,
                 })}
               >
-                {p}
+                {displayPath(p, romsRoot)}
               </li>
             ))}
           </ul>
@@ -318,6 +322,7 @@ function RenameRow({
   checked: boolean;
   onToggle: (p: string) => void;
 }) {
+  const romsRoot = useRomsRoot();
   return (
     <label
       className={css({
@@ -345,7 +350,7 @@ function RenameRow({
         <span
           className={css({ fontSize: 'xs', color: 'fg.faint', fontFamily: 'mono', truncate: true })}
         >
-          {entry.filePath}
+          {displayPath(entry.filePath, romsRoot)}
         </span>
         <span className={css({ fontSize: 'sm', color: 'fg.default' })}>
           <span className={css({ color: 'red.500' })}>{entry.currentName}</span>

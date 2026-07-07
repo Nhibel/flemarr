@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
 import { PathInput } from '@/components/PathInput.js';
+import { displayPath } from '@/lib/paths.js';
 
 /**
  * The single place where a system's library folder is chosen. The scanner and
@@ -70,7 +71,7 @@ export function SystemFolderBar({ system }: { system: string }) {
               truncate: true,
             })}
           >
-            {folder}
+            {displayPath(folder, settings.romsRoot)}
           </span>
         ) : (
           <span className={css({ color: 'amber.600', flex: 1, minW: 0 })}>

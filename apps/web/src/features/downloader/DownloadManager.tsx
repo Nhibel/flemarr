@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { openDownloadEvents, cancelDownload, downloadEventSchema } from '@/lib/api.js';
 import type { DownloadEvent } from '@/lib/api.js';
+import { displayPath } from '@/lib/paths.js';
+import { useRomsRoot } from '@/lib/use-roms-root.js';
 
 export interface QueuedDownload {
   jobId: string;
@@ -168,6 +170,7 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
 }
 
 function JobCard({ state }: { state: JobState }) {
+  const romsRoot = useRomsRoot();
   const [cancelling, setCancelling] = useState(false);
 
   const handleCancel = async () => {
@@ -228,7 +231,7 @@ function JobCard({ state }: { state: JobState }) {
               truncate: true,
             })}
           >
-            → {state.destinationDir}
+            → {displayPath(state.destinationDir, romsRoot)}
           </p>
           <p className={css({ fontSize: 'sm', fontWeight: 'medium', color: statusColor })}>
             {statusLabel}

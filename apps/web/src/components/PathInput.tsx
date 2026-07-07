@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { listDirs, createDir } from '@/lib/api.js';
+import { displayPath, absolutePath } from '@/lib/paths.js';
+import { useRomsRoot } from '@/lib/use-roms-root.js';
 
 function pathBasename(p: string): string {
   return (
@@ -37,6 +39,9 @@ interface Props {
 
 export function PathInput({ value, onChange, placeholder, inputClassName, onKeyDown }: Props) {
   const queryClient = useQueryClient();
+  // `value` (and everything sent to the API) stays absolute; the input shows
+  // and accepts the root-relative form when a library root is configured.
+  const romsRoot = useRomsRoot();
   const [open, setOpen] = useState(false);
   const [debouncedValue, setDebouncedValue] = useState(value);
   const [newFolder, setNewFolder] = useState('');
@@ -102,8 +107,8 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     >
       <input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayPath(value, romsRoot)}
+        onChange={(e) => onChange(absolutePath(e.target.value, romsRoot))}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         className={cx(css({ width: '100%' }), inputClassName)}
@@ -137,7 +142,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 fontFamily: 'mono',
               })}
             >
-              ↪ {data.listedPath}
+              ↪ {displayPath(data.listedPath, romsRoot)}
             </div>
           )}
           {data.parent !== null && (
