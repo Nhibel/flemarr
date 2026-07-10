@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–7 are done and in daily use. Phase 8 (Dockerize) is the next and last one.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–7 are done and in daily use. Phase 8 (Dockerize) is next; phase 9 (Myrient as a download source) is queued behind it.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -217,6 +217,38 @@ Package everything into a single Docker image deployable to the homelab.
 
 ---
 
-## Beyond phase 8 — Authentication (only if exposing beyond the LAN)
+## Phase 9 — Myrient as a secondary download source
+
+Add [Myrient](https://myrient.erista.me/) — a public HTTP mirror of the No-Intro and Redump sets — as an additional download source feeding the downloader's existing multi-URL fallback. It complements archive.org rather than replacing it: no authentication, no zip-view containers, stable directory layout (`files/{No-Intro|Redump}/{System}/`), and files named exactly after the DAT entries. Since the downloader already verifies CRC32 after every fetch, name-based matching against Myrient carries no risk of silently keeping a wrong file.
+
+Idea validated against "Myrient Can FixDAT" (analyzed 2026-07-10), which uses the same inference and matching approach in production.
+
+### Tasks
+
+- Service `apps/server/src/services/myrient/`:
+  - `inferSystemUrl(dat, baseUrl)` — pure function that builds the system directory URL from DAT metadata: the Fresh1G1R filename convention when present, otherwise the DAT header (`<url>` containing `redump.org` → `files/Redump/<System>/`, `no-intro.org` → `files/No-Intro/<System>/`), with the same system-name cleanup rules in both paths (strip Retool/date suffixes).
+  - `getListing(systemUrl)` — fetches and parses the HTML directory listing into `{ filename, size }[]`. Cached in memory with a TTL, same pattern as the archive.org metadata cache.
+  - Matching by exact ROM filename against the listing — pure function, no network.
+- Settings:
+  - Configurable Myrient base URL, default `https://myrient.erista.me/`.
+  - A global enable/disable toggle for the source.
+  - Per-system URL overrides persisted in SQLite: when the inferred URL 404s (some systems live under folder names not derivable from the DAT), the user supplies the correct directory URL once and it is reused on every later resolve.
+- Resolve integration: `/api/resolve` returns Myrient candidates alongside archive.org sources; the downloader's per-item `downloadUrls` list gets the Myrient URL as an additional candidate. Default order: Myrient first (direct, unauthenticated, stable), archive.org as fallback.
+- Frontend: resolve results show which source(s) cover each game; settings page exposes the base URL, the toggle, and the stored per-system overrides (with delete).
+- Document when Myrient applies vs archive.org in `docs/myrient-strategy.md` (or a section appended to `docs/archive-org-strategy.md` — pick whichever reads better, this is not a product decision).
+- Tests: unit tests with HTML listing fixtures (table layout and plain-link layout) and DAT fixtures for URL inference (No-Intro, Redump, Fresh1G1R-named, unparseable header).
+
+### Acceptance criteria
+
+- [ ] For one No-Intro DAT and one Redump DAT from Fresh1G1R, the system URL is inferred with no manual input and the listing parses with correct names and sizes.
+- [ ] A game downloads end-to-end from Myrient (resolve → fetch → CRC32 validation → placed in the system folder), including when archive.org has no source for it.
+- [ ] When inference returns 404, the UI lets the user provide the directory URL once; it persists across server restarts and is used on subsequent resolves.
+- [ ] Listings are cached: resolving twice for the same system hits the network once within the TTL.
+- [ ] Disabling Myrient in settings restores archive.org-only behavior with no residual candidates in resolve results.
+- [ ] All Myrient calls go through the backend — the frontend never talks to Myrient directly (same rule as archive.org).
+
+---
+
+## Beyond the numbered phases — Authentication (only if exposing beyond the LAN)
 
 Not planned as committed work, but tracked so it isn't forgotten. The app currently has **no authentication**; it is safe only on localhost or a trusted LAN. Making it reachable from the internet requires adding a gate first. The concrete risks, the options (VPN, authenticated reverse proxy, or a ~100-line single-password gate in the app), and the trade-offs are written up in [docs/security.md](./docs/security.md). Pick this up if and when internet exposure actually happens.
