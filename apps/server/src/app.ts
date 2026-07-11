@@ -8,6 +8,7 @@ import { downloadsRoute } from '@/routes/downloads.js';
 import { fresh1g1rRoute } from '@/routes/fresh1g1r.js';
 import { settingsRoute } from '@/routes/settings.js';
 import { fsRoute } from '@/routes/fs.js';
+import { gameDetailsRoute } from '@/routes/game-details.js';
 
 export const app = new Hono();
 
@@ -28,3 +29,4 @@ app.route('/api', downloadsRoute);
 app.route('/api', fresh1g1rRoute);
 app.route('/api', settingsRoute);
 app.route('/api', fsRoute);
+app.route('/api', gameDetailsRoute);

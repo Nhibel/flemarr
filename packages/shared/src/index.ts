@@ -6,3 +6,4 @@ export * from './download.js';
 export * from './fresh1g1r.js';
 export * from './settings.js';
 export * from './fs.js';
+export * from './game-details.js';
