@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 10 (game details in the Games view) is next.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8 and 10 are done; the app runs as a Docker service on the homelab and is in daily use (the container needs a rebuild to pick up phase 10). Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. No phase is in progress.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -277,11 +277,15 @@ Replace the virtualized flat list with a paginated one (~25–50 games per page)
 
 ### Acceptance criteria
 
-- [ ] The Games view is paginated; search and filters behave exactly as before (global, instant) on the largest loaded DAT, and changing any filter resets to page 1.
-- [ ] Boxarts and details for a page load lazily; revisiting the same page (or restarting the server) serves them from the SQLite cache without re-hitting the provider.
-- [ ] A game the provider doesn't know renders a clean placeholder — no broken image, and the miss is negatively cached so it isn't refetched on every page visit.
-- [ ] The "selected only" toggle shows exactly the selected games; "select all" still selects all filtered games, not the current page.
-- [ ] No provider request ever originates from the browser — everything goes through the backend.
+- [x] The Games view is paginated; search and filters behave exactly as before (global, instant) on the largest loaded DAT, and changing any filter resets to page 1.
+- [x] Boxarts and details for a page load lazily; revisiting the same page (or restarting the server) serves them from the SQLite cache without re-hitting the provider.
+- [x] A game the provider doesn't know renders a clean placeholder — no broken image, and the miss is negatively cached so it isn't refetched on every page visit.
+- [x] The "selected only" toggle shows exactly the selected games; "select all" still selects all filtered games, not the current page.
+- [x] No provider request ever originates from the browser — everything goes through the backend.
+
+### Shipped notes
+
+Shipped 2026-07-11 (ceb91dd…d768724). Verified end-to-end against the live provider with the three loaded DATs: SNES 6/6 boxarts, Mega Drive 5/6 (one genuine upstream miss), Sega CD 6/6 after adding a directory-name alias map (libretro uses hyphenated names for Sega CD and PC Engine CD where DAT headers use '&'). Details cache confirmed across a server restart (~330 ms for 6 fresh probes → ~7 ms from SQLite). ScreenScraper.fr descriptions stay a possible second iteration behind the same provider interface; the `description` column exists and is unused.
 
 ---
 
