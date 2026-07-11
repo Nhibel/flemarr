@@ -8,6 +8,14 @@
 
 const BASE_URL = 'https://thumbnails.libretro.com';
 
+// DAT header names and libretro-thumbnails directory names diverge for a few
+// systems. Verified live against thumbnails.libretro.com (2026-07-11); extend
+// as more divergent systems show 100% misses.
+const DIR_ALIASES: Record<string, string> = {
+  'Sega - Mega CD & Sega CD': 'Sega - Mega-CD - Sega CD',
+  'NEC - PC Engine CD & TurboGrafx CD': 'NEC - PC Engine CD - TurboGrafx-CD',
+};
+
 /**
  * DAT system name → libretro system directory: drop the trailing
  * parenthesized tags Retool appends ("(Retool)", dates…) but keep the
@@ -20,7 +28,8 @@ export function libretroSystemDir(datSystem: string): string {
     if (stripped === name || stripped === '') break;
     name = stripped;
   }
-  return name || datSystem;
+  if (name === '') return datSystem;
+  return DIR_ALIASES[name] ?? name;
 }
 
 /**

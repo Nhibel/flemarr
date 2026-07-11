@@ -27,6 +27,13 @@ describe('libretroSystemDir', () => {
       'Nintendo - Game Boy Advance',
     );
   });
+
+  it('maps systems whose libretro directory name diverges from the DAT name', () => {
+    expect(libretroSystemDir('Sega - Mega CD & Sega CD (Retool)')).toBe('Sega - Mega-CD - Sega CD');
+    expect(libretroSystemDir('NEC - PC Engine CD & TurboGrafx CD')).toBe(
+      'NEC - PC Engine CD - TurboGrafx-CD',
+    );
+  });
 });
 
 describe('libretroThumbName', () => {
