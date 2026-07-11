@@ -374,7 +374,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
               onClearAll={clearAll}
               isAllSelected={isAllSelected}
             />
-            <GameList games={filtered} selected={selected} onToggle={toggle} />
+            <GameList datId={dat.id} games={filtered} selected={selected} onToggle={toggle} />
             <div className={css({ mt: '3' })}>
               <SelectionSummary games={games} selected={selected} />
             </div>

@@ -1,8 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GameList } from './GameList.js';
+import { fetchGameDetails } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
+
+vi.mock('@/lib/api.js', () => ({
+  fetchGameDetails: vi.fn(),
+  gameBoxartUrl: (datId: string, gameId: string) => `/api/dats/${datId}/games/${gameId}/boxart`,
+}));
+
+const fetchGameDetailsMock = vi.mocked(fetchGameDetails);
+
+beforeEach(() => {
+  fetchGameDetailsMock.mockReset();
+  fetchGameDetailsMock.mockResolvedValue({ details: [] });
+});
 
 function makeGame(id: string, name: string): Game {
   return {
@@ -22,9 +36,18 @@ const MANY = Array.from({ length: 60 }, (_, i) =>
   makeGame(`g${i}`, `Game ${String(i).padStart(2, '0')}`),
 );
 
+function renderList(games: Game[], onToggle = vi.fn(), selected = new Set<string>()) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <GameList datId="dat-1" games={games} selected={selected} onToggle={onToggle} />
+    </QueryClientProvider>,
+  );
+}
+
 describe('GameList', () => {
   it('renders all games when they fit on one page, without pagination controls', () => {
-    render(<GameList games={GAMES} selected={new Set()} onToggle={vi.fn()} />);
+    renderList(GAMES);
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
     expect(screen.getByText('Gamma')).toBeInTheDocument();
@@ -32,20 +55,20 @@ describe('GameList', () => {
   });
 
   it('shows empty state when no games', () => {
-    render(<GameList games={[]} selected={new Set()} onToggle={vi.fn()} />);
+    renderList([]);
     expect(screen.getByText(/no games match/i)).toBeInTheDocument();
   });
 
   it('calls onToggle when a row is clicked', async () => {
     const onToggle = vi.fn();
-    render(<GameList games={GAMES} selected={new Set()} onToggle={onToggle} />);
+    renderList(GAMES, onToggle);
     await userEvent.click(screen.getByText('Beta'));
     expect(onToggle).toHaveBeenCalledWith('b');
   });
 
   it('ArrowDown moves focus to next row and Space toggles it', async () => {
     const onToggle = vi.fn();
-    render(<GameList games={GAMES} selected={new Set()} onToggle={onToggle} />);
+    renderList(GAMES, onToggle);
 
     const listbox = screen.getByRole('listbox');
     await userEvent.click(listbox);
@@ -58,7 +81,7 @@ describe('GameList', () => {
 
   it('ArrowUp does not go below index 0 on the first page', async () => {
     const onToggle = vi.fn();
-    render(<GameList games={GAMES} selected={new Set()} onToggle={onToggle} />);
+    renderList(GAMES, onToggle);
 
     const listbox = screen.getByRole('listbox');
     await userEvent.click(listbox);
@@ -69,7 +92,7 @@ describe('GameList', () => {
   });
 
   it('paginates at 50 per page with a range indicator', () => {
-    render(<GameList games={MANY} selected={new Set()} onToggle={vi.fn()} />);
+    renderList(MANY);
     expect(screen.getByText('Game 00')).toBeInTheDocument();
     expect(screen.getByText('Game 49')).toBeInTheDocument();
     expect(screen.queryByText('Game 50')).not.toBeInTheDocument();
@@ -77,7 +100,7 @@ describe('GameList', () => {
   });
 
   it('Next shows the following page, Prev returns', async () => {
-    render(<GameList games={MANY} selected={new Set()} onToggle={vi.fn()} />);
+    renderList(MANY);
 
     await userEvent.click(screen.getByRole('button', { name: /next/i }));
     expect(screen.getByText('Game 50')).toBeInTheDocument();
@@ -90,7 +113,7 @@ describe('GameList', () => {
 
   it('ArrowDown at the last row of a page crosses to the next page', async () => {
     const onToggle = vi.fn();
-    render(<GameList games={MANY} selected={new Set()} onToggle={onToggle} />);
+    renderList(MANY, onToggle);
 
     const listbox = screen.getByRole('listbox');
     await userEvent.click(listbox);
@@ -104,7 +127,7 @@ describe('GameList', () => {
 
   it('ArrowUp at the first row of page 2 returns to the last row of page 1', async () => {
     const onToggle = vi.fn();
-    render(<GameList games={MANY} selected={new Set()} onToggle={onToggle} />);
+    renderList(MANY, onToggle);
 
     const listbox = screen.getByRole('listbox');
     await userEvent.click(listbox);
@@ -114,5 +137,24 @@ describe('GameList', () => {
     await userEvent.keyboard(' ');
     expect(onToggle).toHaveBeenCalledWith('g49');
     expect(screen.getByText(/1–50 of 60/)).toBeInTheDocument();
+  });
+
+  it('requests details for the displayed page and shows boxarts', async () => {
+    fetchGameDetailsMock.mockResolvedValue({
+      details: [
+        { gameId: 'a', hasBoxart: true },
+        { gameId: 'b', hasBoxart: false },
+      ],
+    });
+    const { container } = renderList(GAMES);
+
+    await waitFor(() => {
+      const img = container.querySelector('img');
+      expect(img).not.toBeNull();
+      expect(img?.getAttribute('src')).toBe('/api/dats/dat-1/games/a/boxart');
+    });
+    // one img for the found boxart only; the others show placeholders
+    expect(container.querySelectorAll('img')).toHaveLength(1);
+    expect(fetchGameDetailsMock).toHaveBeenCalledWith('dat-1', ['a', 'b', 'c']);
   });
 });

@@ -1,10 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { GameRow } from './GameRow.js';
 import { usePagination } from './use-pagination.js';
+import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
 
 interface Props {
+  datId: string;
   games: Game[];
   selected: Set<string>;
   onToggle: (id: string) => void;
@@ -23,10 +26,24 @@ const pageBtnClass = css({
   _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.page' } },
 });
 
-export function GameList({ games, selected, onToggle }: Props) {
+export function GameList({ datId, games, selected, onToggle }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const { pageItems, page, pageCount, start, total, next, prev } = usePagination(games);
+
+  // Details for the displayed page only. The backend caches per game in
+  // SQLite, so a page is cheap after its first visit; staleTime Infinity
+  // because the answer never changes within a session.
+  const pageIds = pageItems.map((g) => g.id);
+  const { data: details } = useQuery({
+    queryKey: ['game-details', datId, pageIds],
+    queryFn: async () => {
+      const res = await fetchGameDetails(datId, pageIds);
+      return new Map(res.details.map((d) => [d.gameId, d]));
+    },
+    enabled: pageIds.length > 0,
+    staleTime: Infinity,
+  });
 
   // -2 is "focus the last row once the previous page rendered": its length
   // isn't knowable at the time of the ArrowUp keydown that crossed the page.
@@ -115,6 +132,9 @@ export function GameList({ games, selected, onToggle }: Props) {
               isSelected={selected.has(game.id)}
               isFocused={resolvedFocus === i}
               onToggle={onToggle}
+              boxartSrc={
+                details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
+              }
             />
           ))}
         </div>

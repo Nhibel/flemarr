@@ -17,10 +17,12 @@ interface Props {
   isSelected: boolean;
   isFocused: boolean;
   onToggle: (id: string) => void;
+  /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
+  boxartSrc?: string;
   style?: React.CSSProperties;
 }
 
-export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props) {
+export function GameRow({ game, isSelected, isFocused, onToggle, boxartSrc, style }: Props) {
   return (
     <div
       role="option"
@@ -53,6 +55,39 @@ export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props)
         onChange={() => onToggle(game.id)}
         className={css({ flexShrink: 0, cursor: 'pointer' })}
       />
+
+      {boxartSrc ? (
+        <img
+          src={boxartSrc}
+          alt=""
+          loading="lazy"
+          className={css({
+            w: '10',
+            h: '10',
+            objectFit: 'contain',
+            flexShrink: 0,
+            borderRadius: 'sm',
+          })}
+        />
+      ) : (
+        <span
+          aria-hidden
+          className={css({
+            w: '10',
+            h: '10',
+            flexShrink: 0,
+            borderRadius: 'sm',
+            bg: 'bg.muted',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'fg.faint',
+            fontSize: 'xs',
+          })}
+        >
+          ?
+        </span>
+      )}
 
       <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
 

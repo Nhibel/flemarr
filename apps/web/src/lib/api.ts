@@ -15,6 +15,8 @@ import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh
 import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
 import { settingsResponseSchema } from '@shared/settings.js';
 import type { SettingsResponse, UpdateSettings } from '@shared/settings.js';
+import { gameDetailsResponseSchema } from '@shared/game-details.js';
+import type { GameDetailsResponse } from '@shared/game-details.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -243,6 +245,23 @@ export async function createDir(path: string): Promise<CreateDirResponse> {
     body: JSON.stringify({ path }),
   });
   return parseResponse(res, createDirResponseSchema);
+}
+
+export async function fetchGameDetails(
+  datId: string,
+  gameIds: string[],
+): Promise<GameDetailsResponse> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/games/details`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gameIds }),
+  });
+  return parseResponse(res, gameDetailsResponseSchema);
+}
+
+/** Boxart proxy URL — the browser never talks to the provider directly. */
+export function gameBoxartUrl(datId: string, gameId: string): string {
+  return `/api/dats/${encodeURIComponent(datId)}/games/${encodeURIComponent(gameId)}/boxart`;
 }
 
 export type { ListDirsResponse, CreateDirResponse };
