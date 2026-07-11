@@ -41,7 +41,7 @@ export async function getOrFetchDetails(
   const cached = getCachedDetails(datId, gameIds);
   const byId = new Map(dat.games.map((g) => [g.id, g]));
 
-  const toProbe = gameIds.filter((id) => !cached.has(id) && byId.has(id));
+  const toProbe = gameIds.filter((id) => byId.has(id) && cached.get(id)?.boxartKnown !== true);
   if (toProbe.length > 0) {
     const probed = await mapConcurrent(toProbe, PROBE_CONCURRENCY, async (gameId) => {
       const game = byId.get(gameId);
@@ -65,12 +65,18 @@ export async function getOrFetchDetails(
       'boxart probes',
     );
     for (const p of fresh) {
+      const prev = cached.get(p.gameId);
       cached.set(p.gameId, {
         gameId: p.gameId,
         provider: p.provider,
         boxartUrl: p.boxartUrl,
-        description: null,
-        fetchedAt: Math.floor(Date.now() / 1000),
+        boxartKnown: true,
+        year: prev?.year ?? null,
+        genre: prev?.genre ?? null,
+        publisher: prev?.publisher ?? null,
+        descriptionFr: prev?.descriptionFr ?? null,
+        descriptionEn: prev?.descriptionEn ?? null,
+        infoKnown: prev?.infoKnown ?? false,
       });
     }
   }
@@ -82,7 +88,6 @@ export async function getOrFetchDetails(
       return {
         gameId: id,
         hasBoxart: row?.boxartUrl != null,
-        ...(row?.description != null && { description: row.description }),
       };
     });
 }
