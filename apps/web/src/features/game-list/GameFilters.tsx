@@ -13,6 +13,9 @@ interface Props {
   filterState: FilterState;
   totalCount: number;
   filteredCount: number;
+  selectedOnly: boolean;
+  selectedCount: number;
+  onToggleSelectedOnly: () => void;
   onSearch: (v: string) => void;
   onToggleRegion: (r: string) => void;
   onToggleCategory: (c: string) => void;
@@ -38,6 +41,9 @@ export function GameFilters({
   filterState,
   totalCount,
   filteredCount,
+  selectedOnly,
+  selectedCount,
+  onToggleSelectedOnly,
   onSearch,
   onToggleRegion,
   onToggleCategory,
@@ -153,6 +159,19 @@ export function GameFilters({
           })}
         >
           {filterState.sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
+        </button>
+
+        <button
+          onClick={onToggleSelectedOnly}
+          aria-pressed={selectedOnly}
+          className={css(chipBase, {
+            bg: selectedOnly ? 'blue.500' : 'bg.page',
+            color: selectedOnly ? 'white' : 'fg.muted',
+            borderColor: selectedOnly ? 'blue.500' : 'bd.strong',
+            _hover: { borderColor: 'blue.400' },
+          })}
+        >
+          Selected only ({selectedCount})
         </button>
 
         <span className={css({ ml: 'auto', fontSize: 'xs', color: 'fg.faint' })}>

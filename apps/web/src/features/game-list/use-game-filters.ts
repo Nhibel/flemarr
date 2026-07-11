@@ -58,6 +58,16 @@ export function filterAndSort(games: Game[], state: FilterState): Game[] {
   return result;
 }
 
+/**
+ * "Selected only" view filter, applied downstream of filterAndSort (in App):
+ * it depends on the selection Set, which itself is built from the filtered
+ * list — keeping it out of useGameFilters avoids a circular hook dependency.
+ * "Select all" intentionally keeps operating on the base filtered list.
+ */
+export function applySelectedOnly(games: Game[], selected: Set<string>, on: boolean): Game[] {
+  return on ? games.filter((g) => selected.has(g.id)) : games;
+}
+
 const DEFAULT_STATE: FilterState = {
   search: '',
   regions: [],

@@ -6,7 +6,7 @@ import { Fresh1g1rBrowser } from '@/features/dat-loader/Fresh1g1rBrowser.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
 import { GameList } from '@/features/game-list/GameList.js';
 import { SelectionSummary } from '@/features/game-list/SelectionSummary.js';
-import { useGameFilters } from '@/features/game-list/use-game-filters.js';
+import { useGameFilters, applySelectedOnly } from '@/features/game-list/use-game-filters.js';
 import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
@@ -264,7 +264,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
   });
 
   const {
-    filtered,
+    filtered: baseFiltered,
     filterState,
     setSearch,
     toggleRegion,
@@ -273,7 +273,18 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
     toggleSortDir,
   } = useGameFilters(games);
 
-  const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(dat.id, filtered);
+  // "Select all" keeps operating on baseFiltered: with the selected-only view
+  // active it must still mean "all filtered games", not "the visible subset".
+  const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(
+    dat.id,
+    baseFiltered,
+  );
+
+  const [selectedOnly, setSelectedOnly] = useState(false);
+  const filtered = useMemo(
+    () => applySelectedOnly(baseFiltered, selected, selectedOnly),
+    [baseFiltered, selected, selectedOnly],
+  );
 
   // Selected games the last scan didn't find on disk — null until a scan ran
   const missingGameIds = useMemo(
@@ -365,6 +376,9 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
               filterState={filterState}
               totalCount={games.length}
               filteredCount={filtered.length}
+              selectedOnly={selectedOnly}
+              selectedCount={selected.size}
+              onToggleSelectedOnly={() => setSelectedOnly((v) => !v)}
               onSearch={setSearch}
               onToggleRegion={toggleRegion}
               onToggleCategory={toggleCategory}

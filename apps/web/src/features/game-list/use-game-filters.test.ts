@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterAndSort } from './use-game-filters.js';
+import { filterAndSort, applySelectedOnly } from './use-game-filters.js';
 import type { Game } from '@shared/dat.js';
 
 function makeGame(overrides: Partial<Game> & Pick<Game, 'name'>): Game {
@@ -119,5 +119,22 @@ describe('filterAndSort', () => {
     const copy = [...BASE];
     filterAndSort(BASE, { ...DEFAULT_STATE, sortBy: 'region' });
     expect(BASE).toEqual(copy);
+  });
+});
+
+describe('applySelectedOnly', () => {
+  const selected = new Set(['Mario (USA)', 'Tetris (World)']);
+
+  it('returns only selected games when on', () => {
+    const result = applySelectedOnly(BASE, selected, true);
+    expect(result.map((g) => g.name)).toEqual(['Mario (USA)', 'Tetris (World)']);
+  });
+
+  it('returns the input untouched when off', () => {
+    expect(applySelectedOnly(BASE, selected, false)).toBe(BASE);
+  });
+
+  it('returns an empty list when nothing is selected', () => {
+    expect(applySelectedOnly(BASE, new Set(), true)).toEqual([]);
   });
 });
