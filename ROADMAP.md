@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a download source) is next.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 10 (game details in the Games view) is next.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -227,6 +227,8 @@ Built and deployed early July 2026 (42256ca…7328c6d), running on the homelab v
 
 ## Phase 9 — Myrient as a secondary download source
 
+> **Status: blocked (2026-07-11).** Myrient shut down on 31 March 2026 — `myrient.erista.me` now serves only a static closure page, on every path. The spec below stays valid for any HTTP mirror that reproduces the `files/{No-Intro|Redump}/{System}/` layout (the community backed up the full ~385 TB tree via torrents before the shutdown, so mirrors may reappear); the base URL is a setting by design, so unblocking means pointing it at a live mirror and validating the listing parser against its HTML. Do not start this phase while no such mirror exists — the acceptance criteria (end-to-end download) cannot be verified against a dead service.
+
 Add [Myrient](https://myrient.erista.me/) — a public HTTP mirror of the No-Intro and Redump sets — as an additional download source feeding the downloader's existing multi-URL fallback. It complements archive.org rather than replacing it: no authentication, no zip-view containers, stable directory layout (`files/{No-Intro|Redump}/{System}/`), and files named exactly after the DAT entries. Since the downloader already verifies CRC32 after every fetch, name-based matching against Myrient carries no risk of silently keeping a wrong file.
 
 Idea validated against "Myrient Can FixDAT" (analyzed 2026-07-10), which uses the same inference and matching approach in production.
@@ -254,6 +256,32 @@ Idea validated against "Myrient Can FixDAT" (analyzed 2026-07-10), which uses th
 - [ ] Listings are cached: resolving twice for the same system hits the network once within the TTL.
 - [ ] Disabling Myrient in settings restores archive.org-only behavior with no residual candidates in resolve results.
 - [ ] All Myrient calls go through the backend — the frontend never talks to Myrient directly (same rule as archive.org).
+
+---
+
+## Phase 10 — Game details and pagination in the Games view
+
+Replace the virtualized flat list with a paginated one (~25–50 games per page) whose rows are rich enough to show per-game details: boxart thumbnail and metadata, fetched lazily for the displayed page only and cached server-side so each game hits the external provider at most once ever.
+
+### Tasks
+
+- Pagination replaces `@tanstack/react-virtual` in `GameList.tsx`: paginate the client-side `filtered` array after `filterAndSort`. Search and filters stay global (they operate on the whole DAT, not the page); reset to page 1 whenever filters change. Removing the virtualizer frees row height for richer rows.
+- Details fetched per displayed page only: one batched `POST /api/dats/:id/games/details` with the page's gameIds. Server-side SQLite cache (new `game_details` table, next migration) so each game is fetched from the external provider once; backend proxy, throttled — the frontend never talks to providers directly (same rule as archive.org and for the same reasons).
+- Providers behind a common interface (`apps/server/src/services/game-details/`):
+  - **libretro-thumbnails** for boxarts — URL built from the canonical No-Intro/Redump game name; no API, no account, no quota.
+  - **ScreenScraper.fr** for French descriptions (CRC32 lookup; needs a user account; rate-limited) — optional second iteration, behind the same interface.
+- Selection visibility (explicit user request):
+  - A "selected only" filter toggle in `GameFilters` — the selection Set joins the filter chain in `use-game-filters`.
+  - Optionally, `SelectionSummary` expandable into the list of selected games.
+  - "Select all" keeps meaning "all filtered games", never "current page".
+
+### Acceptance criteria
+
+- [ ] The Games view is paginated; search and filters behave exactly as before (global, instant) on the largest loaded DAT, and changing any filter resets to page 1.
+- [ ] Boxarts and details for a page load lazily; revisiting the same page (or restarting the server) serves them from the SQLite cache without re-hitting the provider.
+- [ ] A game the provider doesn't know renders a clean placeholder — no broken image, and the miss is negatively cached so it isn't refetched on every page visit.
+- [ ] The "selected only" toggle shows exactly the selected games; "select all" still selects all filtered games, not the current page.
+- [ ] No provider request ever originates from the browser — everything goes through the backend.
 
 ---
 
