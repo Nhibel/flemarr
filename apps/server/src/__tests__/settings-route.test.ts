@@ -26,6 +26,11 @@ const DEFAULT_SETTINGS: Settings = {
   archiveOrgSecretKey: '',
   archiveOrgLoggedInUser: '',
   archiveOrgLoggedInSig: '',
+  screenScraperSsid: '',
+  screenScraperSsPassword: '',
+  screenScraperDevId: '',
+  screenScraperDevPassword: '',
+  descriptionLanguage: 'fr',
 };
 
 // What the route exposes: credentials collapsed to configured/not-configured.
@@ -35,6 +40,8 @@ const DEFAULT_RESPONSE: SettingsResponse = {
   systemPaths: {},
   archiveOrgKeysConfigured: false,
   archiveOrgSessionConfigured: false,
+  screenScraperConfigured: false,
+  descriptionLanguage: 'fr',
   romsRoot: null,
 };
 
@@ -57,6 +64,33 @@ describe('GET /api/settings', () => {
     expect(body).toEqual({ ...DEFAULT_RESPONSE, archiveOrgKeysConfigured: true });
     expect(JSON.stringify(body)).not.toContain('secret-access');
     expect(JSON.stringify(body)).not.toContain('secret-secret');
+  });
+
+  it('reports ScreenScraper as configured without exposing the credentials', async () => {
+    vi.mocked(getSettings).mockReturnValue({
+      ...DEFAULT_SETTINGS,
+      screenScraperSsid: 'camille',
+      screenScraperSsPassword: 'ss-secret',
+      screenScraperDevId: 'romcurator',
+      screenScraperDevPassword: 'dev-secret',
+    });
+    const res = await app.request('/api/settings');
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body).toEqual({ ...DEFAULT_RESPONSE, screenScraperConfigured: true });
+    expect(JSON.stringify(body)).not.toContain('ss-secret');
+    expect(JSON.stringify(body)).not.toContain('dev-secret');
+  });
+
+  it('keeps ScreenScraper unconfigured while any of the four values is missing', async () => {
+    vi.mocked(getSettings).mockReturnValue({
+      ...DEFAULT_SETTINGS,
+      screenScraperSsid: 'camille',
+      screenScraperSsPassword: 'ss-secret',
+      screenScraperDevId: 'romcurator',
+    });
+    const res = await app.request('/api/settings');
+    const body = (await res.json()) as { screenScraperConfigured: boolean };
+    expect(body.screenScraperConfigured).toBe(false);
   });
 });
 
@@ -96,6 +130,43 @@ describe('PATCH /api/settings', () => {
       body: JSON.stringify({ systemPaths: { 'Nintendo - SNES': '/roms/snes' } }),
     });
     expect(res.status).toBe(200);
+  });
+
+  it('updates the description language and ScreenScraper credentials', async () => {
+    const updated: Settings = {
+      ...DEFAULT_SETTINGS,
+      descriptionLanguage: 'en',
+      screenScraperSsid: 'camille',
+      screenScraperSsPassword: 's',
+      screenScraperDevId: 'd',
+      screenScraperDevPassword: 'p',
+    };
+    vi.mocked(updateSettings).mockReturnValue(updated);
+    const res = await app.request('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descriptionLanguage: 'en', screenScraperSsid: 'camille' }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      descriptionLanguage: string;
+      screenScraperConfigured: boolean;
+    };
+    expect(body.descriptionLanguage).toBe('en');
+    expect(body.screenScraperConfigured).toBe(true);
+    expect(vi.mocked(updateSettings)).toHaveBeenCalledWith({
+      descriptionLanguage: 'en',
+      screenScraperSsid: 'camille',
+    });
+  });
+
+  it('returns 400 for an unknown description language', async () => {
+    const res = await app.request('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descriptionLanguage: 'de' }),
+    });
+    expect(res.status).toBe(400);
   });
 
   it('returns 400 for invalid preset', async () => {

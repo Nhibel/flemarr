@@ -13,6 +13,14 @@ export const settingsSchema = z.object({
   // check these (not the S3 header) for restricted zip-view downloads.
   archiveOrgLoggedInUser: z.string().default(''),
   archiveOrgLoggedInSig: z.string().default(''),
+  // ScreenScraper.fr API credentials (user account + approved developer id) —
+  // unlock game info (description/year/genre). Write-only like the above.
+  screenScraperSsid: z.string().default(''),
+  screenScraperSsPassword: z.string().default(''),
+  screenScraperDevId: z.string().default(''),
+  screenScraperDevPassword: z.string().default(''),
+  // Language served for game descriptions (both are stored on every fetch).
+  descriptionLanguage: z.enum(['fr', 'en']).default('fr'),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -29,6 +37,8 @@ export const settingsResponseSchema = z.object({
   systemPaths: z.record(z.string(), z.string()),
   archiveOrgKeysConfigured: z.boolean(),
   archiveOrgSessionConfigured: z.boolean(),
+  screenScraperConfigured: z.boolean(),
+  descriptionLanguage: z.enum(['fr', 'en']),
   // The library root (ROMS_ROOT) the UI confines directory browsing to, or
   // null when unset (local dev, browse anywhere).
   romsRoot: z.string().nullable(),

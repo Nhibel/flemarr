@@ -12,12 +12,19 @@ function readScalars(db: Database): {
   archiveOrgSecretKey: string;
   archiveOrgLoggedInUser: string;
   archiveOrgLoggedInSig: string;
+  screenScraperSsid: string;
+  screenScraperSsPassword: string;
+  screenScraperDevId: string;
+  screenScraperDevPassword: string;
+  descriptionLanguage: string;
 } {
   const rows = db
     .prepare(
       `SELECT key, value FROM settings WHERE key IN
        ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key',
-        'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig')`,
+        'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig',
+        'screen_scraper_ssid', 'screen_scraper_ss_password', 'screen_scraper_dev_id',
+        'screen_scraper_dev_password', 'description_language')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -31,6 +38,11 @@ function readScalars(db: Database): {
     archiveOrgSecretKey: map['archive_org_secret_key'] ?? '',
     archiveOrgLoggedInUser: map['archive_org_logged_in_user'] ?? '',
     archiveOrgLoggedInSig: map['archive_org_logged_in_sig'] ?? '',
+    screenScraperSsid: map['screen_scraper_ssid'] ?? '',
+    screenScraperSsPassword: map['screen_scraper_ss_password'] ?? '',
+    screenScraperDevId: map['screen_scraper_dev_id'] ?? '',
+    screenScraperDevPassword: map['screen_scraper_dev_password'] ?? '',
+    descriptionLanguage: map['description_language'] ?? DEFAULTS.descriptionLanguage,
   };
 }
 
@@ -53,6 +65,11 @@ export function getSettings(db: Database = getDb()): Settings {
     archiveOrgSecretKey: scalars.archiveOrgSecretKey,
     archiveOrgLoggedInUser: scalars.archiveOrgLoggedInUser,
     archiveOrgLoggedInSig: scalars.archiveOrgLoggedInSig,
+    screenScraperSsid: scalars.screenScraperSsid,
+    screenScraperSsPassword: scalars.screenScraperSsPassword,
+    screenScraperDevId: scalars.screenScraperDevId,
+    screenScraperDevPassword: scalars.screenScraperDevPassword,
+    descriptionLanguage: scalars.descriptionLanguage,
   });
 }
 
@@ -67,6 +84,12 @@ export function toSettingsResponse(s: Settings, romsRoot: string | null): Settin
     systemPaths: s.systemPaths,
     archiveOrgKeysConfigured: s.archiveOrgAccessKey !== '' && s.archiveOrgSecretKey !== '',
     archiveOrgSessionConfigured: s.archiveOrgLoggedInUser !== '' && s.archiveOrgLoggedInSig !== '',
+    screenScraperConfigured:
+      s.screenScraperSsid !== '' &&
+      s.screenScraperSsPassword !== '' &&
+      s.screenScraperDevId !== '' &&
+      s.screenScraperDevPassword !== '',
+    descriptionLanguage: s.descriptionLanguage,
     romsRoot,
   };
 }
@@ -93,6 +116,21 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.archiveOrgLoggedInSig !== undefined) {
     upsert.run('archive_org_logged_in_sig', patch.archiveOrgLoggedInSig);
+  }
+  if (patch.screenScraperSsid !== undefined) {
+    upsert.run('screen_scraper_ssid', patch.screenScraperSsid);
+  }
+  if (patch.screenScraperSsPassword !== undefined) {
+    upsert.run('screen_scraper_ss_password', patch.screenScraperSsPassword);
+  }
+  if (patch.screenScraperDevId !== undefined) {
+    upsert.run('screen_scraper_dev_id', patch.screenScraperDevId);
+  }
+  if (patch.screenScraperDevPassword !== undefined) {
+    upsert.run('screen_scraper_dev_password', patch.screenScraperDevPassword);
+  }
+  if (patch.descriptionLanguage !== undefined) {
+    upsert.run('description_language', patch.descriptionLanguage);
   }
   if (patch.systemPaths !== undefined) {
     const upsertPath = db.prepare(
