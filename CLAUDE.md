@@ -8,7 +8,7 @@ This file is the canonical context for Claude Code working on this project. Read
 
 `rom-curator` is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs). Access-restricted collections are supported via an archive.org account login.
 
-The user (Camille) runs a homelab. **Phases 0–8 and 10 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. No phase is currently in progress.**
+The user (Camille) runs a homelab. **Phases 0–8 and 10 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) is code-complete, pending end-to-end verification with Camille's ScreenScraper account.**
 
 ---
 
@@ -92,7 +92,7 @@ rom-curator/
 
 The project is broken into numbered phases in [ROADMAP.md](./ROADMAP.md). **Complete one phase before starting the next.** Each phase has explicit acceptance criteria. Do not start phase N+1 work while phase N is incomplete unless the user explicitly asks.
 
-**Current state: phases 0–8 and 10 are done; phase 9 (Myrient) is blocked (service shut down — see ROADMAP.md).** The original reason for the rule — building the easy parts first so they're stable when tackling the hard one (archive.org) — has played out; the rule still applies to any phase added later: finish and verify it against its acceptance criteria before moving on.
+**Current state: phases 0–8 and 10 are done; phase 9 (Myrient) is blocked (service shut down — see ROADMAP.md); phase 11 is code-complete awaiting verification.** The original reason for the rule — building the easy parts first so they're stable when tackling the hard one (archive.org) — has played out; the rule still applies to any phase added later: finish and verify it against its acceptance criteria before moving on.
 
 ### What to check before writing code
 

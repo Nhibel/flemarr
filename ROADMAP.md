@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8 and 10 are done; the app runs as a Docker service on the homelab and is in daily use (the container needs a rebuild to pick up phase 10). Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. No phase is in progress.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8 and 10 are done; the app runs as a Docker service on the homelab and is in daily use (the container needs a rebuild to pick up phases 10–11). Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) is code-complete; its acceptance criteria await end-to-end verification with a real ScreenScraper account (devid pending).** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -286,6 +286,31 @@ Replace the virtualized flat list with a paginated one (~25–50 games per page)
 ### Shipped notes
 
 Shipped 2026-07-11 (ceb91dd…d768724). Verified end-to-end against the live provider with the three loaded DATs: SNES 6/6 boxarts, Mega Drive 5/6 (one genuine upstream miss), Sega CD 6/6 after adding a directory-name alias map (libretro uses hyphenated names for Sega CD and PC Engine CD where DAT headers use '&'). Details cache confirmed across a server restart (~330 ms for 6 fresh probes → ~7 ms from SQLite). ScreenScraper.fr descriptions stay a possible second iteration behind the same provider interface; the `description` column exists and is unused.
+
+---
+
+## Phase 11 — Display modes and ScreenScraper game info
+
+Let the user pick how much each game row shows — **compact** (no image, dense), **normal** (boxart, the phase 10 default), **detailed** (large boxart + description, year, genre, publisher) — and feed the detailed mode from ScreenScraper.fr, with descriptions in the user's preferred language (`fr` default, `en` fallback).
+
+Prerequisite: a ScreenScraper.fr user account **and** an approved developer id (requested on their forum) — the `jeuInfos.php` API requires both.
+
+### Tasks
+
+- Display-mode selector above the game list, persisted in `localStorage` (persistent-UI-state rule, ARCHITECTURE.md). Compact mode issues no details request at all.
+- Settings: `screenScraperSsid` / `screenScraperSsPassword` / `screenScraperDevId` / `screenScraperDevPassword`, write-only across the API boundary exactly like the archive.org credentials (`…Configured: boolean` projection, never logged); `descriptionLanguage: 'fr' | 'en'` (default `fr`).
+- Migration 003: `game_details` gains `year`, `genre`, `publisher`, `description_fr`, `description_en`, `info_fetched_at` — the info cache is independent from the boxart probe cache (`NULL info_fetched_at` = never asked).
+- `services/game-details/screenscraper.ts`: `jeuInfos.php` lookup by CRC32 of the game's **largest** ROM (the `.bin`, not the `.cue`, for disc games). Both `fr` and `en` synopses are stored on every fetch, so switching the language setting never re-fetches. Throttled ~1 req/s; on quota exhaustion stop probing and serve what's cached — a quota failure is never cached as a miss.
+- `/games/details` response gains `year` / `genre` / `publisher` / `description`, the description resolved server-side from the language setting.
+- Detailed row layout in `GameRow`; settings page section for the ScreenScraper account and the language.
+
+### Acceptance criteria
+
+- [ ] The three display modes render correctly and the choice survives a reload; compact mode issues no details request.
+- [ ] With a configured ScreenScraper account, a known game shows description (fr), year and genre in detailed mode; the data is served from SQLite on the next page visit and after a server restart.
+- [ ] Switching the language setting fr↔en changes the displayed descriptions without any new ScreenScraper request.
+- [ ] Exhausted quota or ScreenScraper downtime degrades gracefully: the page renders with whatever is cached and nothing gets negatively cached.
+- [ ] Credentials are write-only: absent from `/api/settings` responses and from logs.
 
 ---
 
