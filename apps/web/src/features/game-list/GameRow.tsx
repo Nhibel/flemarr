@@ -1,6 +1,12 @@
 import { css } from '@/styled-system/css';
 import type { Game } from '@shared/dat.js';
+import type { GameDetails } from '@shared/game-details.js';
 import type { DisplayMode } from './use-display-mode.js';
+
+/** "1989 · Puzzle · Nintendo" from whichever fields the provider knew. */
+function metaLine(info: GameDetails | undefined): string {
+  return [info?.year, info?.genre, info?.publisher].filter((v) => v != null).join(' · ');
+}
 
 function formatSize(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
@@ -20,6 +26,8 @@ interface Props {
   onToggle: (id: string) => void;
   /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
   boxartSrc?: string;
+  /** Provider details for the detailed mode (description, year, genre…). */
+  info?: GameDetails;
   mode?: DisplayMode;
   style?: React.CSSProperties;
 }
@@ -30,6 +38,7 @@ export function GameRow({
   isFocused,
   onToggle,
   boxartSrc,
+  info,
   mode = 'normal',
   style,
 }: Props) {
@@ -103,14 +112,30 @@ export function GameRow({
         ))}
 
       {mode === 'detailed' ? (
-        <span className={css({ flex: 1, minW: 0, display: 'flex', flexDirection: 'column' })}>
+        <span
+          className={css({
+            flex: 1,
+            minW: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5',
+          })}
+        >
           <span className={css({ fontSize: 'sm', fontWeight: 'medium', truncate: true })}>
             {game.name}
           </span>
-          {/* Description / year / genre land here with the ScreenScraper provider */}
-          <span className={css({ fontSize: 'xs', color: 'fg.faint', fontStyle: 'italic' })}>
-            No details yet
-          </span>
+          {metaLine(info) !== '' && (
+            <span className={css({ fontSize: 'xs', color: 'fg.muted' })}>{metaLine(info)}</span>
+          )}
+          {info?.description != null ? (
+            <span className={css({ fontSize: 'xs', color: 'fg.faint', lineClamp: '3' })}>
+              {info.description}
+            </span>
+          ) : (
+            <span className={css({ fontSize: 'xs', color: 'fg.faint', fontStyle: 'italic' })}>
+              Pas de descriptif
+            </span>
+          )}
         </span>
       ) : (
         <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>

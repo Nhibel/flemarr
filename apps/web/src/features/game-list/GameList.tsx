@@ -170,6 +170,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               isFocused={resolvedFocus === i}
               onToggle={onToggle}
               mode={mode}
+              info={details?.get(game.id)}
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
               }

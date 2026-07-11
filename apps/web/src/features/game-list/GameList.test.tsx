@@ -160,8 +160,35 @@ describe('GameList', () => {
     renderList(GAMES);
     await userEvent.click(screen.getByRole('button', { name: 'Detailed' }));
     expect(localStorage.getItem('rom-curator.display-mode')).toBe('detailed');
-    expect(screen.getAllByText('No details yet').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pas de descriptif').length).toBeGreaterThan(0);
     localStorage.removeItem('rom-curator.display-mode');
+  });
+
+  it('detailed mode shows description, year, genre and publisher when known', async () => {
+    localStorage.setItem('rom-curator.display-mode', 'detailed');
+    fetchGameDetailsMock.mockResolvedValue({
+      details: [
+        {
+          gameId: 'a',
+          hasBoxart: false,
+          description: 'Des blocs tombent.',
+          year: 1989,
+          genre: 'Puzzle',
+          publisher: 'Nintendo',
+        },
+      ],
+    });
+    try {
+      renderList(GAMES);
+      await waitFor(() => {
+        expect(screen.getByText('Des blocs tombent.')).toBeInTheDocument();
+        expect(screen.getByText('1989 · Puzzle · Nintendo')).toBeInTheDocument();
+      });
+      // games without info keep the placeholder
+      expect(screen.getAllByText('Pas de descriptif')).toHaveLength(2);
+    } finally {
+      localStorage.removeItem('rom-curator.display-mode');
+    }
   });
 
   it('requests details for the displayed page and shows boxarts', async () => {
