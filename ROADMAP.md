@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–7 are done and in daily use. Phase 8 (Dockerize) is next; phase 9 (Myrient as a download source) is queued behind it.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a download source) is next.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -211,9 +211,17 @@ Package everything into a single Docker image deployable to the homelab.
 
 ### Acceptance criteria
 
-- [ ] `docker compose up` brings the app up on a single port, ready to use.
-- [ ] The image is under 250 MB.
-- [ ] No build tools or source code ship in the runtime image.
+- [x] `docker compose up` brings the app up on a single port, ready to use.
+- [x] The image is under 250 MB.
+- [x] No build tools or source code ship in the runtime image.
+
+### Shipped notes
+
+Built and deployed early July 2026 (42256ca…7328c6d), running on the homelab via Portainer since. Deviations and additions vs the plan above:
+
+- `pull_policy: build` in compose so Portainer builds the image locally instead of trying to pull it from a registry.
+- The library is mounted through a single `ROMS_ROOT` boundary (`ROMS_HOST_DIR` on the host side) rather than one bind mount per ROM directory; directory browsing and fs-safety are confined to it.
+- Startup banner logs the resolved config (port, ROM root, data dir, web root) for `docker logs` / Portainer.
 
 ---
 
