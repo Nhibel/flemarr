@@ -3,8 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { GameRow } from './GameRow.js';
 import { usePagination } from './use-pagination.js';
+import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
+
+const MODE_LABELS = { compact: 'Compact', normal: 'Normal', detailed: 'Detailed' } as const;
 
 interface Props {
   datId: string;
@@ -29,11 +32,13 @@ const pageBtnClass = css({
 export function GameList({ datId, games, selected, onToggle }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [mode, setMode] = useDisplayMode();
   const { pageItems, page, pageCount, start, total, next, prev } = usePagination(games);
 
   // Details for the displayed page only. The backend caches per game in
   // SQLite, so a page is cheap after its first visit; staleTime Infinity
-  // because the answer never changes within a session.
+  // because the answer never changes within a session. Compact mode shows
+  // no details at all, so it doesn't ask for any.
   const pageIds = pageItems.map((g) => g.id);
   const { data: details } = useQuery({
     queryKey: ['game-details', datId, pageIds],
@@ -41,7 +46,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
       const res = await fetchGameDetails(datId, pageIds);
       return new Map(res.details.map((d) => [d.gameId, d]));
     },
-    enabled: pageIds.length > 0,
+    enabled: pageIds.length > 0 && mode !== 'compact',
     staleTime: Infinity,
   });
 
@@ -107,6 +112,38 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
   return (
     <>
       <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '1',
+          mb: '2',
+        })}
+      >
+        {DISPLAY_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            className={css({
+              px: '2',
+              py: '0.5',
+              fontSize: 'xs',
+              border: '1px solid',
+              borderRadius: 'md',
+              cursor: 'pointer',
+              bg: mode === m ? 'blue.500' : 'bg.page',
+              color: mode === m ? 'white' : 'fg.muted',
+              borderColor: mode === m ? 'blue.500' : 'bd.strong',
+              _hover: { borderColor: 'blue.400' },
+            })}
+          >
+            {MODE_LABELS[m]}
+          </button>
+        ))}
+      </div>
+
+      <div
         role="listbox"
         aria-label="Game list"
         tabIndex={0}
@@ -132,6 +169,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               isSelected={selected.has(game.id)}
               isFocused={resolvedFocus === i}
               onToggle={onToggle}
+              mode={mode}
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
               }

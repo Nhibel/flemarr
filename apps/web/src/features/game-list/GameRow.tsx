@@ -1,5 +1,6 @@
 import { css } from '@/styled-system/css';
 import type { Game } from '@shared/dat.js';
+import type { DisplayMode } from './use-display-mode.js';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
@@ -19,10 +20,21 @@ interface Props {
   onToggle: (id: string) => void;
   /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
   boxartSrc?: string;
+  mode?: DisplayMode;
   style?: React.CSSProperties;
 }
 
-export function GameRow({ game, isSelected, isFocused, onToggle, boxartSrc, style }: Props) {
+export function GameRow({
+  game,
+  isSelected,
+  isFocused,
+  onToggle,
+  boxartSrc,
+  mode = 'normal',
+  style,
+}: Props) {
+  // Boxart slot size per mode; compact has no slot at all.
+  const artSize = mode === 'detailed' ? '20' : '10';
   return (
     <div
       role="option"
@@ -56,40 +68,53 @@ export function GameRow({ game, isSelected, isFocused, onToggle, boxartSrc, styl
         className={css({ flexShrink: 0, cursor: 'pointer' })}
       />
 
-      {boxartSrc ? (
-        <img
-          src={boxartSrc}
-          alt=""
-          loading="lazy"
-          className={css({
-            w: '10',
-            h: '10',
-            objectFit: 'contain',
-            flexShrink: 0,
-            borderRadius: 'sm',
-          })}
-        />
-      ) : (
-        <span
-          aria-hidden
-          className={css({
-            w: '10',
-            h: '10',
-            flexShrink: 0,
-            borderRadius: 'sm',
-            bg: 'bg.muted',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'fg.faint',
-            fontSize: 'xs',
-          })}
-        >
-          ?
-        </span>
-      )}
+      {mode !== 'compact' &&
+        (boxartSrc ? (
+          <img
+            src={boxartSrc}
+            alt=""
+            loading="lazy"
+            className={css({
+              w: artSize,
+              h: artSize,
+              objectFit: 'contain',
+              flexShrink: 0,
+              borderRadius: 'sm',
+            })}
+          />
+        ) : (
+          <span
+            aria-hidden
+            className={css({
+              w: artSize,
+              h: artSize,
+              flexShrink: 0,
+              borderRadius: 'sm',
+              bg: 'bg.muted',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'fg.faint',
+              fontSize: 'xs',
+            })}
+          >
+            ?
+          </span>
+        ))}
 
-      <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
+      {mode === 'detailed' ? (
+        <span className={css({ flex: 1, minW: 0, display: 'flex', flexDirection: 'column' })}>
+          <span className={css({ fontSize: 'sm', fontWeight: 'medium', truncate: true })}>
+            {game.name}
+          </span>
+          {/* Description / year / genre land here with the ScreenScraper provider */}
+          <span className={css({ fontSize: 'xs', color: 'fg.faint', fontStyle: 'italic' })}>
+            No details yet
+          </span>
+        </span>
+      ) : (
+        <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
+      )}
 
       <span className={css({ display: 'flex', gap: '1', flexShrink: 0 })}>
         {game.region.map((r) => (

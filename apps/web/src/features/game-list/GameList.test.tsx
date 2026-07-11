@@ -139,6 +139,31 @@ describe('GameList', () => {
     expect(screen.getByText(/1–50 of 60/)).toBeInTheDocument();
   });
 
+  it('compact mode issues no details request and hides boxart slots', async () => {
+    localStorage.setItem('rom-curator.display-mode', 'compact');
+    try {
+      const { container } = renderList(GAMES);
+      expect(screen.getByRole('button', { name: 'Compact' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      // no fetch, no boxart slot at all in compact rows
+      await new Promise((r) => setTimeout(r, 50));
+      expect(fetchGameDetailsMock).not.toHaveBeenCalled();
+      expect(container.querySelector('img')).toBeNull();
+    } finally {
+      localStorage.removeItem('rom-curator.display-mode');
+    }
+  });
+
+  it('switching modes persists and re-enables the details query', async () => {
+    renderList(GAMES);
+    await userEvent.click(screen.getByRole('button', { name: 'Detailed' }));
+    expect(localStorage.getItem('rom-curator.display-mode')).toBe('detailed');
+    expect(screen.getAllByText('No details yet').length).toBeGreaterThan(0);
+    localStorage.removeItem('rom-curator.display-mode');
+  });
+
   it('requests details for the displayed page and shows boxarts', async () => {
     fetchGameDetailsMock.mockResolvedValue({
       details: [
