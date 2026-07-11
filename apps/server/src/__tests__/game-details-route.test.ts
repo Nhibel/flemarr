@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Hono } from 'hono';
 import { datsRoute } from '../routes/dats.js';
 import { gameDetailsRoute } from '../routes/game-details.js';
+import { updateSettings } from '../services/settings/index.js';
+import { resetScreenScraperState } from '../services/game-details/screenscraper.js';
 
 function makeApp() {
   const app = new Hono();
@@ -10,10 +12,14 @@ function makeApp() {
   return app;
 }
 
-const DAT_XML = `<?xml version="1.0"?>
+// addDat re-uses the dat id for a given system+source, and game ids are
+// content hashes — two uploads of the same system share the game_details
+// cache. Tests that must not see each other's cache use distinct systems.
+function datXml(system: string): string {
+  return `<?xml version="1.0"?>
 <datafile>
   <header>
-    <name>Nintendo - Game Boy (Retool)</name>
+    <name>${system}</name>
     <url>https://www.no-intro.org</url>
   </header>
   <game name="Tetris (World) (Rev 1)">
@@ -25,6 +31,7 @@ const DAT_XML = `<?xml version="1.0"?>
     <rom name="Unknown Homebrew (World).gb" size="32768" crc="ddccbbaa"/>
   </game>
 </datafile>`;
+}
 
 const fetchMock = vi.fn();
 
@@ -37,8 +44,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function uploadDat(app: Hono): Promise<{ datId: string; gameIds: string[] }> {
-  const upload = await app.request('/api/dats', { method: 'POST', body: DAT_XML });
+async function uploadDat(
+  app: Hono,
+  system = 'Nintendo - Game Boy (Retool)',
+): Promise<{ datId: string; gameIds: string[] }> {
+  const upload = await app.request('/api/dats', { method: 'POST', body: datXml(system) });
   const { id } = (await upload.json()) as { id: string };
   const games = await app.request(`/api/dats/${id}/games`);
   const body = (await games.json()) as { games: Array<{ id: string; name: string }> };
@@ -146,5 +156,158 @@ describe('GET /api/dats/:id/games/:gameId/boxart', () => {
     const { datId } = await uploadDat(app);
     const res = await app.request(`/api/dats/${datId}/games/whatever/boxart`);
     expect(res.status).toBe(404);
+  });
+});
+
+describe('ScreenScraper integration', () => {
+  const SS_CREDS = {
+    screenScraperSsid: 'user',
+    screenScraperSsPassword: 'up',
+    screenScraperDevId: 'dev',
+    screenScraperDevPassword: 'dp',
+  };
+  const SS_RESPONSE = {
+    response: {
+      jeu: {
+        synopsis: [
+          { langue: 'fr', text: 'Des blocs tombent.' },
+          { langue: 'en', text: 'Blocks fall.' },
+        ],
+        dates: [{ region: 'wor', text: '1989' }],
+        genres: [{ noms: [{ langue: 'en', text: 'Puzzle' }] }],
+        editeur: { text: 'Nintendo' },
+      },
+    },
+  };
+
+  function mockBothProviders(ssCalls: { count: number }) {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('screenscraper')) {
+        ssCalls.count++;
+        return Promise.resolve(new Response(JSON.stringify(SS_RESPONSE), { status: 200 }));
+      }
+      // libretro HEAD probes
+      expect(init?.method).toBe('HEAD');
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+  }
+
+  beforeEach(() => {
+    process.env['SCREENSCRAPER_INTERVAL_MS'] = '0';
+    resetScreenScraperState();
+    updateSettings(SS_CREDS);
+  });
+
+  afterEach(() => {
+    updateSettings({
+      screenScraperSsid: '',
+      screenScraperSsPassword: '',
+      screenScraperDevId: '',
+      screenScraperDevPassword: '',
+      descriptionLanguage: 'fr',
+    });
+    delete process.env['SCREENSCRAPER_INTERVAL_MS'];
+  });
+
+  it('fills description/year/genre from ScreenScraper and caches them', async () => {
+    const app = makeApp();
+    const { datId, gameIds } = await uploadDat(app);
+    const ssCalls = { count: 0 };
+    mockBothProviders(ssCalls);
+
+    const res = await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    const { details } = (await res.json()) as {
+      details: Array<{ description?: string; year?: number; genre?: string; publisher?: string }>;
+    };
+    expect(details[0]?.description).toBe('Des blocs tombent.'); // fr default
+    expect(details[0]?.year).toBe(1989);
+    expect(details[0]?.genre).toBe('Puzzle');
+    expect(details[0]?.publisher).toBe('Nintendo');
+    expect(ssCalls.count).toBe(2); // one per game
+
+    // second visit: everything from SQLite
+    await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    expect(ssCalls.count).toBe(2);
+  });
+
+  it('switching the language serves the other stored synopsis without a new fetch', async () => {
+    const app = makeApp();
+    const { datId, gameIds } = await uploadDat(app, 'Nintendo - Game Boy Color (Retool)');
+    const ssCalls = { count: 0 };
+    mockBothProviders(ssCalls);
+
+    await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    const before = ssCalls.count;
+
+    updateSettings({ descriptionLanguage: 'en' });
+    const res = await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    const { details } = (await res.json()) as { details: Array<{ description?: string }> };
+    expect(details[0]?.description).toBe('Blocks fall.');
+    expect(ssCalls.count).toBe(before);
+  });
+
+  it('a quota error caches nothing and stops asking for the rest of the page', async () => {
+    const app = makeApp();
+    const { datId, gameIds } = await uploadDat(app, 'Nintendo - Virtual Boy (Retool)');
+    const ssCalls = { count: 0 };
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('screenscraper')) {
+        ssCalls.count++;
+        return Promise.resolve(new Response('quota dépassé', { status: 430 }));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    const res = await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    expect(res.status).toBe(200);
+    const { details } = (await res.json()) as { details: Array<{ description?: string }> };
+    expect(details[0]?.description).toBeUndefined();
+    expect(ssCalls.count).toBe(1); // stopped after the first quota hit
+
+    // nothing was cached as a miss: once unblocked, it asks again
+    resetScreenScraperState();
+    mockBothProviders(ssCalls);
+    const retry = await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds: [gameIds[0]] }),
+    });
+    const retryBody = (await retry.json()) as { details: Array<{ description?: string }> };
+    expect(retryBody.details[0]?.description).toBe('Des blocs tombent.');
+  });
+
+  it('makes no ScreenScraper request when credentials are not configured', async () => {
+    updateSettings({ screenScraperSsid: '' });
+    const app = makeApp();
+    const { datId, gameIds } = await uploadDat(app, 'Nintendo - Pokemon Mini (Retool)');
+    const ssCalls = { count: 0 };
+    mockBothProviders(ssCalls);
+
+    await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds }),
+    });
+    expect(ssCalls.count).toBe(0);
   });
 });
