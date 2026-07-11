@@ -1,10 +1,8 @@
-import { useRef, useState, useCallback } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { css } from '@/styled-system/css';
 import { GameRow } from './GameRow.js';
+import { usePagination } from './use-pagination.js';
 import type { Game } from '@shared/dat.js';
-
-const ROW_HEIGHT = 44;
 
 interface Props {
   games: Game[];
@@ -12,39 +10,74 @@ interface Props {
   onToggle: (id: string) => void;
 }
 
+const pageBtnClass = css({
+  px: '3',
+  py: '1',
+  fontSize: 'sm',
+  border: '1px solid',
+  borderColor: 'bd.default',
+  borderRadius: 'md',
+  cursor: 'pointer',
+  bg: 'bg.page',
+  _hover: { bg: 'bg.surface' },
+  _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.page' } },
+});
+
 export function GameList({ games, selected, onToggle }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const { pageItems, page, pageCount, start, total, next, prev } = usePagination(games);
 
-  const virtualizer = useVirtualizer({
-    count: games.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 10,
-  });
+  // -2 is "focus the last row once the previous page rendered": its length
+  // isn't knowable at the time of the ArrowUp keydown that crossed the page.
+  const resolvedFocus = focusedIndex === -2 ? pageItems.length - 1 : focusedIndex;
 
+  // Arrow keys move within the page and cross page boundaries at its edges,
+  // so keyboard users can still walk the whole list like before pagination.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (games.length === 0) return;
+      if (pageItems.length === 0) return;
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const next = Math.min(focusedIndex + 1, games.length - 1);
-        setFocusedIndex(next);
-        virtualizer.scrollToIndex(next, { align: 'auto' });
+        if (resolvedFocus >= pageItems.length - 1) {
+          if (page < pageCount - 1) {
+            next();
+            setFocusedIndex(0);
+          }
+        } else {
+          setFocusedIndex(resolvedFocus + 1);
+        }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const next = Math.max(focusedIndex - 1, 0);
-        setFocusedIndex(next);
-        virtualizer.scrollToIndex(next, { align: 'auto' });
-      } else if (e.key === ' ' && focusedIndex >= 0) {
+        if (resolvedFocus <= 0) {
+          if (page > 0) {
+            prev();
+            setFocusedIndex(-2);
+          }
+        } else {
+          setFocusedIndex(resolvedFocus - 1);
+        }
+      } else if (e.key === ' ' && resolvedFocus >= 0) {
         e.preventDefault();
-        const game = games[focusedIndex];
+        const game = pageItems[resolvedFocus];
         if (game) onToggle(game.id);
       }
     },
-    [games, focusedIndex, onToggle, virtualizer],
+    [pageItems, resolvedFocus, page, pageCount, next, prev, onToggle],
   );
+
+  useEffect(() => {
+    if (resolvedFocus < 0) return;
+    const el = listRef.current?.children[resolvedFocus];
+    if (el instanceof HTMLElement) el.scrollIntoView?.({ block: 'nearest' });
+  }, [resolvedFocus, page]);
+
+  function goToPage(dir: 'next' | 'prev') {
+    (dir === 'next' ? next : prev)();
+    setFocusedIndex(-1);
+    listRef.current?.parentElement?.scrollTo?.({ top: 0 });
+  }
 
   if (games.length === 0) {
     return (
@@ -55,48 +88,72 @@ export function GameList({ games, selected, onToggle }: Props) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      role="listbox"
-      aria-label="Game list"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onFocus={() => {
-        if (focusedIndex < 0 && games.length > 0) setFocusedIndex(0);
-      }}
-      className={css({
-        height: '600px',
-        overflowY: 'auto',
-        border: '1px solid',
-        borderColor: 'bd.default',
-        borderRadius: 'md',
-        outline: 'none',
-        _focusVisible: { ring: '2px', ringColor: 'blue.300', ringOffset: '2px' },
-      })}
-    >
-      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-        {virtualizer.getVirtualItems().map((item) => {
-          const game = games[item.index];
-          if (!game) return null;
-          return (
+    <>
+      <div
+        role="listbox"
+        aria-label="Game list"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onFocus={() => {
+          if (resolvedFocus < 0 && pageItems.length > 0) setFocusedIndex(0);
+        }}
+        className={css({
+          maxHeight: '600px',
+          overflowY: 'auto',
+          border: '1px solid',
+          borderColor: 'bd.default',
+          borderRadius: 'md',
+          outline: 'none',
+          _focusVisible: { ring: '2px', ringColor: 'blue.300', ringOffset: '2px' },
+        })}
+      >
+        <div ref={listRef}>
+          {pageItems.map((game, i) => (
             <GameRow
               key={game.id}
               game={game}
               isSelected={selected.has(game.id)}
-              isFocused={focusedIndex === item.index}
+              isFocused={resolvedFocus === i}
               onToggle={onToggle}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${item.size}px`,
-                transform: `translateY(${item.start}px)`,
-              }}
             />
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </div>
+
+      {pageCount > 1 && (
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4',
+            mt: '2',
+            fontSize: 'sm',
+            color: 'fg.muted',
+          })}
+        >
+          <button
+            type="button"
+            className={pageBtnClass}
+            disabled={page === 0}
+            onClick={() => goToPage('prev')}
+          >
+            ‹ Prev
+          </button>
+          <span>
+            {start + 1}–{Math.min(start + pageItems.length, total)} of {total}
+            {' · '}page {page + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            className={pageBtnClass}
+            disabled={page >= pageCount - 1}
+            onClick={() => goToPage('next')}
+          >
+            Next ›
+          </button>
+        </div>
+      )}
+    </>
   );
 }

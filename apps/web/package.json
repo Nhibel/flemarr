@@ -14,7 +14,6 @@
   "dependencies": {
     "@rom-curator/shared": "workspace:*",
     "@tanstack/react-query": "^5.50.0",
-    "@tanstack/react-virtual": "^3.14.5",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

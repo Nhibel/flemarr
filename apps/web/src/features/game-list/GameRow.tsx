@@ -17,7 +17,7 @@ interface Props {
   isSelected: boolean;
   isFocused: boolean;
   onToggle: (id: string) => void;
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
 }
 
 export function GameRow({ game, isSelected, isFocused, onToggle, style }: Props) {
