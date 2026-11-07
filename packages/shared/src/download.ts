@@ -11,12 +11,22 @@ const downloadItemSchema = z.object({
   // collections) — the downloader extracts the single entry before validating.
   extractFromZip: z.boolean().default(false),
 });
-export const downloadRequestSchema = z.object({
-  datId: z.string().min(1),
-  items: z.array(downloadItemSchema).min(1),
-  destinationDir: z.string().min(1),
-});
+export const downloadRequestSchema = z
+  .object({
+    datId: z.string().min(1),
+    items: z.array(downloadItemSchema).min(1),
+    // 'server' places validated files under destinationDir (a configured
+    // library root); 'browser' stages them for the client to save locally —
+    // destinationDir is meaningless there, since nothing lands on this host.
+    target: z.enum(['server', 'browser']).default('server'),
+    destinationDir: z.string().min(1).optional(),
+  })
+  .refine((v) => v.target === 'browser' || v.destinationDir !== undefined, {
+    message: 'destinationDir is required when target is "server"',
+    path: ['destinationDir'],
+  });
 export type DownloadRequest = z.infer<typeof downloadRequestSchema>;
+export type DownloadTarget = DownloadRequest['target'];
 
 export const downloadJobSchema = z.object({
   jobId: z.string(),
@@ -36,6 +46,13 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
     type: z.literal('file-done'),
     gameId: z.string(),
     romName: z.string(),
+  }),
+  z.object({
+    type: z.literal('file-ready'),
+    gameId: z.string(),
+    romName: z.string(),
+    // Relative API URL the browser fetches to save the already-validated file.
+    downloadUrl: z.string(),
   }),
   z.object({
     type: z.literal('file-failed'),

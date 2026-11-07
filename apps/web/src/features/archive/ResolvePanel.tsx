@@ -28,6 +28,7 @@ export function ResolvePanel({
   const [error, setError] = useState<string | null>(null);
   const [excludeOwned, setExcludeOwned] = useState(true);
   const [queuing, setQueuing] = useState(false);
+  const [queuingToBrowser, setQueuingToBrowser] = useState(false);
 
   const { data: sourcesData } = useQuery({
     queryKey: ['archive-sources', system],
@@ -64,12 +65,12 @@ export function ResolvePanel({
     }
   }, [datId, effectiveGameIds]);
 
-  const handleDownload = useCallback(async () => {
-    if (!result || !destinationDir) return;
-    // One download item per resolved ROM — multi-disc games queue every disc.
-    // The preferred (first) source decides the extraction mode; fallback URLs
-    // are limited to sources of the same kind so extraction stays consistent.
-    const items = result.results.flatMap((r) =>
+  // One download item per resolved ROM — multi-disc games queue every disc.
+  // The preferred (first) source decides the extraction mode; fallback URLs
+  // are limited to sources of the same kind so extraction stays consistent.
+  const buildItems = useCallback(() => {
+    if (!result) return [];
+    return result.results.flatMap((r) =>
       r.roms
         .filter((rom) => rom.sources.length > 0)
         .map((rom) => {
@@ -86,17 +87,36 @@ export function ResolvePanel({
           };
         }),
     );
+  }, [result]);
+
+  const handleDownload = useCallback(async () => {
+    if (!destinationDir) return;
+    const items = buildItems();
     if (items.length === 0) return;
     setQueuing(true);
     try {
-      const jobId = await startDownload({ datId, items, destinationDir });
-      onQueueDownload({ jobId, items, destinationDir });
+      const jobId = await startDownload({ datId, items, target: 'server', destinationDir });
+      onQueueDownload({ jobId, items, target: 'server', destinationDir });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur au lancement');
     } finally {
       setQueuing(false);
     }
-  }, [result, datId, destinationDir, onQueueDownload]);
+  }, [buildItems, datId, destinationDir, onQueueDownload]);
+
+  const handleDownloadToBrowser = useCallback(async () => {
+    const items = buildItems();
+    if (items.length === 0) return;
+    setQueuingToBrowser(true);
+    try {
+      const jobId = await startDownload({ datId, items, target: 'browser' });
+      onQueueDownload({ jobId, items, target: 'browser' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur au lancement');
+    } finally {
+      setQueuingToBrowser(false);
+    }
+  }, [buildItems, datId, onQueueDownload]);
 
   return (
     <section>
@@ -241,6 +261,25 @@ export function ResolvePanel({
                 {queuing
                   ? 'Lancement…'
                   : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
+              </button>
+              <button
+                onClick={() => void handleDownloadToBrowser()}
+                disabled={queuingToBrowser}
+                className={css({
+                  px: '3',
+                  py: '1.5',
+                  fontSize: 'sm',
+                  fontWeight: 'medium',
+                  flexShrink: 0,
+                  bg: 'blue.500',
+                  color: 'white',
+                  borderRadius: 'md',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.600' },
+                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                })}
+              >
+                {queuingToBrowser ? 'Lancement…' : 'Télécharger sur mon PC'}
               </button>
               {destinationDir && (
                 <span

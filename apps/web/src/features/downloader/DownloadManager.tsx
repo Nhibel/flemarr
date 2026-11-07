@@ -8,7 +8,8 @@ import { useRomsRoot } from '@/lib/use-roms-root.js';
 export interface QueuedDownload {
   jobId: string;
   items: { gameId: string; romName: string }[];
-  destinationDir: string;
+  target: 'server' | 'browser';
+  destinationDir?: string;
 }
 
 interface ItemState {
@@ -21,9 +22,20 @@ interface ItemState {
 
 interface JobState {
   jobId: string;
-  destinationDir: string;
+  target: 'server' | 'browser';
+  destinationDir?: string;
   status: 'running' | 'done' | 'cancelled' | 'error';
   items: ItemState[];
+}
+
+/** Triggers the browser's native save for an already-validated file. */
+function triggerBrowserSave(url: string, filename: string): void {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 interface Props {
@@ -40,6 +52,7 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
       const next = new Map(prev);
       next.set(queued.jobId, {
         jobId: queued.jobId,
+        target: queued.target,
         destinationDir: queued.destinationDir,
         status: 'running',
         items: queued.items.map((i) => ({
@@ -81,7 +94,7 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
                 : 0,
           };
         }
-      } else if (event.type === 'file-done') {
+      } else if (event.type === 'file-done' || event.type === 'file-ready') {
         const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items[idx] = { ...items[idx]!, status: 'done', progress: 100 };
       } else if (event.type === 'file-failed') {
@@ -116,6 +129,9 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
       es.onmessage = (e) => {
         const parsed = downloadEventSchema.safeParse(JSON.parse(e.data as string) as unknown);
         if (!parsed.success) return;
+        if (parsed.data.type === 'file-ready') {
+          triggerBrowserSave(parsed.data.downloadUrl, parsed.data.romName);
+        }
         applyEvent(queued.jobId, parsed.data);
         if (
           parsed.data.type === 'complete' ||
@@ -231,7 +247,10 @@ function JobCard({ state }: { state: JobState }) {
               truncate: true,
             })}
           >
-            → {displayPath(state.destinationDir, romsRoot)}
+            →{' '}
+            {state.target === 'browser'
+              ? 'Mon navigateur'
+              : displayPath(state.destinationDir ?? '', romsRoot)}
           </p>
           <p className={css({ fontSize: 'sm', fontWeight: 'medium', color: statusColor })}>
             {statusLabel}

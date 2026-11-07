@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { rename, rm } from 'node:fs/promises';
 import { join, basename } from 'node:path';
+import { tmpdir } from 'node:os';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { libraryRoots } from '@/lib/library-root.js';
@@ -8,8 +9,11 @@ import { downloadFile } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
 import { logger } from '@/lib/logger.js';
-import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
+import type { DownloadRequest, DownloadEvent, DownloadTarget } from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
+// Browser-target files are staged here (outside any library root — they
+// never get placed, only served once and then deleted).
+const BROWSER_STAGING_DIR = join(tmpdir(), 'rom-curator-browser-dl');
 
 interface DownloadItemState {
   gameId: string;
@@ -23,6 +27,7 @@ interface DownloadItemState {
 
 export interface DownloadJobState {
   status: 'running' | 'cancelled' | 'done';
+  target: DownloadTarget;
   items: DownloadItemState[];
   events: DownloadEvent[];
   controller: AbortController;
@@ -40,38 +45,61 @@ function evictOldJobs(): void {
   const cutoff = Date.now() - JOB_RETENTION_MS;
   for (const [id, job] of downloadJobs) {
     if (job.status !== 'running' && job.completedAt !== undefined && job.completedAt < cutoff) {
+      // Browser-target files that were never fetched by the client (tab
+      // closed, etc.) would otherwise leak in the OS temp dir forever.
+      if (job.target === 'browser') {
+        for (const item of job.items) {
+          if (item.status === 'done')
+            void rm(item.tempPath, { force: true }).catch(() => undefined);
+        }
+      }
       downloadJobs.delete(id);
     }
   }
 }
 
 export async function startDownload(request: DownloadRequest): Promise<string> {
-  const { datId, items, destinationDir } = request;
+  const { datId, items, target, destinationDir } = request;
 
-  // Configured roots only (ARCHITECTURE.md) — refuse destinations outside the
-  // library root (ROMS_ROOT) or, when unset, the configured system paths.
-  assertWithinConfiguredRoots(destinationDir, libraryRoots());
+  if (target === 'server') {
+    // Configured roots only (ARCHITECTURE.md) — refuse destinations outside
+    // the library root (ROMS_ROOT) or, when unset, the configured system paths.
+    assertWithinConfiguredRoots(destinationDir!, libraryRoots());
+  }
 
   evictOldJobs();
   const jobId = randomUUID();
   const controller = new AbortController();
 
+  const stagingDir =
+    target === 'browser' ? BROWSER_STAGING_DIR : join(destinationDir!, TEMP_DIR_NAME);
   const jobItems: DownloadItemState[] = items.map((item) => ({
     ...item,
     status: 'queued',
-    tempPath: join(destinationDir, TEMP_DIR_NAME, `${jobId}-${basename(item.romName)}`),
+    tempPath: join(stagingDir, `${jobId}-${basename(item.romName)}`),
   }));
 
   const events: DownloadEvent[] = [];
-  const job: DownloadJobState = { status: 'running', items: jobItems, events, controller };
+  const job: DownloadJobState = {
+    status: 'running',
+    target,
+    items: jobItems,
+    events,
+    controller,
+  };
   downloadJobs.set(jobId, job);
 
-  runQueue(jobId, datId, destinationDir).catch(() => undefined);
+  runQueue(jobId, datId, target, destinationDir).catch(() => undefined);
 
   return jobId;
 }
 
-async function runQueue(jobId: string, datId: string, destinationDir: string): Promise<void> {
+async function runQueue(
+  jobId: string,
+  datId: string,
+  target: DownloadTarget,
+  destinationDir: string | undefined,
+): Promise<void> {
   const job = downloadJobs.get(jobId);
   if (!job) return;
 
@@ -128,10 +156,32 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
       }
     }
 
-    if (result === 'done') {
+    if (result === 'done' && target === 'browser') {
+      // Stays at item.tempPath — the route streams it to the browser on
+      // request, then deletes it. Never placed anywhere on this host.
+      item.status = 'done';
+      logger.info({ romName: item.romName }, 'download ready for browser pickup');
+      job.events.push({
+        type: 'file-ready',
+        gameId: item.gameId,
+        romName: item.romName,
+        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
+      });
+      recordDownload({
+        gameId: item.gameId,
+        romName: item.romName,
+        datId,
+        destination: '<browser>',
+        expectedCrc: item.expectedCrc,
+        status: 'done',
+      });
+      return;
+    }
+
+    if (result === 'done' && target === 'server') {
       try {
-        const dest = join(destinationDir, item.romName);
-        assertWithinRoot(dest, destinationDir);
+        const dest = join(destinationDir!, item.romName);
+        assertWithinRoot(dest, destinationDir!);
         await rename(item.tempPath, dest);
         item.status = 'done';
         logger.info({ romName: item.romName, dest }, 'download done');
@@ -167,7 +217,7 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
       gameId: item.gameId,
       romName: item.romName,
       datId,
-      destination: join(destinationDir, item.romName),
+      destination: target === 'browser' ? '<browser>' : join(destinationDir!, item.romName),
       expectedCrc: item.expectedCrc,
       status: 'failed',
       errorMessage: reason,
@@ -195,6 +245,23 @@ async function runQueue(jobId: string, datId: string, destinationDir: string): P
     job.events.push({ type: 'complete' });
   }
   job.completedAt = Date.now();
+}
+
+/**
+ * Looks up a validated, browser-target file ready for the client to save.
+ * Returns its on-disk path and the canonical ROM filename, or null if the
+ * job/item doesn't exist, isn't browser-target, or isn't done yet.
+ */
+export function findBrowserFile(
+  jobId: string,
+  gameId: string,
+  romName: string,
+): { path: string; filename: string } | null {
+  const job = downloadJobs.get(jobId);
+  if (!job || job.target !== 'browser') return null;
+  const item = job.items.find((i) => i.gameId === gameId && i.romName === romName);
+  if (!item || item.status !== 'done') return null;
+  return { path: item.tempPath, filename: item.romName };
 }
 
 export async function cancelJob(jobId: string): Promise<boolean> {

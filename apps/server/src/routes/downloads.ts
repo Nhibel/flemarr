@@ -1,7 +1,15 @@
+import { createReadStream } from 'node:fs';
+import { unlink } from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { downloadRequestSchema } from '@shared/download.js';
-import { startDownload, cancelJob, downloadJobs } from '@/services/downloader/index.js';
+import {
+  startDownload,
+  cancelJob,
+  downloadJobs,
+  findBrowserFile,
+} from '@/services/downloader/index.js';
 import { PathTraversalError, NoRootsConfiguredError } from '@/lib/fs-safety.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
@@ -53,6 +61,30 @@ downloadsRoute.get('/downloads/:jobId/events', (c) => {
 
       await stream.sleep(100);
     }
+  });
+});
+
+// Serves a validated browser-target file exactly once, then deletes the
+// staged copy — nothing in this flow is meant to persist on the server.
+downloadsRoute.get('/downloads/:jobId/items/:gameId/:romName', async (c) => {
+  const jobId = c.req.param('jobId');
+  const gameId = c.req.param('gameId');
+  const romName = decodeURIComponent(c.req.param('romName'));
+
+  const file = findBrowserFile(jobId, gameId, romName);
+  if (!file) {
+    return errorJson(c, 404, 'NOT_FOUND', 'File not found or not ready');
+  }
+
+  const nodeStream = createReadStream(file.path);
+  nodeStream.on('close', () => {
+    void unlink(file.path).catch(() => undefined);
+  });
+
+  const asciiName = file.filename.replace(/[^\x20-\x7E]/g, '_');
+  return c.body(Readable.toWeb(nodeStream) as ReadableStream, 200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
   });
 });
 

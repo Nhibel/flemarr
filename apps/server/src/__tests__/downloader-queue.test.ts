@@ -34,7 +34,7 @@ afterEach(async () => {
 });
 
 function makeRequest(overrides: Partial<DownloadRequest> = {}): DownloadRequest {
-  return { datId: 'dat-001', items: [ITEM], destinationDir: TMP, ...overrides };
+  return { datId: 'dat-001', items: [ITEM], target: 'server', destinationDir: TMP, ...overrides };
 }
 
 describe('startDownload', () => {
@@ -186,6 +186,7 @@ describe('startDownload — multiple items with concurrency', () => {
         { ...ITEM, gameId: 'g2', romName: 'Game2.sfc' },
         { ...ITEM, gameId: 'g3', romName: 'Game3.sfc' },
       ],
+      target: 'server',
       destinationDir: TMP,
     };
 
