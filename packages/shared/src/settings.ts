@@ -21,6 +21,11 @@ export const settingsSchema = z.object({
   screenScraperDevPassword: z.string().default(''),
   // Language served for game descriptions (both are stored on every fetch).
   descriptionLanguage: z.enum(['fr', 'en']).default('fr'),
+  // Where resolved downloads go for the whole session — picked once here
+  // rather than per-download, since mixing targets in one session has no
+  // real use case (see ResolvePanel, which reads this instead of offering
+  // two buttons).
+  downloadTarget: z.enum(['server', 'browser']).default('server'),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -39,6 +44,7 @@ export const settingsResponseSchema = z.object({
   archiveOrgSessionConfigured: z.boolean(),
   screenScraperConfigured: z.boolean(),
   descriptionLanguage: z.enum(['fr', 'en']),
+  downloadTarget: z.enum(['server', 'browser']),
   // The library root (ROMS_ROOT) the UI confines directory browsing to, or
   // null when unset (local dev, browse anywhere).
   romsRoot: z.string().nullable(),

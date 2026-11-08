@@ -17,6 +17,7 @@ function readScalars(db: Database): {
   screenScraperDevId: string;
   screenScraperDevPassword: string;
   descriptionLanguage: string;
+  downloadTarget: string;
 } {
   const rows = db
     .prepare(
@@ -24,7 +25,7 @@ function readScalars(db: Database): {
        ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key',
         'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig',
         'screen_scraper_ssid', 'screen_scraper_ss_password', 'screen_scraper_dev_id',
-        'screen_scraper_dev_password', 'description_language')`,
+        'screen_scraper_dev_password', 'description_language', 'download_target')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -43,6 +44,7 @@ function readScalars(db: Database): {
     screenScraperDevId: map['screen_scraper_dev_id'] ?? '',
     screenScraperDevPassword: map['screen_scraper_dev_password'] ?? '',
     descriptionLanguage: map['description_language'] ?? DEFAULTS.descriptionLanguage,
+    downloadTarget: map['download_target'] ?? DEFAULTS.downloadTarget,
   };
 }
 
@@ -70,6 +72,7 @@ export function getSettings(db: Database = getDb()): Settings {
     screenScraperDevId: scalars.screenScraperDevId,
     screenScraperDevPassword: scalars.screenScraperDevPassword,
     descriptionLanguage: scalars.descriptionLanguage,
+    downloadTarget: scalars.downloadTarget,
   });
 }
 
@@ -90,6 +93,7 @@ export function toSettingsResponse(s: Settings, romsRoot: string | null): Settin
       s.screenScraperDevId !== '' &&
       s.screenScraperDevPassword !== '',
     descriptionLanguage: s.descriptionLanguage,
+    downloadTarget: s.downloadTarget,
     romsRoot,
   };
 }
@@ -131,6 +135,9 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.descriptionLanguage !== undefined) {
     upsert.run('description_language', patch.descriptionLanguage);
+  }
+  if (patch.downloadTarget !== undefined) {
+    upsert.run('download_target', patch.downloadTarget);
   }
   if (patch.systemPaths !== undefined) {
     const upsertPath = db.prepare(

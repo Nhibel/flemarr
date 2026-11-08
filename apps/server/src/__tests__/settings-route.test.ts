@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS: Settings = {
   screenScraperDevId: '',
   screenScraperDevPassword: '',
   descriptionLanguage: 'fr',
+  downloadTarget: 'server',
 };
 
 // What the route exposes: credentials collapsed to configured/not-configured.
@@ -42,6 +43,7 @@ const DEFAULT_RESPONSE: SettingsResponse = {
   archiveOrgSessionConfigured: false,
   screenScraperConfigured: false,
   descriptionLanguage: 'fr',
+  downloadTarget: 'server',
   romsRoot: null,
 };
 
@@ -158,6 +160,29 @@ describe('PATCH /api/settings', () => {
       descriptionLanguage: 'en',
       screenScraperSsid: 'camille',
     });
+  });
+
+  it('updates downloadTarget', async () => {
+    const updated = { ...DEFAULT_SETTINGS, downloadTarget: 'browser' as const };
+    vi.mocked(updateSettings).mockReturnValue(updated);
+    const res = await app.request('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ downloadTarget: 'browser' }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { downloadTarget: string };
+    expect(body.downloadTarget).toBe('browser');
+    expect(vi.mocked(updateSettings)).toHaveBeenCalledWith({ downloadTarget: 'browser' });
+  });
+
+  it('returns 400 for an unknown downloadTarget', async () => {
+    const res = await app.request('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ downloadTarget: 'cloud' }),
+    });
+    expect(res.status).toBe(400);
   });
 
   it('returns 400 for an unknown description language', async () => {

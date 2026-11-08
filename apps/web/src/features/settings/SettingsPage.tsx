@@ -7,6 +7,7 @@ import { ArchiveAccountSection } from './ArchiveAccountSection.js';
 import { ScreenScraperSection } from './ScreenScraperSection.js';
 import { ConcurrencySection } from './ConcurrencySection.js';
 import { SystemPathsSection } from './SystemPathsSection.js';
+import { DownloadTargetSection } from './DownloadTargetSection.js';
 
 interface Props {
   onClose: () => void;
@@ -95,6 +96,11 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
         onSave={mutation.mutate}
       />
       <ConcurrencySection
+        settings={settings}
+        saving={mutation.isPending}
+        onSave={mutation.mutate}
+      />
+      <DownloadTargetSection
         settings={settings}
         saving={mutation.isPending}
         onSave={mutation.mutate}

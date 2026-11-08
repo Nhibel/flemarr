@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { fetchSources, resolveGames, startDownload } from '@/lib/api.js';
+import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/api.js';
 import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
@@ -28,19 +28,25 @@ export function ResolvePanel({
   const [error, setError] = useState<string | null>(null);
   const [excludeOwned, setExcludeOwned] = useState(true);
   const [queuing, setQueuing] = useState(false);
-  const [queuingToBrowser, setQueuingToBrowser] = useState(false);
 
   const { data: sourcesData } = useQuery({
     queryKey: ['archive-sources', system],
     queryFn: () => fetchSources(system),
   });
 
-  // Downloads go into the system's folder, chosen once in SystemFolderBar.
+  // Picked once in Settings for the whole session — no reason to mix
+  // server and browser destinations across downloads (see DownloadTargetSection).
+  const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const downloadTarget = settingsData?.downloadTarget ?? 'server';
+
+  // The system's folder, chosen once in SystemFolderBar — the server
+  // download's actual destination, or (in browser mode) just the folder the
+  // scanner checks once the files are moved there by hand.
   const { folder: destinationDir, loaded: settingsLoaded } = useSystemFolder(system);
   const romsRoot = useRomsRoot();
 
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
-  const noFolder = settingsLoaded && destinationDir === '';
+  const noFolder = downloadTarget === 'server' && settingsLoaded && destinationDir === '';
 
   const effectiveGameIds =
     excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
@@ -90,33 +96,26 @@ export function ResolvePanel({
   }, [result]);
 
   const handleDownload = useCallback(async () => {
-    if (!destinationDir) return;
+    if (downloadTarget === 'server' && !destinationDir) return;
     const items = buildItems();
     if (items.length === 0) return;
     setQueuing(true);
     try {
-      const jobId = await startDownload({ datId, items, target: 'server', destinationDir });
-      onQueueDownload({ jobId, items, target: 'server', destinationDir });
+      const jobId =
+        downloadTarget === 'server'
+          ? await startDownload({ datId, items, target: 'server', destinationDir })
+          : await startDownload({ datId, items, target: 'browser' });
+      onQueueDownload(
+        downloadTarget === 'server'
+          ? { jobId, items, target: 'server', destinationDir }
+          : { jobId, items, target: 'browser' },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur au lancement');
     } finally {
       setQueuing(false);
     }
-  }, [buildItems, datId, destinationDir, onQueueDownload]);
-
-  const handleDownloadToBrowser = useCallback(async () => {
-    const items = buildItems();
-    if (items.length === 0) return;
-    setQueuingToBrowser(true);
-    try {
-      const jobId = await startDownload({ datId, items, target: 'browser' });
-      onQueueDownload({ jobId, items, target: 'browser' });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur au lancement');
-    } finally {
-      setQueuingToBrowser(false);
-    }
-  }, [buildItems, datId, onQueueDownload]);
+  }, [buildItems, datId, destinationDir, downloadTarget, onQueueDownload]);
 
   return (
     <section>
@@ -243,7 +242,7 @@ export function ResolvePanel({
             <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
               <button
                 onClick={() => void handleDownload()}
-                disabled={queuing || !destinationDir}
+                disabled={queuing || (downloadTarget === 'server' && !destinationDir)}
                 className={css({
                   px: '3',
                   py: '1.5',
@@ -262,38 +261,19 @@ export function ResolvePanel({
                   ? 'Lancement…'
                   : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
               </button>
-              <button
-                onClick={() => void handleDownloadToBrowser()}
-                disabled={queuingToBrowser}
+              <span
                 className={css({
-                  px: '3',
-                  py: '1.5',
                   fontSize: 'sm',
-                  fontWeight: 'medium',
-                  flexShrink: 0,
-                  bg: 'blue.500',
-                  color: 'white',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.600' },
-                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                  color: 'fg.faint',
+                  fontFamily: 'mono',
+                  minW: 0,
+                  truncate: true,
                 })}
               >
-                {queuingToBrowser ? 'Lancement…' : 'Télécharger sur mon PC'}
-              </button>
-              {destinationDir && (
-                <span
-                  className={css({
-                    fontSize: 'sm',
-                    color: 'fg.faint',
-                    fontFamily: 'mono',
-                    minW: 0,
-                    truncate: true,
-                  })}
-                >
-                  → {displayPath(destinationDir, romsRoot)}
-                </span>
-              )}
+                {downloadTarget === 'browser'
+                  ? '→ Mon navigateur'
+                  : destinationDir && `→ ${displayPath(destinationDir, romsRoot)}`}
+              </span>
             </div>
           )}
 
