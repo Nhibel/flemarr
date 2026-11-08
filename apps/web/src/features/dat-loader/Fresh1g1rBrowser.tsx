@@ -145,13 +145,13 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
       )}
 
       {listError instanceof Error && (
-        <p role="alert" className={css({ fontSize: 'sm', color: 'red.600' })}>
+        <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text' })}>
           {listError.message}
         </p>
       )}
 
       {loadError && (
-        <p role="alert" className={css({ fontSize: 'sm', color: 'red.600' })}>
+        <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text' })}>
           {loadError}
         </p>
       )}
@@ -203,17 +203,16 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                     py: '1',
                     fontSize: 'xs',
                     fontWeight: 'medium',
-                    bg: isLoaded ? 'green.50' : 'accent.solid',
-                    color: isLoaded ? 'green.700' : 'accent.fg',
+                    bg: isLoaded ? 'status.success.subtle' : 'accent.solid',
+                    color: isLoaded ? 'status.success.text' : 'accent.fg',
                     border: isLoaded ? '1px solid' : 'none',
-                    borderColor: 'green.200',
+                    borderColor: 'status.success.subtleBorder',
                     borderRadius: 'lg',
                     cursor: 'pointer',
                     flexShrink: 0,
                     transition: 'background-color 0.15s',
-                    _hover: { bg: isLoaded ? 'green.50' : 'accent.hover' },
+                    _hover: { bg: isLoaded ? 'status.success.subtle' : 'accent.hover' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                    _dark: isLoaded ? { bg: 'green.900', borderColor: 'green.700' } : undefined,
                   })}
                 >
                   {isLoading ? 'Chargement…' : isLoaded ? '✓ Chargé' : 'Charger'}

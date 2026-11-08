@@ -75,7 +75,7 @@ export function DatUpload({ onSuccess }: Props) {
       </p>
 
       {mutation.isError && (
-        <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+        <p role="alert" className={css({ color: 'status.danger.text', fontSize: 'sm' })}>
           {mutation.error instanceof Error ? mutation.error.message : 'Échec de l’import'}
         </p>
       )}

@@ -77,11 +77,11 @@ export function SourcesManager({
             fontSize: 'sm',
             fontWeight: 'medium',
             borderRadius: 'lg',
-            bg: 'violet.500',
-            color: 'white',
+            bg: 'accent2.solid',
+            color: 'accent2.fg',
             cursor: 'pointer',
             transition: 'background-color 0.15s',
-            _hover: { bg: 'violet.600' },
+            _hover: { bg: 'accent2.hover' },
             _disabled: { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
@@ -93,7 +93,7 @@ export function SourcesManager({
       </div>
 
       {suggestError && (
-        <p role="alert" className={css({ fontSize: 'sm', color: 'red.600', mb: '3' })}>
+        <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text', mb: '3' })}>
           {suggestError}
         </p>
       )}
@@ -108,11 +108,10 @@ export function SourcesManager({
             <div
               className={css({
                 border: '1px solid',
-                borderColor: 'violet.200',
+                borderColor: 'accent2.subtleBorder',
                 borderRadius: 'xl',
                 shadow: 'sm',
                 overflow: 'hidden',
-                _dark: { borderColor: 'violet.800' },
               })}
             >
               {suggestions.map((s) => (

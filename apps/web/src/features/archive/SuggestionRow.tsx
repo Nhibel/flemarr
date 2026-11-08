@@ -17,7 +17,12 @@ export function SuggestionRow({
   const nameOnlyPct = Math.round((suggestion.coverage - suggestion.crcCoverage) * 100);
   // Colored on the CRC-verified fraction, not the blended one: a source
   // that's mostly name-only guesses shouldn't look reassuringly green.
-  const pctColor = crcPct >= 80 ? 'green.600' : crcPct >= 40 ? 'amber.600' : 'red.600';
+  const pctColor =
+    crcPct >= 80
+      ? 'status.success.text'
+      : crcPct >= 40
+        ? 'status.warning.text'
+        : 'status.danger.text';
 
   const handleAdopt = async () => {
     setAdopting(true);
@@ -69,7 +74,7 @@ export function SuggestionRow({
           (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
         </p>
         {error && (
-          <p role="alert" className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+          <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text', mt: '1' })}>
             {error}
           </p>
         )}
@@ -84,11 +89,11 @@ export function SuggestionRow({
           fontWeight: 'medium',
           borderRadius: 'lg',
           cursor: 'pointer',
-          bg: 'violet.500',
-          color: 'white',
+          bg: 'accent2.solid',
+          color: 'accent2.fg',
           flexShrink: 0,
           transition: 'background-color 0.15s',
-          _hover: { bg: 'violet.600' },
+          _hover: { bg: 'accent2.hover' },
           _disabled: { opacity: 0.5, cursor: 'not-allowed' },
         })}
       >

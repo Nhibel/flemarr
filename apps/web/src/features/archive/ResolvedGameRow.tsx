@@ -8,18 +8,10 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
 
   const containerStyle = css.raw(
     allFound
-      ? {
-          borderColor: 'green.200',
-          bg: 'green.50',
-          _dark: { bg: 'green.900', borderColor: 'green.800' },
-        }
+      ? { borderColor: 'status.success.subtleBorder', bg: 'status.success.subtle' }
       : noneFound
         ? { borderColor: 'bd.default', bg: 'bg.page' }
-        : {
-            borderColor: 'amber.200',
-            bg: 'amber.50',
-            _dark: { bg: 'amber.900', borderColor: 'amber.800' },
-          },
+        : { borderColor: 'status.warning.subtleBorder', bg: 'status.warning.subtle' },
   );
 
   return (
@@ -28,12 +20,11 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
         <span
           className={css({
             fontSize: 'sm',
-            color: allFound ? 'green.700' : noneFound ? 'fg.faint' : 'amber.700',
-            _dark: allFound
-              ? { color: 'green.400' }
+            color: allFound
+              ? 'status.success.text'
               : noneFound
-                ? undefined
-                : { color: 'amber.400' },
+                ? 'fg.faint'
+                : 'status.warning.text',
             mt: '0.5',
           })}
         >
@@ -62,10 +53,14 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
                     key={rom.romName}
                     className={css({
                       fontSize: 'xs',
-                      color: source == null ? 'fg.faint' : source.verified ? 'fg.subtle' : 'amber.700',
+                      color:
+                        source == null
+                          ? 'fg.faint'
+                          : source.verified
+                            ? 'fg.subtle'
+                            : 'status.warning.text',
                       fontFamily: 'mono',
                       truncate: true,
-                      _dark: source != null && !source.verified ? { color: 'amber.400' } : undefined,
                     })}
                   >
                     {source == null

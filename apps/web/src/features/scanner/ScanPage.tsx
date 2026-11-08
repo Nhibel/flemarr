@@ -130,7 +130,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
           </span>
         ) : (
           loaded && (
-            <span className={css({ fontSize: 'sm', color: 'amber.600' })}>
+            <span className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
               Définissez le dossier du système (bandeau en haut de page) pour lancer un scan.
             </span>
           )
@@ -148,7 +148,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
 
       {/* Error */}
       {scan.phase === 'error' && (
-        <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+        <p role="alert" className={css({ color: 'status.danger.text', fontSize: 'sm' })}>
           {scan.message}
         </p>
       )}
@@ -245,14 +245,14 @@ function ScanResults({
               className={css({
                 px: '4',
                 py: '2',
-                bg: 'amber.500',
-                color: 'white',
+                bg: 'status.warning.solid',
+                color: 'status.warning.fg',
                 borderRadius: 'lg',
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 cursor: 'pointer',
                 transition: 'background-color 0.15s',
-                _hover: { bg: 'amber.600' },
+                _hover: { bg: 'status.warning.hover' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
@@ -264,7 +264,7 @@ function ScanResults({
               <span
                 className={css({
                   fontSize: 'sm',
-                  color: renameResult.failed > 0 ? 'red.600' : 'green.600',
+                  color: renameResult.failed > 0 ? 'status.danger.text' : 'status.success.text',
                 })}
               >
                 {renameResult.done} renommé{renameResult.done !== 1 ? 's' : ''}
@@ -332,9 +332,8 @@ function RenameRow({
         borderBottom: '1px solid',
         borderColor: 'bd.subtle',
         cursor: 'pointer',
-        bg: checked ? 'amber.50' : 'bg.page',
-        _hover: { bg: checked ? 'amber.100' : 'bg.surface' },
-        _dark: checked ? { bg: 'amber.900' } : undefined,
+        bg: checked ? 'status.warning.subtle' : 'bg.page',
+        _hover: { bg: checked ? 'status.warning.subtle' : 'bg.surface' },
         _last: { borderBottom: 'none' },
       })}
     >
@@ -351,9 +350,9 @@ function RenameRow({
           {displayPath(entry.filePath, romsRoot)}
         </span>
         <span className={css({ fontSize: 'sm', color: 'fg.default' })}>
-          <span className={css({ color: 'red.500' })}>{entry.currentName}</span>
+          <span className={css({ color: 'status.danger.text' })}>{entry.currentName}</span>
           {' → '}
-          <span className={css({ color: 'green.600' })}>{entry.canonicalName}</span>
+          <span className={css({ color: 'status.success.text' })}>{entry.canonicalName}</span>
         </span>
         <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>{entry.gameName}</span>
       </div>

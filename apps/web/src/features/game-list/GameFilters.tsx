@@ -91,10 +91,10 @@ export function GameFilters({
               key={c}
               onClick={() => onToggleCategory(c)}
               className={css(chipBase, {
-                bg: active ? 'violet.500' : 'bg.page',
-                color: active ? 'white' : 'fg.muted',
-                borderColor: active ? 'violet.500' : 'bd.strong',
-                _hover: { borderColor: 'violet.400' },
+                bg: active ? 'accent2.solid' : 'bg.page',
+                color: active ? 'accent2.fg' : 'fg.muted',
+                borderColor: active ? 'accent2.solid' : 'bd.strong',
+                _hover: { borderColor: 'accent2.hover' },
               })}
             >
               {c}
@@ -178,7 +178,7 @@ export function GameFilters({
             bg: 'bg.page',
             color: 'fg.muted',
             borderColor: 'bd.strong',
-            _hover: { borderColor: 'red.400' },
+            _hover: { borderColor: 'status.danger.subtleBorder' },
           })}
         >
           Désélectionner tout

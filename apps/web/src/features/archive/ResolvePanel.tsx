@@ -165,7 +165,7 @@ export function ResolvePanel({
       )}
 
       {!hasSources && (
-        <p className={css({ fontSize: 'sm', color: 'amber.600' })}>
+        <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
           Ajoutez au moins une source ci-dessus avant de lancer la résolution.
         </p>
       )}
@@ -177,20 +177,20 @@ export function ResolvePanel({
       )}
 
       {selectedGameIds.length > 0 && effectiveGameIds.length === 0 && hasSources && (
-        <p className={css({ fontSize: 'sm', color: 'green.600' })}>
+        <p className={css({ fontSize: 'sm', color: 'status.success.text' })}>
           Tous les jeux sélectionnés sont déjà présents sur le disque — rien à télécharger.
         </p>
       )}
 
       {noFolder && (
-        <p className={css({ fontSize: 'sm', color: 'amber.600' })}>
+        <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
           Aucun dossier défini pour ce système : les téléchargements seront refusés. Choisissez-le
           dans le bandeau en haut de page.
         </p>
       )}
 
       {error && (
-        <p role="alert" className={css({ fontSize: 'sm', color: 'red.600' })}>
+        <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text' })}>
           {error}
         </p>
       )}

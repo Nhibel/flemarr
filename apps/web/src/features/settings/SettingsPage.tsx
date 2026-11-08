@@ -50,7 +50,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   if (error instanceof Error || !settings) {
     return (
       <main className={containerClass}>
-        <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+        <p role="alert" className={css({ color: 'status.danger.text', fontSize: 'sm' })}>
           {error instanceof Error ? error.message : 'Erreur de chargement'}
         </p>
       </main>
@@ -85,7 +85,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
       </div>
 
       {mutation.isError && (
-        <p role="alert" className={css({ mb: '4', fontSize: 'sm', color: 'red.600' })}>
+        <p role="alert" className={css({ mb: '4', fontSize: 'sm', color: 'status.danger.text' })}>
           {mutation.error instanceof Error ? mutation.error.message : 'Erreur de sauvegarde'}
         </p>
       )}

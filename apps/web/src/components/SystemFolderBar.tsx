@@ -52,12 +52,11 @@ export function SystemFolderBar({ system }: { system: string }) {
   const actionClass = css({
     fontSize: 'sm',
     fontWeight: 'medium',
-    color: 'blue.600',
+    color: 'accent.text',
     cursor: 'pointer',
     flexShrink: 0,
     _hover: { textDecoration: 'underline' },
     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-    _dark: { color: 'blue.400' },
   });
 
   if (!editing) {
@@ -77,7 +76,7 @@ export function SystemFolderBar({ system }: { system: string }) {
             {displayPath(folder, settings.romsRoot)}
           </span>
         ) : (
-          <span className={css({ color: 'amber.600', flex: 1, minW: 0 })}>
+          <span className={css({ color: 'status.warning.text', flex: 1, minW: 0 })}>
             non défini — requis pour le scanner
             {settings.downloadTarget === 'server' ? ' et les téléchargements' : ''}
           </span>
@@ -119,11 +118,11 @@ export function SystemFolderBar({ system }: { system: string }) {
           borderRadius: 'md',
           bg: 'bg.page',
           outline: 'none',
-          _focusVisible: { borderColor: 'blue.400' },
+          _focusVisible: { borderColor: 'accent.hover' },
         })}
       />
       {save.error instanceof Error && (
-        <span className={css({ fontSize: 'xs', color: 'red.600', flexShrink: 0 })}>
+        <span className={css({ fontSize: 'xs', color: 'status.danger.text', flexShrink: 0 })}>
           {save.error.message}
         </span>
       )}

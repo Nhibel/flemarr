@@ -200,7 +200,7 @@ function LoaderView({
                     color: 'fg.faint',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    _hover: { color: 'red.600' },
+                    _hover: { color: 'status.danger.text' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -408,7 +408,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
           <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Chargement des jeux…</p>
         )}
         {error instanceof Error && (
-          <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
+          <p role="alert" className={css({ color: 'status.danger.text', fontSize: 'sm' })}>
             {error.message}
           </p>
         )}

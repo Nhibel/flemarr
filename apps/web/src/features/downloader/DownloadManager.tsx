@@ -206,9 +206,9 @@ function JobCard({ state }: { state: JobState }) {
 
   const statusColor = {
     running: 'accent.text',
-    done: 'green.600',
+    done: 'status.success.text',
     cancelled: 'fg.subtle',
-    error: 'red.600',
+    error: 'status.danger.text',
   }[state.status];
 
   const statusLabel = {
@@ -284,8 +284,8 @@ function DownloadRow({ item }: { item: ItemState }) {
   const iconColor = {
     queued: 'fg.faint',
     downloading: 'accent.text',
-    done: 'green.500',
-    failed: 'red.500',
+    done: 'status.success.text',
+    failed: 'status.danger.text',
   }[item.status];
 
   return (
@@ -326,7 +326,7 @@ function DownloadRow({ item }: { item: ItemState }) {
           </span>
         )}
         {item.status === 'failed' && item.failReason && (
-          <span className={css({ fontSize: 'xs', color: 'red.500', flexShrink: 0 })}>
+          <span className={css({ fontSize: 'xs', color: 'status.danger.text', flexShrink: 0 })}>
             {item.failReason}
           </span>
         )}

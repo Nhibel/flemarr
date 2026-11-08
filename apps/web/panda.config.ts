@@ -290,6 +290,33 @@ export default defineConfig({
                   _cyberpunk: '#f9e24a',
                 },
               },
+              // The only status role with a *solid* usage (ScanPage's
+              // "Renommer N fichiers" CTA) — success/danger/info never
+              // appear as a filled button, so they don't need this shape.
+              solid: {
+                value: {
+                  base: '{colors.amber.500}',
+                  _dark: '{colors.amber.500}',
+                  _catppuccin: '#f9e2af',
+                  _cyberpunk: '#f9e24a',
+                },
+              },
+              hover: {
+                value: {
+                  base: '{colors.amber.600}',
+                  _dark: '{colors.amber.600}',
+                  _catppuccin: '#fab387',
+                  _cyberpunk: '#fff066',
+                },
+              },
+              fg: {
+                value: {
+                  base: 'white',
+                  _dark: 'white',
+                  _catppuccin: '#1e1e2e',
+                  _cyberpunk: '#06100a',
+                },
+              },
             },
             info: {
               subtle: {
@@ -315,6 +342,46 @@ export default defineConfig({
                   _catppuccin: '#89b4fa',
                   _cyberpunk: '#39f9ff',
                 },
+              },
+            },
+          },
+          // A second, distinct accent the app already used ad hoc (raw
+          // violet.*, found during the status-color audit, same problem as
+          // accent.* before that token existed): the "suggested by the app"
+          // actions (SourcesManager's "✨ Suggérer des sources", its adopt
+          // button in SuggestionRow) and the Category filter chips — kept
+          // visually separate from the primary accent on purpose.
+          accent2: {
+            solid: {
+              value: {
+                base: '{colors.violet.500}',
+                _dark: '{colors.violet.500}',
+                _catppuccin: '#f5c2e7',
+                _cyberpunk: '#f9e24a',
+              },
+            },
+            hover: {
+              value: {
+                base: '{colors.violet.600}',
+                _dark: '{colors.violet.400}',
+                _catppuccin: '#f5e0dc',
+                _cyberpunk: '#fff066',
+              },
+            },
+            subtleBorder: {
+              value: {
+                base: '{colors.violet.200}',
+                _dark: '{colors.violet.800}',
+                _catppuccin: '#6c7086',
+                _cyberpunk: '#2d4a2d',
+              },
+            },
+            fg: {
+              value: {
+                base: 'white',
+                _dark: 'white',
+                _catppuccin: '#1e1e2e',
+                _cyberpunk: '#06100a',
               },
             },
           },

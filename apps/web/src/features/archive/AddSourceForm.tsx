@@ -120,7 +120,7 @@ export function AddSourceForm({
               borderRadius: 'md',
               bg: 'bg.page',
               outline: 'none',
-              _focusVisible: { borderColor: 'blue.400' },
+              _focusVisible: { borderColor: 'accent.hover' },
             })}
           />
           <Button
@@ -166,7 +166,9 @@ export function AddSourceForm({
                   _last: { borderBottom: 'none' },
                 })}
               >
-                <span className={css({ fontFamily: 'mono', color: 'blue.700', display: 'block' })}>
+                <span
+                  className={css({ fontFamily: 'mono', color: 'accent.text', display: 'block' })}
+                >
                   {r.identifier}
                 </span>
                 {r.title !== r.identifier && (
@@ -197,7 +199,7 @@ export function AddSourceForm({
               bg: 'bg.page',
               outline: 'none',
               fontFamily: 'mono',
-              _focusVisible: { borderColor: 'blue.400' },
+              _focusVisible: { borderColor: 'accent.hover' },
             })}
           />
           <select
@@ -233,13 +235,13 @@ export function AddSourceForm({
             borderRadius: 'md',
             bg: 'bg.page',
             outline: 'none',
-            _focusVisible: { borderColor: 'blue.400' },
+            _focusVisible: { borderColor: 'accent.hover' },
           })}
         />
       </div>
 
       {error && (
-        <p role="alert" className={css({ fontSize: 'xs', color: 'red.600' })}>
+        <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text' })}>
           {error}
         </p>
       )}

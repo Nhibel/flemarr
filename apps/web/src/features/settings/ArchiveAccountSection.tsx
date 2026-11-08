@@ -80,7 +80,7 @@ export function ArchiveAccountSection({
       </p>
 
       {settings.archiveOrgSessionConfigured && (
-        <p className={css({ fontSize: 'sm', color: 'green.600', mb: '3' })}>
+        <p className={css({ fontSize: 'sm', color: 'status.success.text', mb: '3' })}>
           ✓ Connecté à archive.org (cookies de session actifs)
         </p>
       )}
@@ -114,11 +114,13 @@ export function ArchiveAccountSection({
             {loginState === 'pending' ? 'Connexion…' : 'Se connecter'}
           </Button>
           {loginState === 'done' && (
-            <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Connexion réussie</span>
+            <span className={css({ fontSize: 'xs', color: 'status.success.text' })}>
+              ✓ Connexion réussie
+            </span>
           )}
         </div>
         {loginError && (
-          <p role="alert" className={css({ fontSize: 'xs', color: 'red.600' })}>
+          <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text' })}>
             {loginError}
           </p>
         )}
@@ -155,7 +157,9 @@ export function ArchiveAccountSection({
             Enregistrer les clés
           </Button>
           {settings.archiveOrgKeysConfigured && (
-            <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Clés configurées</span>
+            <span className={css({ fontSize: 'xs', color: 'status.success.text' })}>
+              ✓ Clés configurées
+            </span>
           )}
         </div>
       </div>

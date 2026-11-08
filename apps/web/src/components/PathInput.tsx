@@ -252,11 +252,11 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                     fontSize: 'sm',
                     fontWeight: 'medium',
                     flexShrink: 0,
-                    bg: 'blue.500',
-                    color: 'white',
+                    bg: 'accent.solid',
+                    color: 'accent.fg',
                     borderRadius: 'sm',
                     cursor: 'pointer',
-                    _hover: { bg: 'blue.600' },
+                    _hover: { bg: 'accent.hover' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
@@ -264,7 +264,9 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 </button>
               </div>
               {createError && (
-                <span className={css({ fontSize: 'xs', color: 'red.600' })}>{createError}</span>
+                <span className={css({ fontSize: 'xs', color: 'status.danger.text' })}>
+                  {createError}
+                </span>
               )}
             </div>
           )}

@@ -42,12 +42,12 @@ export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemov
         </div>
         {source.note && <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>{source.note}</p>}
         {preview && (
-          <p className={css({ fontSize: 'xs', color: 'green.600', mt: '1' })}>
+          <p className={css({ fontSize: 'xs', color: 'status.success.text', mt: '1' })}>
             ✓ {preview.fileCount} fichiers trouvés
           </p>
         )}
         {testError && (
-          <p role="alert" className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+          <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text', mt: '1' })}>
             {testError}
           </p>
         )}
