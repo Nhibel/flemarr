@@ -28,29 +28,30 @@ const MINIMAL_DAT = `<?xml version="1.0"?>
   </game>
 </datafile>`;
 
-const NO_INTRO_RESPONSE = [
-  {
-    name: 'Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
-    path: 'daily-1g1r-dat/PropeR/no-intro/Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
-    sha: 'abc123def456',
-    type: 'file',
-  },
-  {
-    name: 'README.md',
-    path: 'daily-1g1r-dat/PropeR/no-intro/README.md',
-    sha: 'aaaa',
-    type: 'file',
-  },
+// Top-level `daily-1g1r-dat` listing — gives each preset's own tree sha.
+const PRESET_DIRS_RESPONSE = [
+  { name: 'PropeR', path: 'daily-1g1r-dat/PropeR', sha: 'preset-sha-proper', type: 'dir' },
+  { name: 'McLean', path: 'daily-1g1r-dat/McLean', sha: 'preset-sha-mclean', type: 'dir' },
 ];
 
-const REDUMP_RESPONSE = [
-  {
-    name: 'Sony - PlayStation (Redump - Fresh1G1R - PropeR).dat',
-    path: 'daily-1g1r-dat/PropeR/redump/Sony - PlayStation (Redump - Fresh1G1R - PropeR).dat',
-    sha: 'deadbeef1234',
-    type: 'file',
-  },
-];
+// Recursive tree scoped to one preset — paths are relative to it.
+const PROPER_TREE_RESPONSE = {
+  tree: [
+    { path: 'no-intro', type: 'tree', sha: 'tree-no-intro' },
+    {
+      path: 'no-intro/Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
+      type: 'blob',
+      sha: 'abc123def456',
+    },
+    { path: 'no-intro/README.md', type: 'blob', sha: 'aaaa' },
+    { path: 'redump', type: 'tree', sha: 'tree-redump' },
+    {
+      path: 'redump/Sony - PlayStation (Redump - Fresh1G1R - PropeR).dat',
+      type: 'blob',
+      sha: 'deadbeef1234',
+    },
+  ],
+};
 
 function mockFetch(responses: { url: RegExp; body: unknown; status?: number }[]) {
   vi.stubGlobal(
@@ -83,8 +84,8 @@ afterEach(async () => {
 describe('listDatSources', () => {
   it('returns only .dat files, not README etc.', async () => {
     mockFetch([
-      { url: /\/no-intro/, body: NO_INTRO_RESPONSE },
-      { url: /\/redump/, body: REDUMP_RESPONSE },
+      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
+      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
     ]);
     const sources = await listDatSources('PropeR');
     expect(sources).toHaveLength(2);
@@ -93,8 +94,8 @@ describe('listDatSources', () => {
 
   it('extracts system name, stripping the Fresh1G1R suffix', async () => {
     mockFetch([
-      { url: /\/no-intro/, body: NO_INTRO_RESPONSE },
-      { url: /\/redump/, body: REDUMP_RESPONSE },
+      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
+      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
     ]);
     const sources = await listDatSources('PropeR');
     const systems = sources.map((s) => s.system);
@@ -102,28 +103,64 @@ describe('listDatSources', () => {
     expect(systems).toContain('Sony - PlayStation');
   });
 
-  it('skips a subdir that returns 404 instead of throwing', async () => {
+  it('reconstructs the full repo-relative path for each entry', async () => {
     mockFetch([
-      { url: /\/no-intro/, body: NO_INTRO_RESPONSE },
-      { url: /\/redump/, body: null, status: 404 },
+      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
+      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
     ]);
     const sources = await listDatSources('PropeR');
-    expect(sources).toHaveLength(1);
+    const snes = sources.find((s) => s.system.includes('Super Nintendo'));
+    expect(snes?.path).toBe(
+      'daily-1g1r-dat/PropeR/no-intro/Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
+    );
   });
 
-  it('throws when GitHub returns a non-404 error', async () => {
-    mockFetch([
-      { url: /\/no-intro/, body: null, status: 503 },
-      { url: /\/redump/, body: REDUMP_RESPONSE },
-    ]);
+  it('returns an empty list when the preset folder is absent', async () => {
+    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE }]);
+    const sources = await listDatSources('Hearto');
+    expect(sources).toEqual([]);
+  });
+
+  it('retries once on a 503 from the preset listing, then succeeds', async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        if (/\/contents\/daily-1g1r-dat$/.test(url)) {
+          calls++;
+          if (calls === 1) {
+            return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve(null) });
+          }
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(PRESET_DIRS_RESPONSE),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(PROPER_TREE_RESPONSE),
+        });
+      }),
+    );
+    const sources = await listDatSources('PropeR');
+    expect(calls).toBe(2);
+    expect(sources).toHaveLength(2);
+  });
+
+  it('throws when GitHub returns a non-retryable error', async () => {
+    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: null, status: 403 }]);
+    await expect(listDatSources('PropeR')).rejects.toThrow('GitHub API returned 403');
+  });
+
+  it('throws when the exhausted retries still fail', async () => {
+    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: null, status: 503 }]);
     await expect(listDatSources('PropeR')).rejects.toThrow('GitHub API returned 503');
   });
 
   it('throws when GitHub response has unexpected shape', async () => {
-    mockFetch([
-      { url: /\/no-intro/, body: { unexpected: true } },
-      { url: /\/redump/, body: null, status: 404 },
-    ]);
+    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: { unexpected: true } }]);
     await expect(listDatSources('PropeR')).rejects.toThrow('Unexpected GitHub API response shape');
   });
 });

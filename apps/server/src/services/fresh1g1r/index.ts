@@ -22,6 +22,35 @@ const githubFileSchema = z.object({
 
 const githubContentsSchema = z.array(githubFileSchema);
 
+const githubTreeSchema = z.object({
+  tree: z.array(
+    z.object({
+      path: z.string(),
+      type: z.string(),
+      sha: z.string(),
+    }),
+  ),
+});
+
+// GitHub's API occasionally gateway-times-out (502/503/504) on this repo —
+// the Contents API response for a ~250-entry directory runs ~340KB (every
+// entry repeats 5 full URLs), and at a 60s edge-cache window most requests
+// recompute at origin. Retrying a couple of times absorbs that transient
+// flakiness; see docs/archive-org-strategy.md for the same pattern against
+// archive.org's own retryable statuses.
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+const MAX_RETRIES = 2;
+
+async function githubFetch(url: string, headers: Record<string, string>): Promise<Response> {
+  let attempt = 0;
+  for (;;) {
+    const res = await fetch(url, { headers });
+    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) return res;
+    await new Promise((r) => setTimeout(r, (attempt + 1) * 300));
+    attempt++;
+  }
+}
+
 function systemFromFilename(name: string): string {
   // Strip "(No-Intro - Fresh1G1R - PropeR).dat" / "(Redump - Fresh1G1R - PropeR).dat" suffix
   return name.replace(/\s+\([^)]*Fresh1G1R[^)]*\)\.dat$/i, '').trim();
@@ -45,44 +74,62 @@ async function writeCache(sha: string, content: string): Promise<void> {
   await writeFile(join(cacheDir(), `${sha}.dat`), content, 'utf8');
 }
 
+// The preset's own tree sha, from the small (~2KB) top-level listing — one
+// recursive Trees API call scoped to it then replaces two heavy Contents API
+// calls (no-intro + redump), at a fraction of the payload (see the retry
+// comment above for why that matters).
+async function getPresetTreeSha(
+  preset: Fresh1g1rPreset,
+  headers: Record<string, string>,
+): Promise<string | null> {
+  const res = await githubFetch(
+    `https://api.github.com/repos/${REPO}/contents/daily-1g1r-dat`,
+    headers,
+  );
+  if (!res.ok) {
+    throw new Error(`GitHub API returned ${res.status} listing daily-1g1r-dat`);
+  }
+  const raw: unknown = await res.json();
+  const parsed = githubContentsSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('Unexpected GitHub API response shape');
+  }
+  return parsed.data.find((f) => f.name === preset && f.type === 'dir')?.sha ?? null;
+}
+
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSourceEntry[]> {
-  const base = `https://api.github.com/repos/${REPO}/contents/daily-1g1r-dat/${encodeURIComponent(preset)}`;
   const headers = {
     Accept: 'application/vnd.github+json',
     'User-Agent': 'rom-curator/1.0',
   };
 
-  const [noIntroRes, redumpRes] = await Promise.all([
-    fetch(`${base}/no-intro`, { headers }),
-    fetch(`${base}/redump`, { headers }),
-  ]);
+  const presetSha = await getPresetTreeSha(preset, headers);
+  if (presetSha === null) return []; // preset folder absent, nothing to list
 
-  const results: DatSourceEntry[] = [];
-
-  for (const [res, subdir] of [
-    [noIntroRes, 'no-intro'],
-    [redumpRes, 'redump'],
-  ] as const) {
-    if (!res.ok) {
-      if (res.status === 404) continue; // subdir absent for this preset, skip
-      throw new Error(`GitHub API returned ${res.status} for preset ${preset}/${subdir}`);
-    }
-    const raw: unknown = await res.json();
-    const parsed = githubContentsSchema.safeParse(raw);
-    if (!parsed.success) {
-      throw new Error('Unexpected GitHub API response shape');
-    }
-    results.push(
-      ...parsed.data
-        .filter((f) => f.type === 'file' && f.name.toLowerCase().endsWith('.dat'))
-        .map((f) => ({
-          name: f.name,
-          system: systemFromFilename(f.name),
-          path: f.path,
-          sha: f.sha,
-        })),
-    );
+  const res = await githubFetch(
+    `https://api.github.com/repos/${REPO}/git/trees/${presetSha}?recursive=1`,
+    headers,
+  );
+  if (!res.ok) {
+    throw new Error(`GitHub API returned ${res.status} for preset ${preset} tree`);
   }
+  const raw: unknown = await res.json();
+  const parsed = githubTreeSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error('Unexpected GitHub API response shape');
+  }
+
+  const results: DatSourceEntry[] = parsed.data.tree
+    .filter((e) => e.type === 'blob' && e.path.toLowerCase().endsWith('.dat'))
+    .map((e) => {
+      const name = e.path.slice(e.path.lastIndexOf('/') + 1);
+      return {
+        name,
+        system: systemFromFilename(name),
+        path: `daily-1g1r-dat/${preset}/${e.path}`,
+        sha: e.sha,
+      };
+    });
 
   return results.sort((a, b) => a.system.localeCompare(b.system));
 }
@@ -96,9 +143,7 @@ export async function fetchDat(
   let content = await readCache(sha);
 
   if (content === null) {
-    const res = await fetch(rawUrl(path), {
-      headers: { 'User-Agent': 'rom-curator/1.0' },
-    });
+    const res = await githubFetch(rawUrl(path), { 'User-Agent': 'rom-curator/1.0' });
     if (!res.ok) {
       throw new Error(`Failed to download DAT: HTTP ${res.status}`);
     }
