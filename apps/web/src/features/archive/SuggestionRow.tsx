@@ -12,8 +12,12 @@ export function SuggestionRow({
 }) {
   const [adopting, setAdopting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pct = Math.round(suggestion.coverage * 100);
-  const pctColor = pct >= 80 ? 'green.600' : pct >= 40 ? 'amber.600' : 'red.600';
+  const crcPct = Math.round(suggestion.crcCoverage * 100);
+  // coverage includes crcCoverage — the remainder is the name-only subset.
+  const nameOnlyPct = Math.round((suggestion.coverage - suggestion.crcCoverage) * 100);
+  // Colored on the CRC-verified fraction, not the blended one: a source
+  // that's mostly name-only guesses shouldn't look reassuringly green.
+  const pctColor = crcPct >= 80 ? 'green.600' : crcPct >= 40 ? 'amber.600' : 'red.600';
 
   const handleAdopt = async () => {
     setAdopting(true);
@@ -57,8 +61,11 @@ export function SuggestionRow({
         </div>
         <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>
           <span className={css({ fontWeight: 'semibold', color: pctColor })}>
-            {pct} % de couverture
-          </span>{' '}
+            {crcPct} % CRC vérifié
+          </span>
+          {nameOnlyPct > 0 && (
+            <span className={css({ color: 'fg.subtle' })}> + {nameOnlyPct} % nom seul</span>
+          )}{' '}
           (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
         </p>
         {error && (

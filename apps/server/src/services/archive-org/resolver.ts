@@ -41,12 +41,20 @@ export function clearResolverCache(): void {
 }
 
 // Match a rom against a flat list of archive files.
-// Priority: CRC match, then filename match (subdirectory paths compare by basename).
-function findMatch(romName: string, romCrc: string, files: ArchiveFile[]): ArchiveFile | undefined {
+// Priority: CRC match (a real guarantee), then filename match (subdirectory
+// paths compare by basename) — a plausible guess, not a guarantee; see the
+// "Name-only matches" section of docs/archive-org-strategy.md for why this
+// matters (e.g. a NES "Headered" DAT against real-world headerless dumps).
+function findMatch(
+  romName: string,
+  romCrc: string,
+  files: ArchiveFile[],
+): { file: ArchiveFile; verified: boolean } | undefined {
   const crcLower = romCrc.toLowerCase();
   const byCrc = files.find((f) => f.crc32?.toLowerCase() === crcLower);
-  if (byCrc) return byCrc;
-  return files.find((f) => baseName(f.name) === romName);
+  if (byCrc) return { file: byCrc, verified: true };
+  const byName = files.find((f) => baseName(f.name) === romName);
+  return byName ? { file: byName, verified: false } : undefined;
 }
 
 // For zip-collection sources, find the ZIP files in the index.
@@ -100,6 +108,8 @@ async function resolveViaZipListing(
         identifier,
         downloadUrl: resolveZipViewUrl(info.server, info.dir, zip.name, inner),
         container: 'zip-view',
+        // A datanode listing only gives names, never hashes — always a guess.
+        verified: false,
       };
     }
   }
@@ -119,8 +129,9 @@ async function resolveRomInSource(
     if (!match) return null;
     return {
       identifier: source.identifier,
-      downloadUrl: resolveDownloadUrl(source.identifier, match.name),
+      downloadUrl: resolveDownloadUrl(source.identifier, match.file.name),
       container: 'direct',
+      verified: match.verified,
     };
   }
 
@@ -142,7 +153,13 @@ async function resolveRomInSource(
     for (const entryPath of [romName, `${folderPrefix}/${romName}`]) {
       const downloadUrl = resolveDownloadUrl(source.identifier, entryPath, zip.name);
       if (await urlExists(downloadUrl)) {
-        return { identifier: source.identifier, downloadUrl, container: 'zip-entry' };
+        // A HEAD check confirms the path exists, never the content's hash.
+        return {
+          identifier: source.identifier,
+          downloadUrl,
+          container: 'zip-entry',
+          verified: false,
+        };
       }
     }
   }

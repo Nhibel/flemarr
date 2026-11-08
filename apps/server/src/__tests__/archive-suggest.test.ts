@@ -140,39 +140,49 @@ describe('scoreIndex', () => {
     { name: 'Game D (USA).sfc', crc: 'dddddddd' },
   ];
 
-  it('matches by CRC32 regardless of filename', () => {
+  it('counts a CRC32 match (regardless of filename) as crcFound, not nameOnlyFound', () => {
     const files = [file('whatever.bin', 'AAAAAAAA')];
-    expect(scoreIndex(files, SAMPLE)).toBe(0.25);
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 1, nameOnlyFound: 0, total: 4 });
   });
 
-  it('matches by exact filename', () => {
+  it('counts an exact filename match as nameOnlyFound', () => {
     const files = [file('Game B (USA).sfc')];
-    expect(scoreIndex(files, SAMPLE)).toBe(0.25);
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 0, nameOnlyFound: 1, total: 4 });
   });
 
-  it('matches a per-game ZIP named after the ROM', () => {
+  it('counts a per-game ZIP named after the ROM as nameOnlyFound', () => {
     const files = [file('Game C (USA).zip')];
-    expect(scoreIndex(files, SAMPLE)).toBe(0.25);
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 0, nameOnlyFound: 1, total: 4 });
   });
 
   it('matches files nested in subdirectories by basename', () => {
     const files = [file('SNES/roms/Game A (USA).sfc'), file('sub/Game B (USA).zip')];
-    expect(scoreIndex(files, SAMPLE)).toBe(0.5);
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 0, nameOnlyFound: 2, total: 4 });
   });
 
-  it('combines match types and caps at 1', () => {
+  it('a CRC match takes priority over a coincidental name match for the same ROM', () => {
+    // Same sample entry could satisfy either path — CRC wins, not double-counted.
+    const files = [file('Game A (USA).sfc', 'aaaaaaaa')];
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 1, nameOnlyFound: 0, total: 4 });
+  });
+
+  it('combines match types across the sample', () => {
     const files = [
       file('x.bin', 'aaaaaaaa'),
       file('Game B (USA).sfc'),
       file('Game C (USA).zip'),
       file('Game D (USA).sfc', 'dddddddd'),
     ];
-    expect(scoreIndex(files, SAMPLE)).toBe(1);
+    expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 2, nameOnlyFound: 2, total: 4 });
   });
 
-  it('returns 0 for an empty sample or no matches', () => {
-    expect(scoreIndex([file('a.sfc')], [])).toBe(0);
-    expect(scoreIndex([file('unrelated.iso')], SAMPLE)).toBe(0);
+  it('returns all zeros for an empty sample or no matches', () => {
+    expect(scoreIndex([file('a.sfc')], [])).toEqual({ crcFound: 0, nameOnlyFound: 0, total: 0 });
+    expect(scoreIndex([file('unrelated.iso')], SAMPLE)).toEqual({
+      crcFound: 0,
+      nameOnlyFound: 0,
+      total: 4,
+    });
   });
 });
 
@@ -211,7 +221,22 @@ describe('suggestSources', () => {
     const suggestions = await suggestSources(dat);
     expect(suggestions.map((s) => s.identifier)).toEqual(['good-collection']);
     expect(suggestions[0]?.coverage).toBe(1);
+    expect(suggestions[0]?.crcCoverage).toBe(1);
     expect(suggestions[0]?.layout).toBe('direct');
+  });
+
+  it('reports a name-only match (e.g. headered vs headerless DAT) with coverage but no crcCoverage', async () => {
+    const dat = makeDat(4);
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'wrong-variant', title: 'Wrong variant', description: '' },
+    ]);
+    // Same filenames as the DAT expects, but a CRC that never matches — the
+    // real-world shape of a headered DAT resolved against headerless dumps.
+    vi.mocked(getIndex).mockResolvedValue(dat.games.map((g) => file(g.roms[0]!.name, 'deadbeef')));
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions[0]?.coverage).toBe(1);
+    expect(suggestions[0]?.crcCoverage).toBe(0);
   });
 
   it('merges candidates from several query variants without duplicates', async () => {

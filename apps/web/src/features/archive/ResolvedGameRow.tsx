@@ -55,21 +55,27 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
             </p>
           ) : (
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '1', mt: '1' })}>
-              {game.roms.map((rom) => (
-                <p
-                  key={rom.romName}
-                  className={css({
-                    fontSize: 'xs',
-                    color: rom.sources.length > 0 ? 'fg.subtle' : 'fg.faint',
-                    fontFamily: 'mono',
-                    truncate: true,
-                  })}
-                >
-                  {rom.sources.length > 0
-                    ? `✓ ${rom.romName} — [${rom.sources[0]!.container}] ${rom.sources[0]!.identifier}`
-                    : `— ${rom.romName} — introuvable`}
-                </p>
-              ))}
+              {game.roms.map((rom) => {
+                const source = rom.sources[0];
+                return (
+                  <p
+                    key={rom.romName}
+                    className={css({
+                      fontSize: 'xs',
+                      color: source == null ? 'fg.faint' : source.verified ? 'fg.subtle' : 'amber.700',
+                      fontFamily: 'mono',
+                      truncate: true,
+                      _dark: source != null && !source.verified ? { color: 'amber.400' } : undefined,
+                    })}
+                  >
+                    {source == null
+                      ? `— ${rom.romName} — introuvable`
+                      : source.verified
+                        ? `✓ ${rom.romName} — [${source.container}] ${source.identifier}`
+                        : `⚠ ${rom.romName} — [${source.container}] ${source.identifier} (nom seul, CRC non confirmé)`}
+                  </p>
+                );
+              })}
             </div>
           )}
         </div>

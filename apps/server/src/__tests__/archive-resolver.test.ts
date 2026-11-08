@@ -95,6 +95,7 @@ describe('resolveGames — direct layout', () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
     expect(results[0]?.roms[0]?.sources[0]?.container).toBe('direct');
+    expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(true);
     expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('Super%20Mario%20World');
   });
 
@@ -121,6 +122,9 @@ describe('resolveGames — direct layout', () => {
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    // Name-only match — a guess, never confirmed by a CRC32 equality (see
+    // "Name-only matches" in docs/archive-org-strategy.md).
+    expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
   });
 
   it('matches files nested in subdirectories by basename', async () => {
@@ -185,6 +189,8 @@ describe('resolveGames — restricted item via datanode zip listing', () => {
     expect(src?.container).toBe('zip-view');
     expect(src?.downloadUrl).toContain('ia800000.us.archive.org/view_archive.php');
     expect(src?.downloadUrl).toContain('Super%20Mario%20World%20(USA).zip');
+    // A datanode listing only gives names, never hashes.
+    expect(src?.verified).toBe(false);
   });
 
   it('returns no source when the inner listing has no matching entry', async () => {
@@ -219,6 +225,8 @@ describe('resolveGames — zip-collection layout', () => {
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
     expect(results[0]?.roms[0]?.sources[0]?.container).toBe('zip-entry');
     expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('No-Intro%20SNES.zip');
+    // A HEAD check confirms the path exists, never the content's hash.
+    expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
   });
 
   it('probes the ZIP named after the ROM first (per-game-zip uploads)', async () => {

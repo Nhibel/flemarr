@@ -21,9 +21,18 @@ export interface SourceSuggestion {
   title: string;
   layout: ArchiveLayout;
   fileCount: number;
-  /** Fraction of the DAT sample found in the item (0..1) */
+  /** Fraction of the DAT sample found in the item (0..1) — CRC + name-only matches blended, used for ranking */
   coverage: number;
+  /** Fraction found specifically by CRC32 equality — the trustworthy subset of `coverage` */
+  crcCoverage: number;
   sampleSize: number;
+}
+
+export interface CoverageScore {
+  crcFound: number;
+  /** Found by name/ZIP-entry but NOT by CRC — a guess, not a guarantee */
+  nameOnlyFound: number;
+  total: number;
 }
 
 const SAMPLE_SIZE = 50;
@@ -64,13 +73,18 @@ export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; cr
 }
 
 /**
- * Fraction of the sample present in the item's file list. A ROM counts as
- * found on a CRC32 match, a filename match (subdirectory paths compare by
- * basename), or a ZIP named after it (per-game-zip collections store
- * "Game.sfc" as "Game.zip").
+ * Counts of the sample present in the item's file list, split by how
+ * trustworthy the match is: `crcFound` is a real CRC32 equality (the
+ * downloader's own check should pass); `nameOnlyFound` is a filename match
+ * (subdirectory paths compare by basename) or a ZIP named after the ROM
+ * (per-game-zip collections store "Game.sfc" as "Game.zip") — plausible, but
+ * unconfirmed (see "Name-only matches" in docs/archive-org-strategy.md).
  */
-export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: string }[]): number {
-  if (sample.length === 0) return 0;
+export function scoreIndex(
+  files: ArchiveFile[],
+  sample: { name: string; crc: string }[],
+): CoverageScore {
+  if (sample.length === 0) return { crcFound: 0, nameOnlyFound: 0, total: 0 };
 
   const crcs = new Set<string>();
   const names = new Set<string>();
@@ -83,17 +97,16 @@ export function scoreIndex(files: ArchiveFile[], sample: { name: string; crc: st
     }
   }
 
-  let found = 0;
+  let crcFound = 0;
+  let nameOnlyFound = 0;
   for (const rom of sample) {
-    if (
-      crcs.has(rom.crc.toLowerCase()) ||
-      names.has(rom.name) ||
-      zipBasenames.has(stripExtension(rom.name))
-    ) {
-      found++;
+    if (crcs.has(rom.crc.toLowerCase())) {
+      crcFound++;
+    } else if (names.has(rom.name) || zipBasenames.has(stripExtension(rom.name))) {
+      nameOnlyFound++;
     }
   }
-  return found / sample.length;
+  return { crcFound, nameOnlyFound, total: sample.length };
 }
 
 /**
@@ -153,7 +166,9 @@ async function scoreCandidate(
   }
   const files = info.files;
 
-  let coverage = scoreIndex(files, sample);
+  const score = scoreIndex(files, sample);
+  let coverage = score.total > 0 ? (score.crcFound + score.nameOnlyFound) / score.total : 0;
+  let crcCoverage = score.total > 0 ? score.crcFound / score.total : 0;
   let layout = detectLayout(files);
 
   // Static matching found nothing — the collection may still hold the set in a
@@ -162,12 +177,15 @@ async function scoreCandidate(
     const probed = await probeSystemZip(info, system, sample);
     if (probed !== null && probed > coverage) {
       coverage = probed;
+      // A ZIP's inner listing only gives names, never hashes — this subset
+      // of "coverage" is never CRC-backed.
+      crcCoverage = 0;
       layout = 'zip-collection';
     }
   }
 
   logger.info(
-    { identifier: candidate.identifier, coverage, layout, fileCount: files.length },
+    { identifier: candidate.identifier, coverage, crcCoverage, layout, fileCount: files.length },
     'candidate scored',
   );
 
@@ -177,6 +195,7 @@ async function scoreCandidate(
     layout,
     fileCount: files.length,
     coverage,
+    crcCoverage,
     sampleSize: sample.length,
   };
 }

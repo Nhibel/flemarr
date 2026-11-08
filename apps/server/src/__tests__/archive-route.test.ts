@@ -267,6 +267,7 @@ describe('POST /api/archive/suggest', () => {
         layout: 'direct',
         fileCount: 3000,
         coverage: 0.96,
+        crcCoverage: 0.9,
         sampleSize: 50,
       },
     ]);

@@ -73,7 +73,12 @@ const sourceSuggestionSchema = z.object({
   title: z.string(),
   layout: archiveLayoutSchema,
   fileCount: z.number(),
+  // Blended fraction (CRC + name-only matches) — used for ranking/filtering,
+  // unchanged from before. crcCoverage is the CRC-verified subset of it, so
+  // the UI can show how much of "coverage" is an actual guarantee vs a
+  // name-only guess (see docs/archive-org-strategy.md).
   coverage: z.number().min(0).max(1),
+  crcCoverage: z.number().min(0).max(1),
   sampleSize: z.number(),
 });
 export const suggestResponseSchema = z.object({
@@ -94,6 +99,12 @@ const resolvedSourceSchema = z.object({
   // is itself a ZIP the downloader must open to reach the ROM (restricted/darked
   // re-zipped collections like ni-roms).
   container: z.enum(['direct', 'zip-entry', 'zip-view']),
+  // True only when archive.org's own metadata reported a CRC32 equal to the
+  // DAT's expected one — a real guarantee. False means the match is by
+  // filename (or ZIP-entry name) alone: plausible, but unconfirmed until the
+  // download finishes and the downloader's own CRC check runs (which can
+  // still fail it — see docs/archive-org-strategy.md).
+  verified: z.boolean(),
 });
 export type ResolvedSource = z.infer<typeof resolvedSourceSchema>;
 
