@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { css } from '@/styled-system/css';
+import { css, cx } from '@/styled-system/css';
 import { getSettings, updateSettings } from '@/lib/api.js';
 import { SunIcon, MoonIcon, iconBtnClass } from '@/components/icons.js';
 import { PresetSection } from './PresetSection.js';
@@ -32,9 +32,16 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
     },
   });
 
+  const containerClass = css({
+    maxW: '3xl',
+    mx: 'auto',
+    mt: { base: '8', md: '16' },
+    px: { base: '4', md: '6', lg: '8' },
+  });
+
   if (isLoading) {
     return (
-      <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
+      <main className={containerClass}>
         <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Chargement…</p>
       </main>
     );
@@ -42,7 +49,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
 
   if (error instanceof Error || !settings) {
     return (
-      <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
+      <main className={containerClass}>
         <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
           {error instanceof Error ? error.message : 'Erreur de chargement'}
         </p>
@@ -51,14 +58,15 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   }
 
   return (
-    <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6', pb: '12' })}>
+    <main className={cx(containerClass, css({ pb: '12' }))}>
       <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '8' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           Paramètres
         </h1>
         <button
           onClick={onToggleTheme}
           title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
           className={iconBtnClass}
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -67,10 +75,9 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
           onClick={onClose}
           className={css({
             fontSize: 'sm',
-            color: 'blue.600',
+            color: 'accent.text',
             cursor: 'pointer',
             _hover: { textDecoration: 'underline' },
-            _dark: { color: 'blue.400' },
           })}
         >
           ← Retour

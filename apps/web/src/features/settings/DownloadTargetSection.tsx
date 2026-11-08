@@ -50,14 +50,14 @@ export function DownloadTargetSection({
                 px: '3',
                 py: '2',
                 textAlign: 'left',
-                borderRadius: 'md',
+                borderRadius: 'lg',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: active ? 'blue.400' : 'bd.default',
-                bg: active ? 'blue.50' : 'bg.page',
-                _hover: { bg: active ? 'blue.50' : 'bg.surface' },
+                borderColor: active ? 'accent.hover' : 'bd.default',
+                bg: active ? 'accent.subtle' : 'bg.page',
+                transition: 'background-color 0.15s, border-color 0.15s',
+                _hover: { bg: active ? 'accent.subtle' : 'bg.surface' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                _dark: active ? { bg: 'blue.900', borderColor: 'blue.600' } : undefined,
               })}
             >
               <span
@@ -65,20 +65,13 @@ export function DownloadTargetSection({
                   fontSize: 'sm',
                   fontWeight: 'semibold',
                   flexShrink: 0,
-                  color: active ? 'blue.700' : 'fg.default',
-                  _dark: active ? { color: 'blue.300' } : undefined,
+                  color: active ? 'accent.text' : 'fg.default',
                   w: '28',
                 })}
               >
                 {TARGET_LABELS[t]}
               </span>
-              <span
-                className={css({
-                  fontSize: 'xs',
-                  color: active ? 'blue.600' : 'fg.faint',
-                  _dark: active ? { color: 'blue.400' } : undefined,
-                })}
-              >
+              <span className={css({ fontSize: 'xs', color: active ? 'accent.text' : 'fg.faint' })}>
                 {TARGET_DESCRIPTIONS[t]}
               </span>
             </button>

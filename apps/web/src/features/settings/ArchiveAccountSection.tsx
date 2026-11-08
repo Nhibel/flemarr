@@ -4,6 +4,7 @@ import { css, cx } from '@/styled-system/css';
 import { archiveLogin } from '@/lib/api.js';
 import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { inputClass, sectionClass } from './styles.js';
+import { Button } from '@/components/Button.js';
 
 export function ArchiveAccountSection({
   settings,
@@ -105,25 +106,13 @@ export function ArchiveAccountSection({
           className={inputClass}
         />
         <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
-          <button
+          <Button
             onClick={() => void handleLogin()}
             disabled={loginState === 'pending' || !loginEmail.trim() || !loginPassword}
-            className={css({
-              alignSelf: 'flex-start',
-              px: '4',
-              py: '1.5',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              bg: 'blue.500',
-              color: 'white',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { bg: 'blue.600' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
+            className={css({ alignSelf: 'flex-start' })}
           >
             {loginState === 'pending' ? 'Connexion…' : 'Se connecter'}
-          </button>
+          </Button>
           {loginState === 'done' && (
             <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Connexion réussie</span>
           )}
@@ -158,25 +147,13 @@ export function ArchiveAccountSection({
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
         <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
-          <button
+          <Button
             onClick={handleSaveKeys}
             disabled={!accessKey.trim() || !secretKey.trim() || saving}
-            className={css({
-              alignSelf: 'flex-start',
-              px: '4',
-              py: '1.5',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              bg: 'blue.500',
-              color: 'white',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { bg: 'blue.600' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
+            className={css({ alignSelf: 'flex-start' })}
           >
             Enregistrer les clés
-          </button>
+          </Button>
           {settings.archiveOrgKeysConfigured && (
             <span className={css({ fontSize: 'xs', color: 'green.600' })}>✓ Clés configurées</span>
           )}
@@ -203,25 +180,13 @@ export function ArchiveAccountSection({
           onChange={(e) => setCookieSig(e.target.value)}
           className={cx(css({ fontFamily: 'mono' }), inputClass)}
         />
-        <button
+        <Button
           onClick={handleSaveCookies}
           disabled={!cookieUser.trim() || !cookieSig.trim() || saving}
-          className={css({
-            alignSelf: 'flex-start',
-            px: '4',
-            py: '1.5',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            bg: 'blue.500',
-            color: 'white',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            _hover: { bg: 'blue.600' },
-            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-          })}
+          className={css({ alignSelf: 'flex-start' })}
         >
           Enregistrer les cookies
-        </button>
+        </Button>
       </div>
     </section>
   );

@@ -2,6 +2,8 @@ import { css } from '@/styled-system/css';
 import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { sectionClass } from './styles.js';
+import { Button } from '@/components/Button.js';
+import { Card } from '@/components/Card.js';
 
 /**
  * Read-only overview of the per-system folders. Each folder is chosen from
@@ -33,7 +35,7 @@ export function SystemPathsSection({
           mb: '1',
         })}
       >
-        Répertoires par système
+        Dossiers par système
       </h2>
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
         Chaque dossier se choisit depuis la vue du système concerné (bandeau « Dossier du système
@@ -45,14 +47,7 @@ export function SystemPathsSection({
           Aucun dossier défini pour l'instant.
         </p>
       ) : (
-        <div
-          className={css({
-            border: '1px solid',
-            borderColor: 'bd.default',
-            borderRadius: 'md',
-            overflow: 'hidden',
-          })}
-        >
+        <Card className={css({ overflow: 'hidden' })}>
           {entries.map(([system, path]) => (
             <div
               key={system}
@@ -90,23 +85,17 @@ export function SystemPathsSection({
               >
                 {displayPath(path, settings.romsRoot)}
               </span>
-              <button
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => handleRemovePath(system)}
                 disabled={saving}
-                className={css({
-                  fontSize: 'xs',
-                  color: 'red.500',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  _hover: { color: 'red.700' },
-                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                })}
               >
                 Supprimer
-              </button>
+              </Button>
             </div>
           ))}
-        </div>
+        </Card>
       )}
     </section>
   );

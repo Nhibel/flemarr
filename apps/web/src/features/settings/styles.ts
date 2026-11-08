@@ -6,11 +6,11 @@ export const inputClass = css({
   fontSize: 'sm',
   border: '1px solid',
   borderColor: 'bd.strong',
-  borderRadius: 'md',
+  borderRadius: 'lg',
   outline: 'none',
   bg: 'bg.page',
   color: 'fg.default',
-  _focusVisible: { borderColor: 'blue.400', ring: '2px', ringColor: 'blue.100' },
+  _focusVisible: { borderColor: 'accent.hover', ring: '2px', ringColor: 'accent.subtleBorder' },
 });
 
 export const sectionClass = css({
