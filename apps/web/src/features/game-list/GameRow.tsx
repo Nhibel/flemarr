@@ -58,13 +58,16 @@ export function GameRow({
       })}
       onClick={() => onToggle(game.id)}
     >
+      {/* Decorative only — the row's own onClick is the single toggle source.
+          pointer-events:none stops a direct click on the checkbox square from
+          bubbling into the row's onClick as a second, canceling toggle. */}
       <input
         type="checkbox"
         checked={isSelected}
         aria-hidden
         tabIndex={-1}
-        onChange={() => onToggle(game.id)}
-        className={css({ flexShrink: 0, cursor: 'pointer' })}
+        readOnly
+        className={css({ flexShrink: 0, pointerEvents: 'none' })}
       />
 
       {mode !== 'compact' &&
