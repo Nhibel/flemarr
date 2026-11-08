@@ -132,35 +132,65 @@ A CRC mismatch usually means the source is bad (re-encoded, corrupted, or the id
 ### Name-only matches: a known, deliberate source of mismatches
 
 `resolver.ts`'s `findMatch` tries a CRC32 match first, but falls back to a
-filename match when no file in the source reports that CRC (archive.org's
+filename match (extension ignored — basename compared after
+`stripExtension`) when no file in the source reports that CRC (archive.org's
 own metadata doesn't always expose `crc32`, or the real file's content
 simply differs). The zip-view and zip-collection paths (`resolveViaZipListing`,
 the HEAD-probe branch in `resolveRomInSource`) can **only** match by name —
 a datanode listing or a HEAD request never exposes the file's hash. Every
 `ResolvedSource` carries a `verified: boolean` reflecting this: `true` only
 for an actual CRC32 equality, `false` for every name-based path. A `false`
-match is a plausible guess, not a guarantee — the downloader's own CRC
-check (above) is what actually decides, and it can still reject it.
+match is a plausible guess, not a guarantee — the downloader's own CRC check
+(above) is what actually decides, and it can still reject it.
 
-The concrete case that motivated tracking this explicitly (2026-11-08):
-**NES "Headered" vs "Headerless" DATs.** Fresh1G1R publishes both for
+**The concrete case that motivated tracking this explicitly (2026-11-08):
+NES "Headered" vs "Headerless" DATs.** Fresh1G1R publishes both for
 No-Intro NES. The Headered DAT expects the 16-byte iNES header to be part
-of the dumped bytes (`Tetris (USA).nes`, CRC `d16ea396`); the Headerless
-one expects it stripped (`Tetris (USA).unh`, CRC `1394f57e` — note the
-`.unh` extension, which no real archive.org upload uses). Virtually every
-real-world NES dump in circulation is headerless but still named `.nes`.
-Resolving against the **Headered** DAT therefore almost always fails the
-CRC check (the real file's CRC is the headerless one) and falls back to
-matching by filename — `verified: false` — which then fails the
-downloader's final CRC check, 16 bytes and one mismatch later. Resolving
-the same game against the **Headerless** DAT succeeds by CRC directly,
-`verified: true`, because the real file's bytes genuinely match. **There
-is no code fix for this beyond the `verified` flag** — it's a property of
-which DAT variant was loaded, not a bug in the resolver. If NES (or another
-system with a similar headered/unheadered split) keeps coming up, a true
-fix would mean computing a second candidate CRC (header added/stripped)
-before giving up — not implemented; `verified` surfacing the guess instead
-of hiding it was judged sufficient for now.
+of the dumped bytes (`Tetris (USA).nes`, CRC `d16ea396`); the Headerless one
+expects it stripped (CRC `1394f57e`). Virtually every real-world NES dump in
+circulation is headerless, but still named `.nes` — no real file and no
+emulator (RetroArch's NES cores included) ever uses or recognizes the
+`.unh` extension Fresh1G1R's Headerless DAT XML actually ships (it exists
+purely so Retool can tell the two DAT variants' CRCs apart). Three fixes
+landed together to deal with this (2026-11-09):
+
+1. **`parser.ts` normalizes `.unh` → `.nes` at DAT load time**
+   (`normalizeRomName`). Every downstream consumer — game list, scanner
+   matching/rename, downloaded filenames — only ever sees `.nes`, matching
+   what every real file and every emulator expects. Only the rom's CRC still
+   encodes which DAT variant it came from; the filename no longer lies about
+   playability. Without this, the scanner's rename feature would have
+   offered to rename a working local `Tetris (USA).nes` to the fake
+   `Tetris (USA).unh` on CRC match — breaking it — and a successful download
+   would have landed on disk under a name RetroArch can't load.
+2. **Extension-agnostic name fallback.** `findMatch` (resolver.ts) and
+   `scoreIndex` (suggest.ts) compare basenames with the extension stripped,
+   not compared verbatim. This mattered most before fix 1 — when the
+   Headerless DAT still carried `.unh` names, no real `.nes` upload could
+   ever match them by filename, so collections with no `crc32` in their
+   index showed almost nothing for Headerless. With fix 1 in place the
+   extensions already agree in the common case, but this stays as defense
+   in depth for any other naming mismatch.
+3. **Downloader-side iNES header recovery.** `apps/server/src/lib/ines-header.ts`'s
+   `stripInesHeaderIfMatches` runs whenever the downloaded bytes fail their
+   primary CRC check: if they start with the iNES magic (`NES\x1A`) and
+   stripping the 16-byte header yields a CRC32 that matches what the DAT
+   expects, the stripped bytes are kept and the download succeeds. This
+   covers the common real case where a source (especially an older "clean
+   romset") bakes the header into every file, but the Headerless DAT expects
+   it gone. It's deliberately one-directional — there is no attempt to _add_
+   a header to satisfy a Headered DAT, because the header encodes per-game
+   mapper/mirroring/PRG-RAM bytes with no general way to derive them from
+   the ROM data alone; guessing one could silently accept a corrupt file
+   instead of failing honestly.
+
+Net effect: resolving against the **Headerless** DAT is the one that can
+actually succeed end-to-end — by CRC when the source exposes one, by a
+properly-extensioned name guess otherwise, recoverable even if the
+specific copy found still carries a header. The **Headered** DAT remains
+structurally unable to download from a genuinely headerless real-world
+dump, no matter what layer tries to help — there's no way to synthesize the
+missing header's game-specific bytes from nothing.
 
 `suggest.ts`'s `scoreIndex` has the same blended-match issue at the
 collection-scoring level: its `coverage` fraction counts a name/ZIP-entry

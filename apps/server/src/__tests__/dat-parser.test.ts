@@ -61,6 +61,18 @@ const NODUMP_ALONGSIDE_GOOD = `<?xml version="1.0"?>
   </game>
 </datafile>`;
 
+const HEADERLESS_NES = `<?xml version="1.0"?>
+<datafile>
+  <header>
+    <name>Nintendo - Nintendo Entertainment System (Headerless) (Retool)</name>
+    <url>https://www.no-intro.org</url>
+  </header>
+  <game name="Tetris (USA)">
+    <description>Tetris (USA)</description>
+    <rom name="Tetris (USA).unh" size="24592" crc="1394f57e" md5="aabbccddaabbccddaabbccddaabbccdd" sha1="aabbccddaabbccddaabbccddaabbccddaabbccdd"/>
+  </game>
+</datafile>`;
+
 const UNICODE_NAMES = `<?xml version="1.0"?>
 <datafile>
   <header>
@@ -127,6 +139,13 @@ describe('parseDat', () => {
     expect(result.games[0]?.roms[0]?.crc).toBe('aabbccdd');
     expect(result.games[0]?.roms[1]?.status).toBe('nodump');
     expect(result.games[0]?.roms[1]?.crc).toBeUndefined();
+  });
+
+  it('normalizes the Headerless NES ".unh" extension to ".nes" — no real file or emulator uses it', () => {
+    const result = parseDat(HEADERLESS_NES);
+    expect(result.games[0]?.roms[0]?.name).toBe('Tetris (USA).nes');
+    // The CRC — the actual identity being matched — is untouched.
+    expect(result.games[0]?.roms[0]?.crc).toBe('1394f57e');
   });
 
   it('parses unicode game names without mangling', () => {

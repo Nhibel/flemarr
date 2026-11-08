@@ -18,6 +18,18 @@ function detectSource(header: Record<string, string>): 'no-intro' | 'redump' {
   return 'no-intro';
 }
 
+// Fresh1G1R's "Headerless" NES DAT variant names every rom with a synthetic
+// ".unh" extension to tell it apart from the "Headered" variant's CRC — no
+// real archive.org upload and no emulator (RetroArch's NES cores included)
+// ever uses or recognizes that extension; every real-world dump, headered or
+// not, is named ".nes". Left as-is, a downloaded file would be saved
+// unplayable, and the scanner would offer to rename a working ".nes" file
+// into the fake one. The CRC is untouched — only the filename convention is
+// synthetic, not the identity the DAT is matching against.
+function normalizeRomName(name: string): string {
+  return name.toLowerCase().endsWith('.unh') ? `${name.slice(0, -4)}.nes` : name;
+}
+
 function parseRom(raw: Record<string, string>): Rom | null {
   const crc = (raw['@_crc'] ?? '').toLowerCase();
   const md5 = (raw['@_md5'] ?? '').toLowerCase();
@@ -25,7 +37,7 @@ function parseRom(raw: Record<string, string>): Rom | null {
   const status = raw['@_status'] === 'nodump' ? 'nodump' : 'good';
 
   const result = romSchema.safeParse({
-    name: raw['@_name'] ?? '',
+    name: normalizeRomName(raw['@_name'] ?? ''),
     size: parseInt(raw['@_size'] ?? '0', 10),
     crc: crc || undefined,
     md5: md5 || undefined,
