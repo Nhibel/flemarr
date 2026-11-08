@@ -6,8 +6,12 @@ vi.mock('../services/fresh1g1r/index.js', () => ({
   listDatSources: vi.fn(),
   fetchDat: vi.fn(),
 }));
+vi.mock('../services/archive-org/resolver.js', () => ({
+  clearResolverCache: vi.fn(),
+}));
 
 import { listDatSources, fetchDat } from '../services/fresh1g1r/index.js';
+import { clearResolverCache } from '../services/archive-org/resolver.js';
 
 const app = new Hono().route('/api', fresh1g1rRoute);
 
@@ -32,6 +36,7 @@ const MOCK_SUMMARY = {
 beforeEach(() => {
   vi.mocked(listDatSources).mockReset();
   vi.mocked(fetchDat).mockReset();
+  vi.mocked(clearResolverCache).mockClear();
 });
 
 describe('GET /api/dat-sources', () => {
@@ -106,6 +111,9 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     const body = (await res.json()) as { system: string; gameCount: number };
     expect(body.system).toBe('Nintendo - Super Nintendo Entertainment System');
     expect(body.gameCount).toBe(42);
+    // Reloading (e.g. the same system picked up again) must not leave a
+    // stale resolve result cached under the DAT's (stable) id.
+    expect(vi.mocked(clearResolverCache)).toHaveBeenCalled();
   });
 
   it('returns 502 when the download fails', async () => {

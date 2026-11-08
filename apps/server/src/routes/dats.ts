@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { parseDat, addDat, getDat, listDats, deleteDat } from '@/services/dat/index.js';
+import { clearResolverCache } from '@/services/archive-org/resolver.js';
 import { errorJson, errorMessage } from '@/lib/http.js';
 
 export const datsRoute = new Hono();
@@ -44,6 +45,10 @@ datsRoute.post('/dats', async (c) => {
   } catch (err) {
     return errorJson(c, 500, 'SAVE_ERROR', errorMessage(err, 'Failed to save DAT'));
   }
+  // Reloading a DAT for the same system keeps the same id (store.ts) but can
+  // change its games/roms — a cached resolve result for that id (up to 24h,
+  // see resolver.ts) would otherwise keep serving the pre-reload content.
+  clearResolverCache();
   return c.json(summary, 201);
 });
 

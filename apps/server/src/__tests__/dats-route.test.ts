@@ -1,7 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import { healthRoute } from '../routes/health.js';
 import { datsRoute } from '../routes/dats.js';
+
+vi.mock('../services/archive-org/resolver.js', () => ({
+  clearResolverCache: vi.fn(),
+}));
+
+import { clearResolverCache } from '../services/archive-org/resolver.js';
+
+beforeEach(() => {
+  vi.mocked(clearResolverCache).mockClear();
+});
 
 // Fresh app per test to avoid store state pollution
 function makeApp() {
@@ -109,6 +119,16 @@ describe('POST /api/dats', () => {
       body: '<broken xml',
     });
     expect(res.status).toBe(400);
+  });
+
+  it('clears the resolver cache so a reload is never served stale resolve results', async () => {
+    const app = makeApp();
+    await app.request('/api/dats', {
+      method: 'POST',
+      headers: { 'content-type': 'text/xml' },
+      body: VALID_DAT,
+    });
+    expect(vi.mocked(clearResolverCache)).toHaveBeenCalled();
   });
 });
 

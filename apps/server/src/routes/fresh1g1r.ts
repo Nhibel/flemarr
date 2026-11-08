@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { fresh1g1rPresetSchema, fetchDatRequestSchema } from '@shared/fresh1g1r.js';
 import { listDatSources, fetchDat } from '@/services/fresh1g1r/index.js';
+import { clearResolverCache } from '@/services/archive-org/resolver.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
 export const fresh1g1rRoute = new Hono();
@@ -38,5 +39,8 @@ fresh1g1rRoute.post('/dats/from-fresh1g1r', async (c) => {
     return errorJson(c, 502, 'FETCH_ERROR', errorMessage(err, 'DAT fetch failed'));
   }
 
+  // Same reasoning as POST /dats — a reload can change games/roms for the
+  // same DAT id, and the resolver's cache doesn't know that on its own.
+  clearResolverCache();
   return c.json(summary, 201);
 });
