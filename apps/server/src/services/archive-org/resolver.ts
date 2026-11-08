@@ -42,9 +42,12 @@ export function clearResolverCache(): void {
 
 // Match a rom against a flat list of archive files.
 // Priority: CRC match (a real guarantee), then filename match (subdirectory
-// paths compare by basename) — a plausible guess, not a guarantee; see the
+// paths compare by basename, extension ignored — a DAT variant's naming
+// convention doesn't always match real uploads, e.g. a NES "Headerless" DAT
+// names its roms "*.unh", which no archive.org upload ever uses, while the
+// real file is "*.nes") — a plausible guess, not a guarantee; see the
 // "Name-only matches" section of docs/archive-org-strategy.md for why this
-// matters (e.g. a NES "Headered" DAT against real-world headerless dumps).
+// matters.
 function findMatch(
   romName: string,
   romCrc: string,
@@ -53,7 +56,8 @@ function findMatch(
   const crcLower = romCrc.toLowerCase();
   const byCrc = files.find((f) => f.crc32?.toLowerCase() === crcLower);
   if (byCrc) return { file: byCrc, verified: true };
-  const byName = files.find((f) => baseName(f.name) === romName);
+  const romBase = stripExtension(romName);
+  const byName = files.find((f) => stripExtension(baseName(f.name)) === romBase);
   return byName ? { file: byName, verified: false } : undefined;
 }
 

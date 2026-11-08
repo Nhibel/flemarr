@@ -127,6 +127,29 @@ describe('resolveGames — direct layout', () => {
     expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
   });
 
+  it('matches by filename ignoring extension (e.g. a Headerless NES DAT\'s ".unh" rom against a real ".nes" upload)', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'direct-snes',
+      layout: 'direct',
+      note: '',
+    });
+    const headerlessDat: DatFile = {
+      ...FIXTURE_DAT,
+      games: [
+        {
+          ...FIXTURE_DAT.games[0]!,
+          roms: [{ name: 'Super Mario World (USA).unh', size: 524288, crc: 'ffffffff', status: 'good' }],
+        },
+      ],
+    };
+    const filesNoCrc: ArchiveFile[] = [{ name: 'Super Mario World (USA).sfc', size: 524288 }];
+    vi.mocked(getIndex).mockResolvedValue(filesNoCrc);
+
+    const results = await resolveGames(headerlessDat, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
+  });
+
   it('matches files nested in subdirectories by basename', async () => {
     addSource('Nintendo - Super Nintendo Entertainment System', {
       identifier: 'direct-snes',

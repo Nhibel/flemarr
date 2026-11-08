@@ -176,6 +176,16 @@ describe('scoreIndex', () => {
     expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 2, nameOnlyFound: 2, total: 4 });
   });
 
+  it('counts a filename match ignoring extension (e.g. a Headerless NES DAT\'s ".unh" rom against a real ".nes" upload)', () => {
+    const headerlessSample = [{ name: 'Game A (USA).unh', crc: 'aaaaaaaa' }];
+    const files = [file('Game A (USA).nes', 'ffffffff')];
+    expect(scoreIndex(files, headerlessSample)).toEqual({
+      crcFound: 0,
+      nameOnlyFound: 1,
+      total: 1,
+    });
+  });
+
   it('returns all zeros for an empty sample or no matches', () => {
     expect(scoreIndex([file('a.sfc')], [])).toEqual({ crcFound: 0, nameOnlyFound: 0, total: 0 });
     expect(scoreIndex([file('unrelated.iso')], SAMPLE)).toEqual({

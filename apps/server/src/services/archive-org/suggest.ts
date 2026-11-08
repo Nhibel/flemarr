@@ -75,10 +75,12 @@ export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; cr
 /**
  * Counts of the sample present in the item's file list, split by how
  * trustworthy the match is: `crcFound` is a real CRC32 equality (the
- * downloader's own check should pass); `nameOnlyFound` is a filename match
- * (subdirectory paths compare by basename) or a ZIP named after the ROM
- * (per-game-zip collections store "Game.sfc" as "Game.zip") — plausible, but
- * unconfirmed (see "Name-only matches" in docs/archive-org-strategy.md).
+ * downloader's own check should pass); `nameOnlyFound` is a filename match —
+ * extension ignored, so a ZIP named after the ROM (per-game-zip collections
+ * store "Game.sfc" as "Game.zip") counts, and so does a DAT variant whose
+ * naming convention doesn't match real uploads (e.g. a NES "Headerless" DAT
+ * names its roms "*.unh", which no archive.org upload ever uses) — plausible,
+ * but unconfirmed (see "Name-only matches" in docs/archive-org-strategy.md).
  */
 export function scoreIndex(
   files: ArchiveFile[],
@@ -88,13 +90,9 @@ export function scoreIndex(
 
   const crcs = new Set<string>();
   const names = new Set<string>();
-  const zipBasenames = new Set<string>();
   for (const f of files) {
     if (f.crc32) crcs.add(f.crc32.toLowerCase());
-    names.add(baseName(f.name));
-    if (f.name.toLowerCase().endsWith('.zip')) {
-      zipBasenames.add(stripExtension(baseName(f.name)));
-    }
+    names.add(stripExtension(baseName(f.name)));
   }
 
   let crcFound = 0;
@@ -102,7 +100,7 @@ export function scoreIndex(
   for (const rom of sample) {
     if (crcs.has(rom.crc.toLowerCase())) {
       crcFound++;
-    } else if (names.has(rom.name) || zipBasenames.has(stripExtension(rom.name))) {
+    } else if (names.has(stripExtension(rom.name))) {
       nameOnlyFound++;
     }
   }
