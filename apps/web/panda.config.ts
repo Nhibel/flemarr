@@ -62,6 +62,68 @@ export default defineConfig({
           },
         },
       },
+      recipes: {
+        button: {
+          className: 'button',
+          base: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2',
+            fontWeight: 'medium',
+            borderRadius: 'lg',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'background-color 0.15s, border-color 0.15s, box-shadow 0.15s',
+            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+          },
+          variants: {
+            variant: {
+              primary: {
+                bg: 'accent.solid',
+                color: 'accent.fg',
+                shadow: 'sm',
+                _hover: { bg: 'accent.hover' },
+              },
+              secondary: {
+                bg: 'bg.page',
+                color: 'fg.default',
+                border: '1px solid',
+                borderColor: 'bd.strong',
+                _hover: { bg: 'bg.surface' },
+              },
+              danger: {
+                bg: 'bg.page',
+                color: 'red.600',
+                border: '1px solid',
+                borderColor: 'red.200',
+                _hover: { bg: 'red.50' },
+                _dark: { borderColor: 'red.700', _hover: { bg: 'red.950' } },
+              },
+              ghost: {
+                bg: 'transparent',
+                color: 'fg.muted',
+                _hover: { bg: 'bg.surface', color: 'fg.default' },
+              },
+            },
+            size: {
+              sm: { px: '2.5', py: '1', fontSize: 'xs' },
+              md: { px: '4', py: '2', fontSize: 'sm' },
+            },
+          },
+          defaultVariants: { variant: 'primary', size: 'md' },
+        },
+        card: {
+          className: 'card',
+          base: {
+            bg: 'bg.page',
+            border: '1px solid',
+            borderColor: 'bd.default',
+            borderRadius: 'xl',
+            shadow: 'sm',
+          },
+        },
+      },
     },
   },
 });

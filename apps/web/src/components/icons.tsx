@@ -4,8 +4,9 @@ import { css } from '@/styled-system/css';
 export const iconBtnClass = css({
   color: 'fg.faint',
   cursor: 'pointer',
-  p: '1',
-  borderRadius: 'md',
+  p: '2',
+  borderRadius: 'lg',
+  transition: 'background-color 0.15s, color 0.15s',
   _hover: { color: 'fg.muted', bg: 'bg.muted' },
 });
 

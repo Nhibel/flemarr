@@ -11,9 +11,19 @@ export function Chip({
 }) {
   const colorStyle = css.raw(
     color === 'green'
-      ? { bg: 'green.50', borderColor: 'green.200', color: 'green.700' }
+      ? {
+          bg: 'green.50',
+          borderColor: 'green.200',
+          color: 'green.700',
+          _dark: { bg: 'green.950', borderColor: 'green.800', color: 'green.300' },
+        }
       : color === 'amber'
-        ? { bg: 'amber.50', borderColor: 'amber.200', color: 'amber.700' }
+        ? {
+            bg: 'amber.50',
+            borderColor: 'amber.200',
+            color: 'amber.700',
+            _dark: { bg: 'amber.950', borderColor: 'amber.800', color: 'amber.300' },
+          }
         : { bg: 'bg.surface', borderColor: 'bd.default', color: 'fg.muted' },
   );
 
