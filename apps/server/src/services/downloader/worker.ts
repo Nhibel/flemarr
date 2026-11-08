@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { unzipSync } from 'fflate';
 import { Crc32Accumulator, computeCrc32Buffer } from '@/lib/crc32.js';
+import { stripInesHeaderIfMatches } from '@/lib/ines-header.js';
 import { archiveFetch } from '@/services/archive-org/fetch.js';
 
 export type WorkerResult = 'done' | 'crc-mismatch' | 'cancelled' | 'error';
@@ -40,12 +41,17 @@ async function extractAndValidate(tempPath: string, expectedCrc: string): Promis
     return 'crc-mismatch';
   }
   const romBuf = Buffer.from(rom);
-  if (computeCrc32Buffer(romBuf) !== expectedCrc.toLowerCase()) {
-    await deleteFile(tempPath);
-    return 'crc-mismatch';
+  if (computeCrc32Buffer(romBuf) === expectedCrc.toLowerCase()) {
+    await writeFile(tempPath, romBuf);
+    return 'done';
   }
-  await writeFile(tempPath, romBuf);
-  return 'done';
+  const stripped = stripInesHeaderIfMatches(romBuf, expectedCrc);
+  if (stripped) {
+    await writeFile(tempPath, stripped);
+    return 'done';
+  }
+  await deleteFile(tempPath);
+  return 'crc-mismatch';
 }
 
 async function deleteFile(path: string): Promise<void> {
@@ -172,10 +178,20 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
   }
 
   const actualCrc = acc.digest();
-  if (actualCrc !== expectedCrc.toLowerCase()) {
-    await deleteFile(tempPath);
-    return 'crc-mismatch';
+  if (actualCrc === expectedCrc.toLowerCase()) {
+    return 'done';
   }
 
-  return 'done';
+  // The streamed bytes might carry a 16-byte iNES header the DAT doesn't
+  // expect (Headerless DAT, headered real-world dump) — the file is already
+  // on disk, so read it back and check rather than re-downloading.
+  const buf = await readFile(tempPath);
+  const stripped = stripInesHeaderIfMatches(buf, expectedCrc);
+  if (stripped) {
+    await writeFile(tempPath, stripped);
+    return 'done';
+  }
+
+  await deleteFile(tempPath);
+  return 'crc-mismatch';
 }

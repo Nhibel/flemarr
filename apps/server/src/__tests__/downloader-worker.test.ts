@@ -122,6 +122,27 @@ describe('downloadFile', () => {
     ).rejects.toThrow('HTTP 404');
   });
 
+  it('strips a 16-byte iNES header and succeeds when the remainder matches', async () => {
+    const rom = Buffer.from('the actual prg+chr rom bytes');
+    const inesHeader = Buffer.concat([Buffer.from([0x4e, 0x45, 0x53, 0x1a]), Buffer.alloc(12)]);
+    const headered = Buffer.concat([inesHeader, rom]);
+    const expectedCrc = computeCrc32Buffer(rom); // DAT expects the headerless CRC
+    const tempPath = join(TMP, 'headered.rom.tmp');
+
+    mockFetchOk(headered);
+
+    const result = await downloadFile({
+      url: 'https://example.com/headered.nes',
+      tempPath,
+      expectedCrc,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    expect(result).toBe('done');
+    const written = await readFile(tempPath);
+    expect(written.equals(rom)).toBe(true);
+  });
+
   it('reports progress via onProgress callback', async () => {
     const content = Buffer.from('hello rom');
     const crc = computeCrc32Buffer(content);
@@ -253,6 +274,26 @@ describe('downloadFile — extractFromZip (nested-zip collections)', () => {
 
     expect(result).toBe('crc-mismatch');
     await expect(access(tempPath)).rejects.toThrow();
+  });
+
+  it('strips a 16-byte iNES header from an extracted ZIP entry when the remainder matches', async () => {
+    const tempPath = join(TMP, 'wrapped-headered.tmp');
+    const inesHeader = Buffer.concat([Buffer.from([0x4e, 0x45, 0x53, 0x1a]), Buffer.alloc(12)]);
+    const headeredRom = Buffer.concat([inesHeader, ROM]);
+    const zip = Buffer.from(zipSync({ 'Tetris (USA).nes': new Uint8Array(headeredRom) }));
+    mockFetchOk(zip);
+
+    const result = await downloadFile({
+      url: 'https://ia800000.us.archive.org/view_archive.php?x=1',
+      tempPath,
+      expectedCrc: ROM_CRC, // the Headerless DAT's expected CRC — no header
+      extractFromZip: true,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    expect(result).toBe('done');
+    const written = await readFile(tempPath);
+    expect(written.equals(ROM)).toBe(true);
   });
 
   it('throws when the downloaded bytes are not a valid ZIP', async () => {
