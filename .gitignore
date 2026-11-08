@@ -43,3 +43,6 @@ coverage/
 # Misc
 *.tmp
 *.bak
+
+# Debug screenshots dropped in for Claude Code sessions, not project assets
+captures/
