@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
+import { Button } from '@/components/Button.js';
+import { Card } from '@/components/Card.js';
 import { DatUpload } from '@/features/dat-loader/DatUpload.js';
 import { Fresh1g1rBrowser } from '@/features/dat-loader/Fresh1g1rBrowser.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
@@ -24,6 +26,13 @@ import { GearIcon, SunIcon, MoonIcon, iconBtnClass } from '@/components/icons.js
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
 type AppView = 'loader' | 'game' | 'settings';
+
+const TAB_LABELS: Record<Tab, string> = {
+  games: 'Jeux',
+  scanner: 'Scanner',
+  sources: 'Sources',
+  downloads: 'Téléchargements',
+};
 
 export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
@@ -100,19 +109,32 @@ function LoaderView({
   });
 
   return (
-    <main className={css({ maxW: '2xl', mx: 'auto', mt: '16', px: '6' })}>
-      <div className={css({ display: 'flex', alignItems: 'baseline', mb: '6' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+    <main
+      className={css({
+        maxW: '3xl',
+        mx: 'auto',
+        mt: { base: '8', md: '16' },
+        px: { base: '4', md: '6', lg: '8' },
+      })}
+    >
+      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '1', mb: '6' })}>
+        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           rom-curator
         </h1>
         <button
           onClick={onToggleTheme}
           title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
           className={iconBtnClass}
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        <button onClick={onSettings} title="Paramètres" className={iconBtnClass}>
+        <button
+          onClick={onSettings}
+          title="Paramètres"
+          aria-label="Paramètres"
+          className={iconBtnClass}
+        >
           <GearIcon />
         </button>
       </div>
@@ -130,14 +152,7 @@ function LoaderView({
           >
             Reprendre un DAT chargé
           </h2>
-          <div
-            className={css({
-              border: '1px solid',
-              borderColor: 'bd.default',
-              borderRadius: 'md',
-              overflow: 'hidden',
-            })}
-          >
+          <Card className={css({ overflow: 'hidden' })}>
             {existingDats.map((dat) => (
               <div
                 key={dat.id}
@@ -177,6 +192,7 @@ function LoaderView({
                   onClick={() => removeDat.mutate(dat.id)}
                   disabled={removeDat.isPending}
                   title="Supprimer ce DAT"
+                  aria-label="Supprimer ce DAT"
                   className={css({
                     px: '3',
                     py: '2',
@@ -192,7 +208,7 @@ function LoaderView({
                 </button>
               </div>
             ))}
-          </div>
+          </Card>
         </section>
       )}
 
@@ -203,7 +219,7 @@ function LoaderView({
           mb: '6',
           border: '1px solid',
           borderColor: 'bd.default',
-          borderRadius: 'lg',
+          borderRadius: 'xl',
           overflow: 'hidden',
         })}
       >
@@ -217,9 +233,10 @@ function LoaderView({
               fontSize: 'sm',
               fontWeight: 'medium',
               cursor: 'pointer',
-              bg: loaderMode === m ? 'blue.500' : 'bg.page',
-              color: loaderMode === m ? 'white' : 'fg.subtle',
-              _hover: { bg: loaderMode === m ? 'blue.500' : 'bg.surface' },
+              transition: 'background-color 0.15s, color 0.15s',
+              bg: loaderMode === m ? 'accent.solid' : 'bg.page',
+              color: loaderMode === m ? 'accent.fg' : 'fg.subtle',
+              _hover: { bg: loaderMode === m ? 'accent.solid' : 'bg.surface' },
             })}
           >
             {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
@@ -298,35 +315,40 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
   );
 
   return (
-    <main className={css({ maxW: '5xl', mx: 'auto', mt: '8', px: '6', pb: '12' })}>
+    <main
+      className={css({
+        maxW: '7xl',
+        mx: 'auto',
+        mt: { base: '6', md: '8' },
+        px: { base: '4', md: '6', lg: '8' },
+        pb: '12',
+      })}
+    >
       {/* Header */}
       <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '4' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           {dat.system}
         </h1>
         <span className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          {dat.source} · {dat.gameCount} games
+          {dat.source} · {dat.gameCount} jeux
         </span>
-        <button
-          onClick={onReset}
-          className={css({
-            fontSize: 'sm',
-            color: 'blue.600',
-            cursor: 'pointer',
-            _hover: { textDecoration: 'underline' },
-            _dark: { color: 'blue.400' },
-          })}
-        >
-          Load different DAT
-        </button>
+        <Button variant="secondary" size="sm" onClick={onReset}>
+          Charger un autre DAT
+        </Button>
         <button
           onClick={onToggleTheme}
           title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
           className={iconBtnClass}
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
-        <button onClick={onSettings} title="Paramètres" className={iconBtnClass}>
+        <button
+          onClick={onSettings}
+          title="Paramètres"
+          aria-label="Paramètres"
+          className={iconBtnClass}
+        >
           <GearIcon />
         </button>
       </div>
@@ -338,10 +360,12 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
       <div
         className={css({
           display: 'flex',
-          gap: '0',
+          gap: '1',
           mb: '4',
+          pb: '2',
           borderBottom: '1px solid',
           borderColor: 'bd.default',
+          flexWrap: 'wrap',
         })}
       >
         {(['games', 'scanner', 'sources', 'downloads'] as Tab[]).map((t) => (
@@ -350,26 +374,30 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
             onClick={() => setTab(t)}
             className={css({
               px: '4',
-              py: '2',
+              py: '1.5',
               fontSize: 'sm',
               fontWeight: 'medium',
               cursor: 'pointer',
-              borderBottom: '2px solid',
-              borderColor: tab === t ? 'blue.500' : 'transparent',
-              color: tab === t ? 'blue.600' : 'fg.subtle',
-              _hover: { color: 'fg.default' },
-              _dark: { color: tab === t ? 'blue.400' : undefined },
-              textTransform: 'capitalize',
+              borderRadius: 'lg',
+              transition: 'background-color 0.15s, color 0.15s',
+              bg: tab === t ? 'accent.subtle' : 'transparent',
+              color: tab === t ? 'accent.text' : 'fg.subtle',
+              _hover: {
+                color: tab === t ? 'accent.text' : 'fg.default',
+                bg: tab === t ? 'accent.subtle' : 'bg.surface',
+              },
             })}
           >
-            {t}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {/* Games tab — kept mounted to preserve filter/selection state */}
       <div className={css({ display: tab === 'games' ? 'block' : 'none' })}>
-        {isLoading && <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Loading games…</p>}
+        {isLoading && (
+          <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Chargement des jeux…</p>
+        )}
         {error instanceof Error && (
           <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
             {error.message}
