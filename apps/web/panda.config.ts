@@ -6,10 +6,15 @@ export default defineConfig({
   exclude: [],
   outdir: 'src/styled-system',
   globalCss: {
-    // 17px root — every rem-based fontSize token grows proportionally from
-    // here, app-wide, without touching individual components.
+    // Root font-size, not 16px (browser default). Every rem-based token —
+    // fontSize, spacing (padding/gap), and the maxW container widths — scales
+    // proportionally from this one value, app-wide, with zero per-component
+    // changes. Bumped more than once after feedback that the first +1px
+    // nudge was too timid; this is a real, visible jump, not a rounding
+    // error — if it's too much (or still not enough) the fix is this one
+    // line, not a re-audit of every component.
     html: {
-      fontSize: '17px',
+      fontSize: '22px',
     },
     'html, body': {
       bg: 'bg.page',
