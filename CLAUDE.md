@@ -8,7 +8,7 @@ This file is the canonical context for Claude Code working on this project. Read
 
 `rom-curator` is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs). Access-restricted collections are supported via an archive.org account login.
 
-The user (Camille) runs a homelab. **Phases 0–8 and 10 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) is code-complete, pending end-to-end verification with Camille's ScreenScraper account.**
+The user (Camille) runs a homelab. **Phases 0–8, 10 and 12 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) is code-complete, pending end-to-end verification with Camille's ScreenScraper account.**
 
 ---
 
@@ -59,7 +59,8 @@ rom-curator/
 │       └── package.json
 ├── docs/
 │   ├── dat-format.md
-│   └── archive-org-strategy.md
+│   ├── archive-org-strategy.md
+│   └── security.md
 ├── pnpm-workspace.yaml
 ├── package.json             # root, with workspace scripts
 ├── CLAUDE.md
@@ -156,7 +157,7 @@ The user (Camille) has explicitly stated preferences. Match them:
   - Note: there is currently **no authentication of any kind** — the app is only safe on localhost or a trusted LAN. This is a consequence of the single-user/local assumption, **not** a decision that auth must never exist. Exposing the app to the internet requires adding auth (proxy-level or a single-password gate) first. See [docs/security.md](./docs/security.md).
 - Cloud storage, S3, anything paid.
 - Emulator integration — the app curates files, it doesn't run them.
-- Box art, screenshot scraping — out of initial scope, can be added later.
+- Gameplay screenshots — out of scope. (Box art and ScreenScraper-sourced game info — year, genre, publisher, description — shipped in phases 10–11 and are no longer out of scope.)
 - Mobile app — responsive web is fine, no native client.
 - Telemetry, analytics — none.
 

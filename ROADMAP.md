@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8 and 10 are done; the app runs as a Docker service on the homelab and is in daily use (the container needs a rebuild to pick up phases 10–11). Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) is code-complete; its acceptance criteria await end-to-end verification with a real ScreenScraper account (devid pending).** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8, 10 and 12 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) is code-complete; its acceptance criteria await end-to-end verification with a real ScreenScraper account (devid pending).** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -178,6 +178,17 @@ Make the DAT upload step optional by pulling from Fresh1G1R automatically.
 - [x] Re-fetching the same DAT when there's no upstream change hits the cache, not the network.
 - [x] Both Redump and No-Intro DATs are listable per preset.
 
+### Shipped notes
+
+`GET /api/dat-sources` no longer uses GitHub's Contents API as described
+above — swapped for the Git Trees API (f544ab5, November 2026) after
+intermittent 502/503/504s traced to the Contents API's ~340KB response
+for a ~250-entry directory (every entry repeats five full URLs). One
+small lookup for the preset's tree sha plus a single recursive Trees
+API call now replaces the two per-preset Contents calls, at about a
+fifth of the payload, plus a couple of retries with short backoff on
+502/503/504 as a safety net for whatever flakiness remains.
+
 ---
 
 ## Phase 7 — Persistence and config
@@ -311,6 +322,48 @@ Prerequisite: a ScreenScraper.fr user account **and** an approved developer id (
 - [ ] Switching the language setting fr↔en changes the displayed descriptions without any new ScreenScraper request.
 - [ ] Exhausted quota or ScreenScraper downtime degrades gracefully: the page renders with whatever is cached and nothing gets negatively cached.
 - [ ] Credentials are write-only: absent from `/api/settings` responses and from logs.
+
+---
+
+## Phase 12 — Download target: server or browser
+
+Let downloaded files land either on the server's library folder (original
+behavior) or be streamed straight to the browser's native download, for
+users who run the app remotely but want files on their own machine.
+
+### Tasks
+
+- `target: 'server' | 'browser'` on the download request; server-target
+  behaves exactly as before. Browser-target stages the validated file
+  outside any library root and serves it once via a new streaming route
+  (`Content-Disposition: attachment`), then deletes it — CRC32
+  validation still happens server-side _before_ anything is handed to
+  the client, so the integrity invariant never changes.
+- Settings: `downloadTarget` picked once for the whole session (no
+  per-click toggle) — there's no real case for mixing destinations
+  within one session.
+- The per-system folder stays relevant either way: the real destination
+  in server mode, or just the folder the scanner expects files in once
+  moved there by hand in browser mode. `SystemFolderBar`'s messaging
+  adapts to which is true.
+
+### Acceptance criteria
+
+- [x] A download job set to `browser` validates the file server-side,
+      then auto-triggers the browser's save dialog/download via SSE.
+- [x] Switching `downloadTarget` in Settings changes what the resolve
+      panel's single download button does, with no other UI change needed.
+- [x] No regression to the server-target path (same destination,
+      rename, history recording as before).
+
+### Shipped notes
+
+Shipped 2026-11-07/08 (e7454cf, 75d0d77, ed6dd78). Originally built as
+two separate buttons in the resolve panel (one per target); moved into
+a single Settings-driven choice per Camille's feedback that mixing
+targets within a session has no real use case. `download_history`
+records browser-target downloads with a `'<browser>'` destination
+sentinel instead of a real path, for audit purposes only.
 
 ---
 

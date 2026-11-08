@@ -167,7 +167,7 @@ SHA1 / MD5 from the DAT are validated only if the user explicitly requests deep 
 
 - **No Redux, Zustand, Jotai.** TanStack Query covers server state; React's built-ins cover the rest.
 - **No tRPC.** REST + Zod gives us typed clients without coupling the frontend build to the backend's TS.
-- **No GraphQL.** Overkill for ~15 endpoints.
+- **No GraphQL.** Overkill for ~30 endpoints.
 - **No ORM.** SQLite + hand-written SQL via `better-sqlite3`, hand-rolled migrations. Held up fine through phase 7; no query builder needed.
 - **No auth (yet).** Single user, single machine — every `/api/*` route is open, which is safe only on localhost or a trusted LAN. This is a consequence of the local-only assumption, not a permanent decision: exposing the app beyond the LAN requires adding authentication first (reverse-proxy auth / VPN, or a single-password gate in the app). The risks and options are documented in [docs/security.md](./docs/security.md).
 - **No SSR / Next.js.** Already rejected, listed here so we don't drift back.
