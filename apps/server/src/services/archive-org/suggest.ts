@@ -48,7 +48,11 @@ export function buildSearchQueries(system: string, source: DatFile['source']): s
 
 /** Evenly-strided sample of ROM entries across the whole DAT. */
 export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; crc: string }[] {
-  const all = dat.games.flatMap((g) => g.roms.map((r) => ({ name: r.name, crc: r.crc })));
+  // nodump ROMs have no CRC — nothing to compare a source's listing against,
+  // so they're never candidates for the coverage sample (see docs/dat-format.md).
+  const all = dat.games.flatMap((g) =>
+    g.roms.filter((r) => r.crc !== undefined).map((r) => ({ name: r.name, crc: r.crc! })),
+  );
   if (all.length <= size) return all;
   const stride = all.length / size;
   const sample: { name: string; crc: string }[] = [];

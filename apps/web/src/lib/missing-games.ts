@@ -21,7 +21,9 @@ export function computeMissingGameIds(
   for (const id of selectedIds) {
     const game = byId.get(id);
     if (!game) continue;
-    if (game.roms.some((rom) => !ownedCrcs.has(rom.crc))) {
+    // nodump ROMs have no CRC to check ownership against — skip them rather
+    // than counting them as always missing (see docs/dat-format.md).
+    if (game.roms.some((rom) => rom.crc !== undefined && !ownedCrcs.has(rom.crc))) {
       missing.push(id);
     }
   }

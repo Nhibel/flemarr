@@ -161,6 +161,15 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
 
   // Every ROM of the game is resolved — multi-disc games need all discs.
   for (const rom of game.roms) {
+    // nodump ROMs have no CRC — nothing to search for or validate against,
+    // so they're listed with no sources rather than queried (see
+    // docs/dat-format.md). expectedCrc is unused here since sources stays
+    // empty.
+    if (rom.crc === undefined) {
+      roms.push({ romName: rom.name, expectedCrc: '', sources: [] });
+      continue;
+    }
+
     const resolvedSources: ResolvedSource[] = [];
     for (const source of sources) {
       let info: ArchiveItemInfo;

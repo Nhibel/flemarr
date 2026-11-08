@@ -159,6 +159,20 @@ scanRoute.post('/scan/rename', async (c) => {
     }
   }
 
-  const status = failed.length === 0 ? 200 : 500;
-  return c.json({ done, failed, rolledBack }, status);
+  if (failed.length > 0) {
+    const first = failed[0]!;
+    const rollbackNote =
+      rolledBack.length > 0
+        ? ` (rolled back ${rolledBack.length} already-renamed file${rolledBack.length > 1 ? 's' : ''})`
+        : '';
+    return errorJson(
+      c,
+      500,
+      'RENAME_FAILED',
+      `Rename failed for "${first.entry.from}": ${first.error}${rollbackNote}`,
+      { done, failed, rolledBack },
+    );
+  }
+
+  return c.json({ done, failed, rolledBack });
 });

@@ -61,8 +61,9 @@ describe('Redump PS1 fixture', () => {
     expect(ff7?.roms).toHaveLength(2);
   });
 
-  it('nodump ROM has status nodump', () => {
+  it('nodump ROM has status nodump and no CRC, but the game still parses', () => {
     const castlevania = dat.games.find((g) => g.name.includes('Castlevania'));
     expect(castlevania?.roms[0]?.status).toBe('nodump');
+    expect(castlevania?.roms[0]?.crc).toBeUndefined();
   });
 });

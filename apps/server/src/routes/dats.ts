@@ -38,7 +38,12 @@ datsRoute.post('/dats', async (c) => {
     return errorJson(c, 400, 'PARSE_ERROR', errorMessage(err, 'Failed to parse DAT'));
   }
 
-  const summary = addDat(dat);
+  let summary;
+  try {
+    summary = addDat(dat);
+  } catch (err) {
+    return errorJson(c, 500, 'SAVE_ERROR', errorMessage(err, 'Failed to save DAT'));
+  }
   return c.json(summary, 201);
 });
 

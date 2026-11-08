@@ -180,7 +180,7 @@ async function runQueue(
 
     if (result === 'done' && target === 'server') {
       try {
-        const dest = join(destinationDir!, item.romName);
+        const dest = join(destinationDir!, basename(item.romName));
         assertWithinRoot(dest, destinationDir!);
         await rename(item.tempPath, dest);
         item.status = 'done';
@@ -217,7 +217,8 @@ async function runQueue(
       gameId: item.gameId,
       romName: item.romName,
       datId,
-      destination: target === 'browser' ? '<browser>' : join(destinationDir!, item.romName),
+      destination:
+        target === 'browser' ? '<browser>' : join(destinationDir!, basename(item.romName)),
       expectedCrc: item.expectedCrc,
       status: 'failed',
       errorMessage: reason,

@@ -185,4 +185,43 @@ describe('POST /api/scan/rename', () => {
     expect(files).toContain('Canonical.sfc');
     expect(files).not.toContain('wrong-name.sfc');
   });
+
+  it('returns the uniform error envelope when a rename fails on disk', async () => {
+    const res = await app.request('/api/scan/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        renames: [{ from: join(ROOT, 'does-not-exist.sfc'), to: 'Canonical.sfc' }],
+      }),
+    });
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as {
+      error?: { code: string; message: string; details?: { rolledBack: string[] } };
+    };
+    expect(body.error?.code).toBe('RENAME_FAILED');
+    expect(body.error?.message).toContain('does-not-exist.sfc');
+    expect(body.error?.details?.rolledBack).toEqual([]);
+  });
+
+  it('rolls back already-renamed files when a later rename fails', async () => {
+    await writeFile(join(ROOT, 'a.sfc'), 'a');
+
+    const res = await app.request('/api/scan/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        renames: [
+          { from: join(ROOT, 'a.sfc'), to: 'A-renamed.sfc' },
+          { from: join(ROOT, 'missing.sfc'), to: 'B-renamed.sfc' },
+        ],
+      }),
+    });
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error?: { details?: { rolledBack: string[] } } };
+    expect(body.error?.details?.rolledBack).toEqual([join(ROOT, 'a.sfc')]);
+
+    const files = await readdir(ROOT);
+    expect(files).toContain('a.sfc'); // restored
+    expect(files).not.toContain('A-renamed.sfc');
+  });
 });

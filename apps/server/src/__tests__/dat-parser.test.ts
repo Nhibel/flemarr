@@ -34,6 +34,8 @@ const MISSING_HEADER = `<?xml version="1.0"?>
   </game>
 </datafile>`;
 
+// Real nodump entries have no crc attribute at all — unlike most of this
+// file's fixtures, which supply one.
 const WITH_NODUMP = `<?xml version="1.0"?>
 <datafile>
   <header>
@@ -42,7 +44,20 @@ const WITH_NODUMP = `<?xml version="1.0"?>
   </header>
   <game name="Missing Game (USA)">
     <description>Missing Game (USA)</description>
-    <rom name="Missing Game (USA).rom" size="0" crc="00000000" status="nodump"/>
+    <rom name="Missing Game (USA).rom" size="0" status="nodump"/>
+  </game>
+</datafile>`;
+
+const NODUMP_ALONGSIDE_GOOD = `<?xml version="1.0"?>
+<datafile>
+  <header>
+    <name>Test System</name>
+    <url>http://redump.org</url>
+  </header>
+  <game name="Multi-disc Game (USA)">
+    <description>Multi-disc Game (USA)</description>
+    <rom name="Multi-disc Game (USA) (Disc 1).bin" size="1024" crc="aabbccdd"/>
+    <rom name="Multi-disc Game (USA) (Disc 2).bin" size="1024" status="nodump"/>
   </game>
 </datafile>`;
 
@@ -97,6 +112,21 @@ describe('parseDat', () => {
   it('parses nodump ROM with status field', () => {
     const result = parseDat(WITH_NODUMP);
     expect(result.games[0]?.roms[0]?.status).toBe('nodump');
+  });
+
+  it('keeps a nodump-only game visible instead of dropping it silently', () => {
+    const result = parseDat(WITH_NODUMP);
+    expect(result.games).toHaveLength(1);
+    expect(result.games[0]?.name).toBe('Missing Game (USA)');
+    expect(result.games[0]?.roms[0]?.crc).toBeUndefined();
+  });
+
+  it('keeps a nodump disc alongside a good one in a multi-disc game', () => {
+    const result = parseDat(NODUMP_ALONGSIDE_GOOD);
+    expect(result.games[0]?.roms).toHaveLength(2);
+    expect(result.games[0]?.roms[0]?.crc).toBe('aabbccdd');
+    expect(result.games[0]?.roms[1]?.status).toBe('nodump');
+    expect(result.games[0]?.roms[1]?.crc).toBeUndefined();
   });
 
   it('parses unicode game names without mangling', () => {

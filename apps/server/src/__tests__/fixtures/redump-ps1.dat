@@ -17,6 +17,6 @@
   </game>
   <game name="Castlevania - Symphony of the Night (USA)">
     <description>Castlevania - Symphony of the Night (USA)</description>
-    <rom name="Castlevania - Symphony of the Night (USA).bin" size="511508480" crc="00000000" md5="00000000000000000000000000000000" sha1="0000000000000000000000000000000000000000" status="nodump"/>
+    <rom name="Castlevania - Symphony of the Night (USA).bin" size="511508480" status="nodump"/>
   </game>
 </datafile>

@@ -3,10 +3,14 @@ import { z } from 'zod';
 export const romSchema = z.object({
   name: z.string(),
   size: z.number().int().nonnegative(),
+  // Absent for a nodump ROM — there's no known-good dump to checksum.
+  // Skipped everywhere CRC matching/resolving happens, but the ROM (and its
+  // game) still parses and stays visible in the UI (docs/dat-format.md).
   crc: z
     .string()
     .length(8)
-    .regex(/^[0-9a-f]{8}$/),
+    .regex(/^[0-9a-f]{8}$/)
+    .optional(),
   md5: z
     .string()
     .length(32)

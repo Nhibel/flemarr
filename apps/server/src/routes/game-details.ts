@@ -33,7 +33,12 @@ gameDetailsRoute.get('/dats/:id/games/:gameId/boxart', async (c) => {
     return errorJson(c, 404, 'NOT_FOUND', 'No boxart for this game');
   }
 
-  const upstream = await fetch(url);
+  let upstream: Response;
+  try {
+    upstream = await fetch(url);
+  } catch (err) {
+    return errorJson(c, 502, 'PROVIDER_ERROR', errorMessage(err, 'Boxart fetch failed'));
+  }
   if (!upstream.ok || upstream.body == null) {
     return errorJson(c, 502, 'PROVIDER_ERROR', `Boxart fetch failed: ${upstream.status}`);
   }

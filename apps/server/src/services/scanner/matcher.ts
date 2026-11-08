@@ -11,6 +11,9 @@ export function buildCrcIndex(dat: DatFile): Map<string, CrcEntry> {
   const index = new Map<string, CrcEntry>();
   for (const game of dat.games) {
     for (const rom of game.roms) {
+      // nodump ROMs have no CRC to match against — visible in the UI, but
+      // never indexed (see docs/dat-format.md).
+      if (rom.crc === undefined) continue;
       index.set(rom.crc, { game, rom });
     }
   }

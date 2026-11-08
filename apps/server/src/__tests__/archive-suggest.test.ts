@@ -115,6 +115,21 @@ describe('sampleRoms', () => {
     expect(sample[0]?.name).toBe('Game 0 (USA).sfc');
     expect(sample.at(-1)?.name).toBe('Game 980 (USA).sfc');
   });
+
+  it('excludes nodump ROMs — nothing to compare a listing against', () => {
+    const dat = makeDat(2);
+    dat.games.push({
+      id: 'proto',
+      name: 'Prototype (USA)',
+      region: ['USA'],
+      languages: [],
+      category: 'Game',
+      roms: [{ name: 'Prototype (USA).sfc', size: 1024, status: 'nodump' }],
+    });
+    const sample = sampleRoms(dat, 50);
+    expect(sample).toHaveLength(2);
+    expect(sample.every((r) => r.crc !== undefined)).toBe(true);
+  });
 });
 
 describe('scoreIndex', () => {

@@ -56,5 +56,8 @@ export type RenameRequest = z.infer<typeof renameRequestSchema>;
 export const renameResultSchema = z.object({
   done: z.array(renameEntrySchema),
   failed: z.array(z.object({ entry: renameEntrySchema, error: z.string() })),
+  // Entries undone by the best-effort rollback after a failure — always
+  // empty when failed.length === 0.
+  rolledBack: z.array(z.string()),
 });
 export type RenameResult = z.infer<typeof renameResultSchema>;

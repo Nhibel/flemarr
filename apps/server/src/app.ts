@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { logger } from '@/lib/logger.js';
+import { errorJson, errorMessage } from '@/lib/http.js';
 import { healthRoute } from '@/routes/health.js';
 import { datsRoute } from '@/routes/dats.js';
 import { scanRoute } from '@/routes/scan.js';
@@ -19,6 +20,17 @@ app.use('*', async (c, next) => {
     { method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - start },
     'request',
   );
+});
+
+// Safety net for any route that forgets a try/catch: without this, an
+// uncaught exception falls through to Hono's default plain-text 500,
+// breaking the uniform { error: { code, message } } envelope every client
+// relies on (see docs/ARCHITECTURE.md). Routes that need a specific error
+// code should still catch and classify their own errors — this only
+// guarantees the envelope's shape for whatever slips through.
+app.onError((err, c) => {
+  logger.error({ method: c.req.method, path: c.req.path, err: String(err) }, 'unhandled error');
+  return errorJson(c, 500, 'INTERNAL_ERROR', errorMessage(err, 'Internal server error'));
 });
 
 app.route('/api', healthRoute);

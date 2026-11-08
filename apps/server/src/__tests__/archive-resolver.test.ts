@@ -136,6 +136,31 @@ describe('resolveGames — direct layout', () => {
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
   });
+
+  it('lists a nodump ROM with no sources, without querying any source', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'direct-snes',
+      layout: 'direct',
+      note: '',
+    });
+    const nodumpDat: DatFile = {
+      source: 'no-intro',
+      system: 'Nintendo - Super Nintendo Entertainment System',
+      games: [
+        {
+          id: 'proto',
+          name: 'Unreleased Prototype (USA)',
+          region: ['USA'],
+          languages: ['En'],
+          roms: [{ name: 'Unreleased Prototype (USA).sfc', size: 524288, status: 'nodump' }],
+        },
+      ],
+    };
+
+    const results = await resolveGames(nodumpDat, 'dat1', ['proto']);
+    expect(results[0]?.roms[0]?.sources).toEqual([]);
+    expect(vi.mocked(getItemInfo)).not.toHaveBeenCalled();
+  });
 });
 
 describe('resolveGames — restricted item via datanode zip listing', () => {

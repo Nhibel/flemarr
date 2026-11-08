@@ -57,4 +57,32 @@ describe('computeMissingGameIds', () => {
   it('ignores unknown game ids', () => {
     expect(computeMissingGameIds(['zz'], GAMES, scan([]))).toEqual([]);
   });
+
+  it('a nodump ROM (no crc) never counts toward missing', () => {
+    const nodumpOnly: Game = {
+      id: 'n',
+      name: 'n',
+      region: ['USA'],
+      languages: [],
+      category: 'Game',
+      roms: [{ name: 'n-0.bin', size: 1024, status: 'nodump' }],
+    };
+    expect(computeMissingGameIds(['n'], [nodumpOnly], scan([]))).toEqual([]);
+  });
+
+  it('a multi-disc game with one nodump disc is missing only based on the dumped disc', () => {
+    const mixed: Game = {
+      id: 'mx',
+      name: 'mx',
+      region: ['USA'],
+      languages: [],
+      category: 'Game',
+      roms: [
+        { name: 'mx-0.bin', size: 1024, crc: '00000001', status: 'good' },
+        { name: 'mx-1.bin', size: 1024, status: 'nodump' },
+      ],
+    };
+    expect(computeMissingGameIds(['mx'], [mixed], scan([]))).toEqual(['mx']);
+    expect(computeMissingGameIds(['mx'], [mixed], scan(['00000001']))).toEqual([]);
+  });
 });

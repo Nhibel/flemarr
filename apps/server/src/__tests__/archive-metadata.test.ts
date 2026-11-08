@@ -12,6 +12,9 @@ function mockFetch(body: unknown, status = 200) {
     vi.fn().mockResolvedValue({
       ok: status >= 200 && status < 300,
       status,
+      // retry-after: 0 keeps any 429/503 test fast — real waits are covered
+      // by the Retry-After-specific test below.
+      headers: new Headers(status === 429 || status === 503 ? { 'retry-after': '0' } : {}),
       json: () => Promise.resolve(body),
     }),
   );
@@ -56,6 +59,34 @@ describe('getIndex', () => {
     mockFetch({ files: [{ name: 'game.rom', crc32: 'aabbccdd' }] });
     const files = await getIndex('no-size');
     expect(files[0]?.size).toBe(0);
+  });
+
+  it('retries once on a 503, honoring Retry-After, then succeeds', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: new Headers({ 'retry-after': '0' }),
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () => Promise.resolve({ files: MOCK_FILES }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const files = await getIndex('flaky-id');
+    expect(files).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws the final 503 once retries are exhausted', async () => {
+    mockFetch({}, 503);
+    await expect(getIndex('always-503')).rejects.toThrow('archive.org metadata fetch failed: 503');
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3); // initial + 2 retries
   });
 });
 

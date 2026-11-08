@@ -22,6 +22,30 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
+// archive.org signals overload with 429/503 on metadata lookups too, not just
+// file downloads (which the downloader worker already retries) — docs/
+// archive-org-strategy.md says to honor these; this was the one call site
+// that didn't yet.
+const RETRYABLE_STATUS = new Set([429, 503]);
+const MAX_RETRIES = 2;
+const MAX_RETRY_WAIT_S = 30;
+
+async function fetchWithRetry(url: string): Promise<Response> {
+  let attempt = 0;
+  for (;;) {
+    const res = await archiveFetch(url);
+    if (!RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) return res;
+
+    const retryAfter = res.headers.get('retry-after');
+    const waitSeconds =
+      retryAfter !== null && Number.isFinite(Number(retryAfter))
+        ? Math.min(Number(retryAfter), MAX_RETRY_WAIT_S)
+        : (attempt + 1) * 5;
+    await new Promise((r) => setTimeout(r, waitSeconds * 1000));
+    attempt++;
+  }
+}
+
 // Shape of the files array in archive.org's metadata response
 const archiveOrgFileSchema = z.object({
   name: z.string(),
@@ -46,7 +70,7 @@ export async function getItemInfo(identifier: string): Promise<ArchiveItemInfo> 
 
   const start = Date.now();
   const url = `https://archive.org/metadata/${encodeURIComponent(identifier)}`;
-  const res = await archiveFetch(url);
+  const res = await fetchWithRetry(url);
   if (!res.ok) {
     logger.warn({ identifier, status: res.status }, 'metadata fetch failed');
     throw new Error(`archive.org metadata fetch failed: ${res.status} for ${identifier}`);

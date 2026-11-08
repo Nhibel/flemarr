@@ -69,6 +69,25 @@ describe('buildCrcIndex', () => {
     expect(index.has('a8b56e6a')).toBe(true);
     expect(index.has('f5a4f2d4')).toBe(true);
   });
+
+  it('skips a nodump ROM instead of indexing an undefined key', () => {
+    const datWithNodump: DatFile = {
+      source: 'redump',
+      system: 'Test',
+      games: [
+        {
+          id: 'g',
+          name: 'Game (USA)',
+          region: ['USA'],
+          languages: [],
+          category: 'Game',
+          roms: [{ name: 'Game (USA).bin', size: 1024, status: 'nodump' }],
+        },
+      ],
+    };
+    const index = buildCrcIndex(datWithNodump);
+    expect(index.size).toBe(0);
+  });
 });
 
 describe('matchFiles', () => {
