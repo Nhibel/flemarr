@@ -10,11 +10,6 @@ export const gameDetailsSchema = z.object({
   gameId: z.string(),
   /** True when the provider has a boxart — fetch it from the backend proxy. */
   hasBoxart: z.boolean(),
-  /** Synopsis in the configured language (fallback to the other one). */
-  description: z.string().optional(),
-  year: z.number().int().optional(),
-  genre: z.string().optional(),
-  publisher: z.string().optional(),
 });
 
 export type GameDetails = z.infer<typeof gameDetailsSchema>;

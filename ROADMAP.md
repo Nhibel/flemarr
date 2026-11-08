@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8, 10 and 12 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) is code-complete; its acceptance criteria await end-to-end verification with a real ScreenScraper account (devid pending).** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8, 10 and 12 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) was retired on 2026-11-08 before its acceptance criteria were verified — see the note under the phase.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -302,6 +302,15 @@ Shipped 2026-07-11 (ceb91dd…d768724). Verified end-to-end against the live pro
 
 ## Phase 11 — Display modes and ScreenScraper game info
 
+> **Status: retired (2026-11-08), before verification.** Camille decided
+> not to pursue ScreenScraper account setup — box art alone (phase 10)
+> covers the need, and the extra account/devid dependency wasn't worth
+> it for descriptions. The code was removed (see "Retired notes" below)
+> rather than left unverified and bit-rotting. The spec below is kept as
+> a historical record; if this is ever revisited, treat it as a fresh
+> implementation rather than resuming the removed code, since the
+> `game_details` schema and settings were cleaned up along with it.
+
 Let the user pick how much each game row shows — **compact** (no image, dense), **normal** (boxart, the phase 10 default), **detailed** (large boxart + description, year, genre, publisher) — and feed the detailed mode from ScreenScraper.fr, with descriptions in the user's preferred language (`fr` default, `en` fallback).
 
 Prerequisite: a ScreenScraper.fr user account **and** an approved developer id (requested on their forum) — the `jeuInfos.php` API requires both.
@@ -322,6 +331,18 @@ Prerequisite: a ScreenScraper.fr user account **and** an approved developer id (
 - [ ] Switching the language setting fr↔en changes the displayed descriptions without any new ScreenScraper request.
 - [ ] Exhausted quota or ScreenScraper downtime degrades gracefully: the page renders with whatever is cached and nothing gets negatively cached.
 - [ ] Credentials are write-only: absent from `/api/settings` responses and from logs.
+
+### Retired notes
+
+Removed 2026-11-08 — `services/game-details/screenscraper.ts` deleted;
+`services/game-details/index.ts` and `store.ts` reverted to boxart-only
+(migration004 drops the six migration003 columns and clears the
+leftover settings keys); the `detailed` display mode removed (only
+`compact`/`normal` remain — `normal` already shows boxart); the
+ScreenScraper settings section and `descriptionLanguage` removed from
+the Settings page and from the shared schema. Box art (phase 10,
+libretro-thumbnails) is untouched and remains the only per-game visual
+info the app shows.
 
 ---
 

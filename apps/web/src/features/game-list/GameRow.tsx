@@ -1,12 +1,6 @@
 import { css } from '@/styled-system/css';
 import type { Game } from '@shared/dat.js';
-import type { GameDetails } from '@shared/game-details.js';
 import type { DisplayMode } from './use-display-mode.js';
-
-/** "1989 · Puzzle · Nintendo" from whichever fields the provider knew. */
-function metaLine(info: GameDetails | undefined): string {
-  return [info?.year, info?.genre, info?.publisher].filter((v) => v != null).join(' · ');
-}
 
 function formatSize(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
@@ -26,8 +20,6 @@ interface Props {
   onToggle: (id: string) => void;
   /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
   boxartSrc?: string;
-  /** Provider details for the detailed mode (description, year, genre…). */
-  info?: GameDetails;
   mode?: DisplayMode;
   style?: React.CSSProperties;
 }
@@ -38,12 +30,11 @@ export function GameRow({
   isFocused,
   onToggle,
   boxartSrc,
-  info,
   mode = 'normal',
   style,
 }: Props) {
-  // Boxart slot size per mode; compact has no slot at all.
-  const artSize = mode === 'detailed' ? '20' : '10';
+  // Boxart slot size; compact mode has no slot at all.
+  const artSize = '10';
   return (
     <div
       role="option"
@@ -111,35 +102,7 @@ export function GameRow({
           </span>
         ))}
 
-      {mode === 'detailed' ? (
-        <span
-          className={css({
-            flex: 1,
-            minW: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5',
-          })}
-        >
-          <span className={css({ fontSize: 'sm', fontWeight: 'medium', truncate: true })}>
-            {game.name}
-          </span>
-          {metaLine(info) !== '' && (
-            <span className={css({ fontSize: 'xs', color: 'fg.muted' })}>{metaLine(info)}</span>
-          )}
-          {info?.description != null ? (
-            <span className={css({ fontSize: 'xs', color: 'fg.faint', lineClamp: '3' })}>
-              {info.description}
-            </span>
-          ) : (
-            <span className={css({ fontSize: 'xs', color: 'fg.faint', fontStyle: 'italic' })}>
-              Pas de descriptif
-            </span>
-          )}
-        </span>
-      ) : (
-        <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
-      )}
+      <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
 
       <span className={css({ display: 'flex', gap: '1', flexShrink: 0 })}>
         {game.region.map((r) => (

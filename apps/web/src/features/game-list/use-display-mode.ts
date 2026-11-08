@@ -1,15 +1,17 @@
 import { useState } from 'react';
 
-export type DisplayMode = 'compact' | 'normal' | 'detailed';
+export type DisplayMode = 'compact' | 'normal';
 
-export const DISPLAY_MODES: DisplayMode[] = ['compact', 'normal', 'detailed'];
+export const DISPLAY_MODES: DisplayMode[] = ['compact', 'normal'];
 
 const STORAGE_KEY = 'rom-curator.display-mode';
 
 function load(): DisplayMode {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw === 'compact' || raw === 'normal' || raw === 'detailed' ? raw : 'normal';
+    // A stored 'detailed' from before that mode was retired falls through
+    // to the 'normal' default below — no migration needed.
+    return raw === 'compact' || raw === 'normal' ? raw : 'normal';
   } catch {
     return 'normal';
   }

@@ -18,7 +18,7 @@ A personal ROM library curator built around 1G1R DAT files.
 
 ## Status
 
-Phases 0–8, 10 and 12 are done and in daily use. Phase 9 (Myrient as a secondary source) is blocked — the service shut down. Phase 11 (ScreenScraper game info) is code-complete, pending end-to-end verification with a real account. See [ROADMAP.md](./ROADMAP.md).
+Phases 0–8, 10 and 12 are done and in daily use. Phase 9 (Myrient as a secondary source) is blocked — the service shut down. Phase 11 (ScreenScraper game info) was retired before completion — box art alone covers the need. See [ROADMAP.md](./ROADMAP.md).
 
 ## Running with Docker
 
@@ -51,7 +51,7 @@ ROMS_HOST_DIR=/srv/roms   # the library folder itself — pointing at its parent
 | `ROMS_ROOT`            | `/roms`     | In-container library root that browsing/scan/download are confined to.   |
 | `ROM_CURATOR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file).   |
 
-This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org and ScreenScraper credentials, description language, and whether downloads land on the server or in the browser — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
+This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org credentials, and whether downloads land on the server or in the browser — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
 
 ### Deploying on a homelab server
 

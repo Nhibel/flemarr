@@ -7,7 +7,7 @@ import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
 
-const MODE_LABELS = { compact: 'Compact', normal: 'Normal', detailed: 'Detailed' } as const;
+const MODE_LABELS = { compact: 'Compact', normal: 'Normal' } as const;
 
 interface Props {
   datId: string;
@@ -170,7 +170,6 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               isFocused={resolvedFocus === i}
               onToggle={onToggle}
               mode={mode}
-              info={details?.get(game.id)}
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
               }

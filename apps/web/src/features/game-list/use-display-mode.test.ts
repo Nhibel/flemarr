@@ -22,9 +22,15 @@ describe('useDisplayMode', () => {
   });
 
   it('restores the stored choice on mount', () => {
+    localStorage.setItem(KEY, 'compact');
+    const { result } = renderHook(() => useDisplayMode());
+    expect(result.current[0]).toBe('compact');
+  });
+
+  it('falls back to normal for a stale "detailed" value (retired mode)', () => {
     localStorage.setItem(KEY, 'detailed');
     const { result } = renderHook(() => useDisplayMode());
-    expect(result.current[0]).toBe('detailed');
+    expect(result.current[0]).toBe('normal');
   });
 
   it('falls back to normal on a garbage stored value', () => {
