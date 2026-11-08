@@ -49,13 +49,12 @@ export function GameRow({
         py: '2',
         borderBottom: '1px solid',
         borderColor: 'bd.subtle',
-        bg: isSelected ? 'blue.50' : isFocused ? 'bg.surface' : 'bg.page',
-        outline: isFocused ? '2px solid token(colors.blue.500)' : 'none',
+        bg: isSelected ? 'accent.subtle' : isFocused ? 'bg.surface' : 'bg.page',
+        outline: isFocused ? '2px solid token(colors.accent.solid)' : 'none',
         outlineOffset: '-2px',
         cursor: 'pointer',
         userSelect: 'none',
-        _hover: { bg: isSelected ? 'blue.100' : 'bg.surface' },
-        _dark: isSelected ? { bg: 'blue.900', _hover: { bg: 'blue.800' } } : undefined,
+        _hover: { bg: isSelected ? 'accent.subtle' : 'bg.surface' },
       })}
       onClick={() => onToggle(game.id)}
     >

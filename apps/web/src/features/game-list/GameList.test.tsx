@@ -56,7 +56,7 @@ describe('GameList', () => {
 
   it('shows empty state when no games', () => {
     renderList([]);
-    expect(screen.getByText(/no games match/i)).toBeInTheDocument();
+    expect(screen.getByText(/aucun jeu ne correspond/i)).toBeInTheDocument();
   });
 
   it('calls onToggle when a row is clicked', async () => {
@@ -96,18 +96,18 @@ describe('GameList', () => {
     expect(screen.getByText('Game 00')).toBeInTheDocument();
     expect(screen.getByText('Game 49')).toBeInTheDocument();
     expect(screen.queryByText('Game 50')).not.toBeInTheDocument();
-    expect(screen.getByText(/1–50 of 60/)).toBeInTheDocument();
+    expect(screen.getByText(/1–50 sur 60/)).toBeInTheDocument();
   });
 
   it('Next shows the following page, Prev returns', async () => {
     renderList(MANY);
 
-    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await userEvent.click(screen.getByRole('button', { name: /suivant/i }));
     expect(screen.getByText('Game 50')).toBeInTheDocument();
     expect(screen.queryByText('Game 00')).not.toBeInTheDocument();
-    expect(screen.getByText(/51–60 of 60/)).toBeInTheDocument();
+    expect(screen.getByText(/51–60 sur 60/)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /prev/i }));
+    await userEvent.click(screen.getByRole('button', { name: /précédent/i }));
     expect(screen.getByText('Game 00')).toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe('GameList', () => {
     // now on page 2, focused on its first row (Game 50)
     await userEvent.keyboard(' ');
     expect(onToggle).toHaveBeenCalledWith('g50');
-    expect(screen.getByText(/51–60 of 60/)).toBeInTheDocument();
+    expect(screen.getByText(/51–60 sur 60/)).toBeInTheDocument();
   });
 
   it('ArrowUp at the first row of page 2 returns to the last row of page 1', async () => {
@@ -136,7 +136,7 @@ describe('GameList', () => {
     await userEvent.keyboard('{ArrowUp}');
     await userEvent.keyboard(' ');
     expect(onToggle).toHaveBeenCalledWith('g49');
-    expect(screen.getByText(/1–50 of 60/)).toBeInTheDocument();
+    expect(screen.getByText(/1–50 sur 60/)).toBeInTheDocument();
   });
 
   it('compact mode issues no details request and hides boxart slots', async () => {

@@ -22,7 +22,7 @@ const pageBtnClass = css({
   fontSize: 'sm',
   border: '1px solid',
   borderColor: 'bd.default',
-  borderRadius: 'md',
+  borderRadius: 'lg',
   cursor: 'pointer',
   bg: 'bg.page',
   _hover: { bg: 'bg.surface' },
@@ -104,7 +104,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
   if (games.length === 0) {
     return (
       <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
-        No games match the current filters.
+        Aucun jeu ne correspond aux filtres actuels.
       </div>
     );
   }
@@ -130,12 +130,12 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               py: '0.5',
               fontSize: 'xs',
               border: '1px solid',
-              borderRadius: 'md',
+              borderRadius: 'lg',
               cursor: 'pointer',
-              bg: mode === m ? 'blue.500' : 'bg.page',
-              color: mode === m ? 'white' : 'fg.muted',
-              borderColor: mode === m ? 'blue.500' : 'bd.strong',
-              _hover: { borderColor: 'blue.400' },
+              bg: mode === m ? 'accent.solid' : 'bg.page',
+              color: mode === m ? 'accent.fg' : 'fg.muted',
+              borderColor: mode === m ? 'accent.solid' : 'bd.strong',
+              _hover: { borderColor: 'accent.hover' },
             })}
           >
             {MODE_LABELS[m]}
@@ -145,7 +145,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
 
       <div
         role="listbox"
-        aria-label="Game list"
+        aria-label="Liste des jeux"
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onFocus={() => {
@@ -156,9 +156,9 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           overflowY: 'auto',
           border: '1px solid',
           borderColor: 'bd.default',
-          borderRadius: 'md',
+          borderRadius: 'xl',
           outline: 'none',
-          _focusVisible: { ring: '2px', ringColor: 'blue.300', ringOffset: '2px' },
+          _focusVisible: { ring: '2px', ringColor: 'accent.subtleBorder', ringOffset: '2px' },
         })}
       >
         <div ref={listRef}>
@@ -196,10 +196,10 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
             disabled={page === 0}
             onClick={() => goToPage('prev')}
           >
-            ‹ Prev
+            ‹ Précédent
           </button>
           <span>
-            {start + 1}–{Math.min(start + pageItems.length, total)} of {total}
+            {start + 1}–{Math.min(start + pageItems.length, total)} sur {total}
             {' · '}page {page + 1} / {pageCount}
           </span>
           <button
@@ -208,7 +208,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
             disabled={page >= pageCount - 1}
             onClick={() => goToPage('next')}
           >
-            Next ›
+            Suivant ›
           </button>
         </div>
       )}
