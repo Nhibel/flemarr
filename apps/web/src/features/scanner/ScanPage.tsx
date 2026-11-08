@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { startScan, openScanEvents, requestRenames } from '@/lib/api.js';
+import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
 import { displayPath } from '@/lib/paths.js';
@@ -41,7 +42,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
     try {
       job = await startScan(datId, directory);
     } catch (err) {
-      setScan({ phase: 'error', message: err instanceof Error ? err.message : 'Scan failed' });
+      setScan({ phase: 'error', message: err instanceof Error ? err.message : 'Échec du scan' });
       return;
     }
 
@@ -66,7 +67,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
     };
 
     es.onerror = () => {
-      setScan({ phase: 'error', message: 'Connection to scan stream lost' });
+      setScan({ phase: 'error', message: 'Connexion au flux de scan perdue' });
       es.close();
     };
   }, [datId, directory, onScanComplete]);
@@ -96,7 +97,10 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
         await handleScan();
       }
     } catch (err) {
-      setScan({ phase: 'error', message: err instanceof Error ? err.message : 'Rename failed' });
+      setScan({
+        phase: 'error',
+        message: err instanceof Error ? err.message : 'Échec du renommage',
+      });
     } finally {
       setRenaming(false);
     }
@@ -106,24 +110,12 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
       {/* Scan control — the directory comes from the system folder (SystemFolderBar) */}
       <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
-        <button
+        <Button
           onClick={() => void handleScan()}
           disabled={!directory || scan.phase === 'scanning'}
-          className={css({
-            px: '4',
-            py: '2',
-            bg: 'blue.500',
-            color: 'white',
-            borderRadius: 'md',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            cursor: 'pointer',
-            _hover: { bg: 'blue.600' },
-            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-          })}
         >
           {scan.phase === 'scanning' ? 'Scan en cours…' : 'Scanner'}
-        </button>
+        </Button>
         {directory ? (
           <span
             className={css({
@@ -148,7 +140,9 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
       {/* Progress */}
       {scan.phase === 'scanning' && (
         <div className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
-          {scan.total > 0 ? `${scan.scanned} / ${scan.total} files hashed…` : 'Collecting files…'}
+          {scan.total > 0
+            ? `${scan.scanned} / ${scan.total} fichiers hachés…`
+            : 'Collecte des fichiers…'}
         </div>
       )}
 
@@ -198,11 +192,11 @@ function ScanResults({
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
       {/* Summary chips */}
       <div className={css({ display: 'flex', gap: '3', flexWrap: 'wrap' })}>
-        <Chip label="Matched" count={result.matched.length} color="green" />
-        <Chip label="Wrong name" count={result.wrongName.length} color="amber" />
-        <Chip label="Unmatched" count={result.unmatched.length} color="gray" />
+        <Chip label="trouvés" count={result.matched.length} color="green" />
+        <Chip label="mal nommés" count={result.wrongName.length} color="amber" />
+        <Chip label="introuvables" count={result.unmatched.length} color="gray" />
         <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
-          {total} files scanned
+          {total} fichiers scannés
         </span>
       </div>
 
@@ -211,25 +205,27 @@ function ScanResults({
         <div>
           <div className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '2' })}>
             <h3 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.default' })}>
-              Rename suggestions
+              Suggestions de renommage
             </h3>
             <button
               onClick={() => result.wrongName.forEach((e) => onToggle(e.filePath))}
               className={css({
                 fontSize: 'xs',
-                color: 'blue.500',
+                color: 'accent.text',
                 cursor: 'pointer',
                 _hover: { textDecoration: 'underline' },
               })}
             >
-              {selected.size === result.wrongName.length ? 'Deselect all' : 'Select all'}
+              {selected.size === result.wrongName.length
+                ? 'Tout désélectionner'
+                : 'Tout sélectionner'}
             </button>
           </div>
           <div
             className={css({
               border: '1px solid',
               borderColor: 'bd.default',
-              borderRadius: 'md',
+              borderRadius: 'xl',
               overflow: 'hidden',
             })}
           >
@@ -251,17 +247,18 @@ function ScanResults({
                 py: '2',
                 bg: 'amber.500',
                 color: 'white',
-                borderRadius: 'md',
+                borderRadius: 'lg',
                 fontSize: 'sm',
                 fontWeight: 'medium',
                 cursor: 'pointer',
+                transition: 'background-color 0.15s',
                 _hover: { bg: 'amber.600' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >
               {renaming
-                ? 'Renaming…'
-                : `Rename ${selected.size} file${selected.size !== 1 ? 's' : ''}`}
+                ? 'Renommage…'
+                : `Renommer ${selected.size} fichier${selected.size !== 1 ? 's' : ''}`}
             </button>
             {renameResult && (
               <span
@@ -270,8 +267,8 @@ function ScanResults({
                   color: renameResult.failed > 0 ? 'red.600' : 'green.600',
                 })}
               >
-                {renameResult.done} renamed
-                {renameResult.failed > 0 ? `, ${renameResult.failed} failed` : ''}
+                {renameResult.done} renommé{renameResult.done !== 1 ? 's' : ''}
+                {renameResult.failed > 0 ? `, ${renameResult.failed} échoué(s)` : ''}
               </span>
             )}
           </div>
@@ -282,7 +279,8 @@ function ScanResults({
       {result.unmatched.length > 0 && (
         <details className={css({ fontSize: 'sm' })}>
           <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            {result.unmatched.length} unmatched file{result.unmatched.length !== 1 ? 's' : ''}
+            {result.unmatched.length} fichier{result.unmatched.length !== 1 ? 's' : ''} non trouvé
+            {result.unmatched.length !== 1 ? 's' : ''}
           </summary>
           <ul
             className={css({
