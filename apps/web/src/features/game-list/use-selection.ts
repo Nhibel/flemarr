@@ -1,59 +1,30 @@
 import { useState, useCallback } from 'react';
 import type { Game } from '@shared/dat.js';
 
-function storageKey(datId: string) {
-  return `rom-curator.selection.${datId}`;
-}
+// In-memory only — intentionally not persisted. GameView keeps this hook's
+// component mounted across tab switches (games/scanner/sources/downloads),
+// so selection survives those; leaving GameView (reset to loader, or to
+// settings and back) unmounts it and the selection is gone, which is the
+// desired "don't keep selection across screens" behavior.
+export function useSelection(filteredGames: Game[]) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-function loadFromStorage(datId: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(storageKey(datId));
-    if (!raw) return new Set();
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((v): v is string => typeof v === 'string'));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveToStorage(datId: string, selected: Set<string>) {
-  try {
-    localStorage.setItem(storageKey(datId), JSON.stringify([...selected]));
-  } catch {
-    // storage quota exceeded — silently ignore
-  }
-}
-
-export function useSelection(datId: string, filteredGames: Game[]) {
-  const [selected, setSelected] = useState<Set<string>>(() => loadFromStorage(datId));
-
-  const update = useCallback(
-    (next: Set<string>) => {
-      setSelected(next);
-      saveToStorage(datId, next);
-    },
-    [datId],
-  );
-
-  const toggle = useCallback(
-    (id: string) => {
-      update(
-        selected.has(id)
-          ? new Set([...selected].filter((x) => x !== id))
-          : new Set([...selected, id]),
-      );
-    },
-    [selected, update],
-  );
+  const toggle = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const selectAll = useCallback(() => {
-    update(new Set([...selected, ...filteredGames.map((g) => g.id)]));
-  }, [selected, filteredGames, update]);
+    setSelected((prev) => new Set([...prev, ...filteredGames.map((g) => g.id)]));
+  }, [filteredGames]);
 
   const clearAll = useCallback(() => {
-    update(new Set());
-  }, [update]);
+    setSelected(new Set());
+  }, []);
 
   const isAllSelected = filteredGames.length > 0 && filteredGames.every((g) => selected.has(g.id));
 

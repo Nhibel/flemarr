@@ -14,8 +14,7 @@ interface DatRow {
 
 export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
   // Re-loading a DAT for the same system replaces the previous one instead of
-  // piling up duplicates. The id is kept so localStorage selections (keyed by
-  // dat id) survive a DAT update.
+  // piling up duplicates, keeping the same id stable across the update.
   const existing = db
     .prepare(`SELECT id FROM dats WHERE system = ? AND source = ? ORDER BY created_at DESC LIMIT 1`)
     .get(dat.system, dat.source) as { id: string } | undefined;

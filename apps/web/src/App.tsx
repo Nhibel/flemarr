@@ -15,7 +15,7 @@ import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/components/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
-import { fetchGames, listDats, deleteDat } from '@/lib/api.js';
+import { fetchGames, listDats, deleteDat, getSettings } from '@/lib/api.js';
 import { computeMissingGameIds } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
@@ -285,6 +285,17 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
     queryFn: () => fetchGames(dat.id),
   });
 
+  // In "browser" mode the app never places files in a server-side folder it
+  // manages, so there's nothing for the scanner (which reads
+  // settings.systemPaths[system]) to check against — hide it and the folder
+  // bar that exists to configure it, instead of nagging for a folder nobody
+  // needs in that workflow.
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const showScanner = (settings?.downloadTarget ?? 'server') !== 'browser';
+  const tabs: Tab[] = showScanner
+    ? ['games', 'scanner', 'sources', 'downloads']
+    : ['games', 'sources', 'downloads'];
+
   const {
     filtered: baseFiltered,
     filterState,
@@ -297,10 +308,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
 
   // "Select all" keeps operating on baseFiltered: with the selected-only view
   // active it must still mean "all filtered games", not "the visible subset".
-  const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(
-    dat.id,
-    baseFiltered,
-  );
+  const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(baseFiltered);
 
   const [selectedOnly, setSelectedOnly] = useState(false);
   const filtered = useMemo(
@@ -353,8 +361,9 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
         </button>
       </div>
 
-      {/* The system's library folder — single definition used by scanner and downloads */}
-      <SystemFolderBar system={dat.system} />
+      {/* The system's library folder — only relevant to the scanner and to
+          server-target downloads, both absent in "browser" mode */}
+      {showScanner && <SystemFolderBar system={dat.system} />}
 
       {/* Tabs */}
       <div
@@ -368,7 +377,7 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
           flexWrap: 'wrap',
         })}
       >
-        {(['games', 'scanner', 'sources', 'downloads'] as Tab[]).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -429,10 +438,13 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
         )}
       </div>
 
-      {/* Scanner tab — kept mounted to preserve scan progress */}
-      <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
-        <ScanPage datId={dat.id} system={dat.system} onScanComplete={setLastScan} />
-      </div>
+      {/* Scanner tab — absent in "browser" mode (see showScanner above);
+          kept mounted otherwise to preserve scan progress */}
+      {showScanner && (
+        <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
+          <ScanPage datId={dat.id} system={dat.system} onScanComplete={setLastScan} />
+        </div>
+      )}
 
       {/* Sources tab — kept mounted to preserve resolve results */}
       <div className={css({ display: tab === 'sources' ? 'block' : 'none' })}>
