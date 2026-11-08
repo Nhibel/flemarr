@@ -33,7 +33,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
   });
 
   const containerClass = css({
-    maxW: '3xl',
+    maxW: '4xl',
     mx: 'auto',
     mt: { base: '8', md: '16' },
     px: { base: '4', md: '6', lg: '8' },
@@ -59,7 +59,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
 
   return (
     <main className={cx(containerClass, css({ pb: '12' }))}>
-      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '8' })}>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '4', mb: '8' })}>
         <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           Paramètres
         </h1>

@@ -31,6 +31,13 @@ export function PresetSection({
       >
         Preset Fresh1G1R
       </h2>
+      <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
+        Préréglage proposé par défaut à l'écran de chargement, quand tu parcours les systèmes
+        disponibles sur Fresh1G1R — change seulement <em>quelle liste de DAT</em> est affichée
+        là-bas (tu peux aussi changer de preset ponctuellement sur cet écran, sans toucher à ce
+        réglage). Ça n'a aucun effet sur un DAT déjà chargé, ni sur le scan ou les téléchargements :
+        ce sont des étapes indépendantes, une fois le DAT en place.
+      </p>
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
         {PRESETS.map((p) => {
           const active = settings.fresh1g1rPreset === p;

@@ -111,13 +111,13 @@ function LoaderView({
   return (
     <main
       className={css({
-        maxW: '3xl',
+        maxW: '4xl',
         mx: 'auto',
         mt: { base: '8', md: '16' },
         px: { base: '4', md: '6', lg: '8' },
       })}
     >
-      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '1', mb: '6' })}>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '1', mb: '6' })}>
         <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           rom-curator
         </h1>
@@ -317,15 +317,15 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
   return (
     <main
       className={css({
-        maxW: '7xl',
+        maxW: '8xl',
         mx: 'auto',
         mt: { base: '6', md: '8' },
-        px: { base: '4', md: '6', lg: '8' },
+        px: { base: '4', md: '6', lg: '10' },
         pb: '12',
       })}
     >
       {/* Header */}
-      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '4', mb: '4' })}>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '4', mb: '4' })}>
         <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           {dat.system}
         </h1>
