@@ -69,7 +69,7 @@ For a single-user app you do **not** need accounts, registration, roles, or pass
 
 Known costs to budget for, so they aren't a surprise:
 
-- **It ripples through the server tests.** All 320 server tests currently call endpoints with no auth. A global gate means the test harness has to authenticate, or the middleware needs a documented bypass for tests — real work, not huge.
+- **It ripples through the server tests.** All 296 server tests currently call endpoints with no auth. A global gate means the test harness has to authenticate, or the middleware needs a documented bypass for tests — real work, not huge.
 - **Cookie vs. token / CSRF.** Using a session cookie means deciding on CSRF protection (a `SameSite` cookie is usually enough for a same-origin SPA); a bearer token avoids CSRF but is readable by any XSS. A trade-off to make deliberately, not by accident.
 - **It protects the API surface, not the data at rest** (see next section).
 
