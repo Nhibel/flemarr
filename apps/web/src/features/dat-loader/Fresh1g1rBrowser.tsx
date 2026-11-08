@@ -24,6 +24,9 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
   const [search, setSearch] = useState('');
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Loading no longer navigates away — this is the only in-screen feedback
+  // that a given preset actually loaded, so it persists for the session.
+  const [loadedPaths, setLoadedPaths] = useState<Set<string>>(new Set());
 
   const {
     data,
@@ -51,11 +54,19 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
   const handleLoad = (entry: ListSourcesResponse['sources'][number]) => {
     setLoadError(null);
     setLoadingPath(entry.path);
-    loadMutation.mutate(entry, { onSettled: () => setLoadingPath(null) });
+    loadMutation.mutate(entry, {
+      onSuccess: () => setLoadedPaths((prev) => new Set(prev).add(entry.path)),
+      onSettled: () => setLoadingPath(null),
+    });
   };
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+      <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>
+        Charger un système l'ajoute à « Reprendre un DAT chargé » ci-dessus — cliquez-y pour
+        l'ouvrir. Vous pouvez en charger plusieurs à la suite.
+      </p>
+
       {/* Preset + refresh */}
       <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
         <span className={css({ fontSize: 'sm', color: 'fg.muted', flexShrink: 0 })}>Preset</span>
@@ -161,6 +172,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
         >
           {filtered.map((entry) => {
             const isLoading = loadingPath === entry.path;
+            const isLoaded = loadedPaths.has(entry.path);
             return (
               <div
                 key={entry.path}
@@ -187,16 +199,19 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                     py: '1',
                     fontSize: 'xs',
                     fontWeight: 'medium',
-                    bg: 'blue.500',
-                    color: 'white',
+                    bg: isLoaded ? 'green.50' : 'blue.500',
+                    color: isLoaded ? 'green.700' : 'white',
+                    border: isLoaded ? '1px solid' : 'none',
+                    borderColor: 'green.200',
                     borderRadius: 'md',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    _hover: { bg: 'blue.600' },
+                    _hover: { bg: isLoaded ? 'green.50' : 'blue.600' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                    _dark: isLoaded ? { bg: 'green.900', borderColor: 'green.700' } : undefined,
                   })}
                 >
-                  {isLoading ? 'Chargement…' : 'Charger'}
+                  {isLoading ? 'Chargement…' : isLoaded ? '✓ Chargé' : 'Charger'}
                 </button>
               </div>
             );

@@ -228,7 +228,12 @@ function LoaderView({
       </div>
 
       {loaderMode === 'fresh1g1r' ? (
-        <Fresh1g1rBrowser onSuccess={onLoaded} />
+        // Loading a preset just adds it to "Reprendre un DAT chargé" above —
+        // no auto-navigation, so browsing/loading several systems in a row
+        // doesn't bounce to the game view each time.
+        <Fresh1g1rBrowser
+          onSuccess={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
+        />
       ) : (
         <DatUpload onSuccess={onLoaded} />
       )}
