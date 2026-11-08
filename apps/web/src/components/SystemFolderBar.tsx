@@ -6,9 +6,12 @@ import { PathInput } from '@/components/PathInput.js';
 import { displayPath } from '@/lib/paths.js';
 
 /**
- * The single place where a system's library folder is chosen. The scanner and
- * the download destination both read settings.systemPaths[system]; this bar
- * is the only writer (plus the removal button in the settings overview).
+ * The single place where a system's library folder is chosen. The scanner
+ * always reads settings.systemPaths[system]; the download destination does
+ * too, but only when settings.downloadTarget is 'server' (in 'browser' mode
+ * this folder is just where the scanner expects files once moved there by
+ * hand). This bar is the only writer (plus the removal button in the
+ * settings overview).
  */
 export function SystemFolderBar({ system }: { system: string }) {
   const queryClient = useQueryClient();
@@ -75,7 +78,8 @@ export function SystemFolderBar({ system }: { system: string }) {
           </span>
         ) : (
           <span className={css({ color: 'amber.600', flex: 1, minW: 0 })}>
-            non défini — requis pour le scanner et les téléchargements
+            non défini — requis pour le scanner
+            {settings.downloadTarget === 'server' ? ' et les téléchargements' : ''}
           </span>
         )}
         <button
