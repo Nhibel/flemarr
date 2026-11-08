@@ -21,7 +21,7 @@ import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { useTheme } from '@/lib/use-theme.js';
 import type { DatUploadResponse } from '@shared/api.js';
-import { GearIcon, SunIcon, MoonIcon, iconBtnClass } from '@/components/icons.js';
+import { GearIcon, iconBtnClass } from '@/components/icons.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
@@ -38,14 +38,14 @@ export function App() {
   const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
   const [view, setView] = useState<AppView>('loader');
-  const { theme, toggle } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   if (view === 'settings') {
     return (
       <SettingsPage
         onClose={() => setView(activeDat ? 'game' : 'loader')}
         theme={theme}
-        onToggleTheme={toggle}
+        onSetTheme={setTheme}
       />
     );
   }
@@ -59,8 +59,6 @@ export function App() {
           setActiveDat(dat);
           setView('game');
         }}
-        theme={theme}
-        onToggleTheme={toggle}
         onSettings={() => setView('settings')}
       />
     );
@@ -74,8 +72,6 @@ export function App() {
         setView('loader');
       }}
       onSettings={() => setView('settings')}
-      theme={theme}
-      onToggleTheme={toggle}
     />
   );
 }
@@ -84,19 +80,10 @@ interface LoaderViewProps {
   loaderMode: LoaderMode;
   onSetLoaderMode: (m: LoaderMode) => void;
   onLoaded: (dat: DatUploadResponse) => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   onSettings: () => void;
 }
 
-function LoaderView({
-  loaderMode,
-  onSetLoaderMode,
-  onLoaded,
-  theme,
-  onToggleTheme,
-  onSettings,
-}: LoaderViewProps) {
+function LoaderView({ loaderMode, onSetLoaderMode, onLoaded, onSettings }: LoaderViewProps) {
   // DATs persisted server-side (SQLite) — lets the user resume without re-parsing
   const queryClient = useQueryClient();
   const { data: existingDats = [] } = useQuery({
@@ -121,14 +108,6 @@ function LoaderView({
         <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           rom-curator
         </h1>
-        <button
-          onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          className={iconBtnClass}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
         <button
           onClick={onSettings}
           title="Paramètres"
@@ -262,11 +241,9 @@ interface GameViewProps {
   dat: DatUploadResponse;
   onReset: () => void;
   onSettings: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
 }
 
-function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewProps) {
+function GameView({ dat, onReset, onSettings }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
@@ -343,14 +320,6 @@ function GameView({ dat, onReset, onSettings, theme, onToggleTheme }: GameViewPr
         <Button variant="secondary" size="sm" onClick={onReset}>
           Charger un autre DAT
         </Button>
-        <button
-          onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          className={iconBtnClass}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
         <button
           onClick={onSettings}
           title="Paramètres"

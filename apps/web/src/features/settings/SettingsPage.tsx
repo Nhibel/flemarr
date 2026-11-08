@@ -1,20 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { getSettings, updateSettings } from '@/lib/api.js';
-import { SunIcon, MoonIcon, iconBtnClass } from '@/components/icons.js';
+import type { Theme } from '@/lib/use-theme.js';
 import { PresetSection } from './PresetSection.js';
 import { ArchiveAccountSection } from './ArchiveAccountSection.js';
 import { ConcurrencySection } from './ConcurrencySection.js';
 import { SystemPathsSection } from './SystemPathsSection.js';
 import { DownloadTargetSection } from './DownloadTargetSection.js';
+import { AppearanceSection } from './AppearanceSection.js';
 
 interface Props {
   onClose: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  theme: Theme;
+  onSetTheme: (t: Theme) => void;
 }
 
-export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
+export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
   const queryClient = useQueryClient();
   const {
     data: settings,
@@ -64,14 +65,6 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
           Paramètres
         </h1>
         <button
-          onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          aria-label={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-          className={iconBtnClass}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
-        <button
           onClick={onClose}
           className={css({
             fontSize: 'sm',
@@ -90,6 +83,7 @@ export function SettingsPage({ onClose, theme, onToggleTheme }: Props) {
         </p>
       )}
 
+      <AppearanceSection theme={theme} onSetTheme={onSetTheme} />
       <PresetSection settings={settings} saving={mutation.isPending} onSave={mutation.mutate} />
       <ArchiveAccountSection
         settings={settings}
