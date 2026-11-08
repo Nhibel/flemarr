@@ -55,29 +55,6 @@ export function GameFilters({
 }: Props) {
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '3', pb: '3' })}>
-      {/* Search */}
-      <input
-        type="search"
-        placeholder={`Rechercher parmi ${totalCount} jeux…`}
-        value={filterState.search}
-        onChange={(e) => onSearch(e.target.value)}
-        className={css({
-          w: 'full',
-          px: '3',
-          py: '2',
-          border: '1px solid',
-          borderColor: 'bd.strong',
-          borderRadius: 'lg',
-          fontSize: 'sm',
-          outline: 'none',
-          _focusVisible: {
-            borderColor: 'accent.hover',
-            ring: '2px',
-            ringColor: 'accent.subtleBorder',
-          },
-        })}
-      />
-
       {/* Region chips */}
       <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', alignItems: 'center' })}>
         <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
@@ -207,6 +184,29 @@ export function GameFilters({
           Désélectionner tout
         </button>
       </div>
+
+      {/* Search — below the filter criteria, right above the list it filters */}
+      <input
+        type="search"
+        placeholder={`Rechercher parmi ${totalCount} jeux…`}
+        value={filterState.search}
+        onChange={(e) => onSearch(e.target.value)}
+        className={css({
+          w: 'full',
+          px: '3',
+          py: '2',
+          border: '1px solid',
+          borderColor: 'bd.strong',
+          borderRadius: 'lg',
+          fontSize: 'sm',
+          outline: 'none',
+          _focusVisible: {
+            borderColor: 'accent.hover',
+            ring: '2px',
+            ringColor: 'accent.subtleBorder',
+          },
+        })}
+      />
     </div>
   );
 }

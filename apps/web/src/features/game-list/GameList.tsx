@@ -152,7 +152,13 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           if (resolvedFocus < 0 && pageItems.length > 0) setFocusedIndex(0);
         }}
         className={css({
-          maxHeight: '600px',
+          // Viewport-relative, not a flat pixel count: a fixed height stopped
+          // fitting once the base font size grew, forcing both an inner
+          // scrollbar on the list AND an outer one on the page. rem units in
+          // the subtracted term track the header/filters block above (which
+          // scale with the same root font size), so this keeps the list's
+          // own scrollbar as the only one in view across font-size changes.
+          maxHeight: 'max(240px, calc(100vh - 24rem))',
           overflowY: 'auto',
           border: '1px solid',
           borderColor: 'bd.default',
