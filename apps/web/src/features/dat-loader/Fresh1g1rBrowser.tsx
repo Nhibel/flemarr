@@ -83,13 +83,13 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 py: '1',
                 fontSize: 'xs',
                 fontWeight: 'medium',
-                borderRadius: 'md',
+                borderRadius: 'lg',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: resolvedPreset === p ? 'blue.400' : 'bd.strong',
-                bg: resolvedPreset === p ? 'blue.50' : 'bg.page',
-                color: resolvedPreset === p ? 'blue.700' : 'fg.muted',
-                _hover: { bg: resolvedPreset === p ? 'blue.50' : 'bg.surface' },
+                borderColor: resolvedPreset === p ? 'accent.hover' : 'bd.strong',
+                bg: resolvedPreset === p ? 'accent.subtle' : 'bg.page',
+                color: resolvedPreset === p ? 'accent.text' : 'fg.muted',
+                _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface' },
               })}
             >
               {p}
@@ -127,9 +127,13 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           fontSize: 'sm',
           border: '1px solid',
           borderColor: 'bd.strong',
-          borderRadius: 'md',
+          borderRadius: 'lg',
           outline: 'none',
-          _focusVisible: { borderColor: 'blue.400', ring: '2px', ringColor: 'blue.100' },
+          _focusVisible: {
+            borderColor: 'accent.hover',
+            ring: '2px',
+            ringColor: 'accent.subtleBorder',
+          },
         })}
       />
 
@@ -164,7 +168,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           className={css({
             border: '1px solid',
             borderColor: 'bd.default',
-            borderRadius: 'md',
+            borderRadius: 'xl',
             overflow: 'hidden',
             maxH: '72',
             overflowY: 'auto',
@@ -199,14 +203,15 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                     py: '1',
                     fontSize: 'xs',
                     fontWeight: 'medium',
-                    bg: isLoaded ? 'green.50' : 'blue.500',
-                    color: isLoaded ? 'green.700' : 'white',
+                    bg: isLoaded ? 'green.50' : 'accent.solid',
+                    color: isLoaded ? 'green.700' : 'accent.fg',
                     border: isLoaded ? '1px solid' : 'none',
                     borderColor: 'green.200',
-                    borderRadius: 'md',
+                    borderRadius: 'lg',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    _hover: { bg: isLoaded ? 'green.50' : 'blue.600' },
+                    transition: 'background-color 0.15s',
+                    _hover: { bg: isLoaded ? 'green.50' : 'accent.hover' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                     _dark: isLoaded ? { bg: 'green.900', borderColor: 'green.700' } : undefined,
                   })}
