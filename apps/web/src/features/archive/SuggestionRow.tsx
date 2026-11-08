@@ -61,7 +61,11 @@ export function SuggestionRow({
           </span>{' '}
           (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
         </p>
-        {error && <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>{error}</p>}
+        {error && (
+          <p role="alert" className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+            {error}
+          </p>
+        )}
       </div>
       <button
         onClick={() => void handleAdopt()}
@@ -71,11 +75,12 @@ export function SuggestionRow({
           py: '1',
           fontSize: 'xs',
           fontWeight: 'medium',
-          borderRadius: 'md',
+          borderRadius: 'lg',
           cursor: 'pointer',
           bg: 'violet.500',
           color: 'white',
           flexShrink: 0,
+          transition: 'background-color 0.15s',
           _hover: { bg: 'violet.600' },
           _disabled: { opacity: 0.5, cursor: 'not-allowed' },
         })}

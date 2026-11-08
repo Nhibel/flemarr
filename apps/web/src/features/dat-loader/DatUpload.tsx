@@ -32,7 +32,7 @@ export function DatUpload({ onSuccess }: Props) {
     <div
       role="button"
       tabIndex={0}
-      aria-label="Upload a DAT file"
+      aria-label="Importer un fichier DAT"
       className={css({
         display: 'flex',
         flexDirection: 'column',
@@ -40,12 +40,12 @@ export function DatUpload({ onSuccess }: Props) {
         justifyContent: 'center',
         gap: '3',
         border: '2px dashed',
-        borderColor: isDragging ? 'blue.500' : 'bd.strong',
-        borderRadius: 'lg',
+        borderColor: isDragging ? 'accent.solid' : 'bd.strong',
+        borderRadius: 'xl',
         padding: '12',
         cursor: 'pointer',
         transition: 'border-color 0.15s',
-        _hover: { borderColor: 'blue.400' },
+        _hover: { borderColor: 'accent.hover' },
       })}
       onDragOver={(e) => {
         e.preventDefault();
@@ -68,15 +68,15 @@ export function DatUpload({ onSuccess }: Props) {
       />
 
       <p className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'fg.default' })}>
-        {mutation.isPending ? 'Parsing…' : 'Drop a DAT file here'}
+        {mutation.isPending ? 'Analyse…' : 'Déposez un fichier DAT ici'}
       </p>
       <p className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
-        or click to browse — .dat or .xml
+        ou cliquez pour parcourir — .dat ou .xml
       </p>
 
       {mutation.isError && (
         <p role="alert" className={css({ color: 'red.600', fontSize: 'sm' })}>
-          {mutation.error instanceof Error ? mutation.error.message : 'Upload failed'}
+          {mutation.error instanceof Error ? mutation.error.message : 'Échec de l’import'}
         </p>
       )}
     </div>

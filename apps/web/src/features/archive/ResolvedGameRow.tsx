@@ -23,7 +23,7 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
   );
 
   return (
-    <div className={css({ p: '3', border: '1px solid', borderRadius: 'md' }, containerStyle)}>
+    <div className={css({ p: '3', border: '1px solid', borderRadius: 'xl' }, containerStyle)}>
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
         <span
           className={css({

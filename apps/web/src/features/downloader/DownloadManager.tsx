@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
+import { Button } from '@/components/Button.js';
+import { Card } from '@/components/Card.js';
 import { openDownloadEvents, cancelDownload, downloadEventSchema } from '@/lib/api.js';
 import type { DownloadEvent } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
@@ -168,7 +170,7 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
 
   if (jobs.length === 0) {
     return (
-      <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+      <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
         Aucun téléchargement en cours. Lancez-en un depuis l'onglet Sources.
       </p>
     );
@@ -203,9 +205,9 @@ function JobCard({ state }: { state: JobState }) {
   const total = state.items.length;
 
   const statusColor = {
-    running: 'blue.600',
+    running: 'accent.text',
     done: 'green.600',
-    cancelled: 'gray.500',
+    cancelled: 'fg.subtle',
     error: 'red.600',
   }[state.status];
 
@@ -217,14 +219,7 @@ function JobCard({ state }: { state: JobState }) {
   }[state.status];
 
   return (
-    <div
-      className={css({
-        border: '1px solid',
-        borderColor: 'gray.200',
-        borderRadius: 'lg',
-        overflow: 'hidden',
-      })}
-    >
+    <Card className={css({ overflow: 'hidden' })}>
       {/* Job header */}
       <div
         className={css({
@@ -233,16 +228,16 @@ function JobCard({ state }: { state: JobState }) {
           gap: '3',
           px: '4',
           py: '3',
-          bg: 'gray.50',
+          bg: 'bg.surface',
           borderBottom: '1px solid',
-          borderColor: 'gray.200',
+          borderColor: 'bd.default',
         })}
       >
         <div className={css({ flex: 1, minW: 0 })}>
           <p
             className={css({
               fontSize: 'xs',
-              color: 'gray.400',
+              color: 'fg.faint',
               fontFamily: 'mono',
               truncate: true,
             })}
@@ -257,24 +252,14 @@ function JobCard({ state }: { state: JobState }) {
           </p>
         </div>
         {state.status === 'running' && (
-          <button
+          <Button
+            variant="danger"
+            size="sm"
             onClick={() => void handleCancel()}
             disabled={cancelling}
-            className={css({
-              px: '3',
-              py: '1.5',
-              fontSize: 'xs',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              border: '1px solid',
-              borderColor: 'red.200',
-              color: 'red.600',
-              _hover: { bg: 'red.50' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
           >
             {cancelling ? 'Annulation…' : 'Annuler'}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -284,7 +269,7 @@ function JobCard({ state }: { state: JobState }) {
           <DownloadRow key={`${item.gameId}/${item.romName}`} item={item} />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -297,8 +282,8 @@ function DownloadRow({ item }: { item: ItemState }) {
   }[item.status];
 
   const iconColor = {
-    queued: 'gray.300',
-    downloading: 'blue.500',
+    queued: 'fg.faint',
+    downloading: 'accent.text',
     done: 'green.500',
     failed: 'red.500',
   }[item.status];
@@ -309,7 +294,7 @@ function DownloadRow({ item }: { item: ItemState }) {
         px: '4',
         py: '2.5',
         borderBottom: '1px solid',
-        borderColor: 'gray.100',
+        borderColor: 'bd.subtle',
         _last: { borderBottom: 'none' },
       })}
     >
@@ -332,11 +317,11 @@ function DownloadRow({ item }: { item: ItemState }) {
         >
           {icon}
         </span>
-        <span className={css({ fontSize: 'sm', color: 'gray.700', flex: 1, truncate: true })}>
+        <span className={css({ fontSize: 'sm', color: 'fg.default', flex: 1, truncate: true })}>
           {item.romName}
         </span>
         {item.status === 'downloading' && (
-          <span className={css({ fontSize: 'xs', color: 'blue.500', flexShrink: 0 })}>
+          <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
             {item.progress}%
           </span>
         )}
@@ -351,7 +336,7 @@ function DownloadRow({ item }: { item: ItemState }) {
           className={css({
             ml: '6.5',
             h: '1',
-            bg: 'gray.100',
+            bg: 'bg.muted',
             borderRadius: 'full',
             overflow: 'hidden',
           })}
@@ -359,7 +344,7 @@ function DownloadRow({ item }: { item: ItemState }) {
           <div
             className={css({
               h: 'full',
-              bg: 'blue.400',
+              bg: 'accent.solid',
               borderRadius: 'full',
               transition: 'width 0.2s',
             })}

@@ -5,6 +5,7 @@ import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/ap
 import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
+import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
 import { displayPath } from '@/lib/paths.js';
@@ -130,26 +131,14 @@ export function ResolvePanel({
         >
           Résolution des sources
         </h2>
-        <button
+        <Button
           onClick={() => void handleResolve()}
           disabled={resolving || effectiveGameIds.length === 0 || !hasSources}
-          className={css({
-            px: '3',
-            py: '1.5',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            bg: 'green.500',
-            color: 'white',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            _hover: { bg: 'green.600' },
-            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-          })}
         >
           {resolving
             ? 'Recherche…'
             : `Chercher les sources (${effectiveGameIds.length} jeu${effectiveGameIds.length !== 1 ? 'x' : ''})`}
-        </button>
+        </Button>
       </div>
 
       {missingGameIds !== null && (
@@ -240,27 +229,15 @@ export function ResolvePanel({
 
           {result.results.some((r) => r.roms.some((rom) => rom.sources.length > 0)) && (
             <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
-              <button
+              <Button
                 onClick={() => void handleDownload()}
                 disabled={queuing || (downloadTarget === 'server' && !destinationDir)}
-                className={css({
-                  px: '3',
-                  py: '1.5',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  flexShrink: 0,
-                  bg: 'green.500',
-                  color: 'white',
-                  borderRadius: 'md',
-                  cursor: 'pointer',
-                  _hover: { bg: 'green.600' },
-                  _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-                })}
+                className={css({ flexShrink: 0 })}
               >
                 {queuing
                   ? 'Lancement…'
                   : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
-              </button>
+              </Button>
               <span
                 className={css({
                   fontSize: 'sm',

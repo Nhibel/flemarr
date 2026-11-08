@@ -24,7 +24,7 @@ beforeEach(() => {
 describe('DatUpload', () => {
   it('renders the drop zone', () => {
     render(<DatUpload onSuccess={vi.fn()} />, { wrapper });
-    expect(screen.getByRole('button', { name: /upload a dat file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /importer un fichier dat/i })).toBeInTheDocument();
   });
 
   it('calls uploadDat when a file is selected via input', async () => {

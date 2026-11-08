@@ -3,6 +3,8 @@ import { css } from '@/styled-system/css';
 import { previewIndex } from '@/lib/api.js';
 import type { ArchiveSource } from '@/lib/api.js';
 import { LayoutBadge } from './LayoutBadge.js';
+import { Button } from '@/components/Button.js';
+import { Card } from '@/components/Card.js';
 
 export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemove: () => void }) {
   const [preview, setPreview] = useState<{ fileCount: number } | null>(null);
@@ -23,18 +25,7 @@ export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemov
   };
 
   return (
-    <div
-      className={css({
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '3',
-        p: '3',
-        border: '1px solid',
-        borderColor: 'bd.default',
-        borderRadius: 'md',
-        bg: 'bg.page',
-      })}
-    >
+    <Card className={css({ display: 'flex', alignItems: 'flex-start', gap: '3', p: '3' })}>
       <div className={css({ flex: 1, minW: 0 })}>
         <div className={css({ display: 'flex', alignItems: 'center', gap: '2', mb: '0.5' })}>
           <span
@@ -56,45 +47,19 @@ export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemov
           </p>
         )}
         {testError && (
-          <p className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>{testError}</p>
+          <p role="alert" className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>
+            {testError}
+          </p>
         )}
       </div>
       <div className={css({ display: 'flex', gap: '2', flexShrink: 0 })}>
-        <button
-          onClick={() => void handleTest()}
-          disabled={testing}
-          className={css({
-            px: '2.5',
-            py: '1',
-            fontSize: 'xs',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            border: '1px solid',
-            borderColor: 'bd.strong',
-            color: 'fg.muted',
-            _hover: { bg: 'bg.surface' },
-            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-          })}
-        >
+        <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={testing}>
           {testing ? '…' : 'Tester'}
-        </button>
-        <button
-          onClick={onRemove}
-          className={css({
-            px: '2.5',
-            py: '1',
-            fontSize: 'xs',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            border: '1px solid',
-            borderColor: 'red.200',
-            color: 'red.600',
-            _hover: { bg: 'red.50' },
-          })}
-        >
+        </Button>
+        <Button variant="danger" size="sm" onClick={onRemove}>
           Supprimer
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

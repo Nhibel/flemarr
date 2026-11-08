@@ -7,6 +7,7 @@ import type { DatSource } from './SourcesPanel.js';
 import { SuggestionRow } from './SuggestionRow.js';
 import { SourceRow } from './SourceRow.js';
 import { AddSourceForm } from './AddSourceForm.js';
+import { Button } from '@/components/Button.js';
 
 export function SourcesManager({
   datId,
@@ -75,32 +76,20 @@ export function SourcesManager({
             py: '1.5',
             fontSize: 'sm',
             fontWeight: 'medium',
+            borderRadius: 'lg',
             bg: 'violet.500',
             color: 'white',
-            borderRadius: 'md',
             cursor: 'pointer',
+            transition: 'background-color 0.15s',
             _hover: { bg: 'violet.600' },
             _disabled: { opacity: 0.5, cursor: 'not-allowed' },
           })}
         >
           {suggesting ? 'Analyse…' : '✨ Suggérer des sources'}
         </button>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className={css({
-            px: '3',
-            py: '1.5',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            bg: 'blue.500',
-            color: 'white',
-            borderRadius: 'md',
-            cursor: 'pointer',
-            _hover: { bg: 'blue.600' },
-          })}
-        >
+        <Button variant="secondary" size="sm" onClick={() => setShowAdd((v) => !v)}>
           {showAdd ? 'Annuler' : '+ Ajouter'}
-        </button>
+        </Button>
       </div>
 
       {suggestError && (
@@ -120,7 +109,8 @@ export function SourcesManager({
               className={css({
                 border: '1px solid',
                 borderColor: 'violet.200',
-                borderRadius: 'md',
+                borderRadius: 'xl',
+                shadow: 'sm',
                 overflow: 'hidden',
                 _dark: { borderColor: 'violet.800' },
               })}

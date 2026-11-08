@@ -3,6 +3,7 @@ import { css } from '@/styled-system/css';
 import { addSource, searchArchive, previewIndex } from '@/lib/api.js';
 import type { ArchiveLayout } from '@/lib/api.js';
 import type { DatSource } from './SourcesPanel.js';
+import { Button } from '@/components/Button.js';
 
 // "Nintendo - Super Nintendo Entertainment System (Retool)" → "Super Nintendo
 // Entertainment System" — vendor prefix and trailing tags pollute the search
@@ -87,9 +88,9 @@ export function AddSourceForm({
         mb: '4',
         p: '4',
         border: '1px solid',
-        borderColor: 'blue.200',
-        borderRadius: 'md',
-        bg: 'blue.50',
+        borderColor: 'accent.subtleBorder',
+        borderRadius: 'xl',
+        bg: 'accent.subtle',
         display: 'flex',
         flexDirection: 'column',
         gap: '3',
@@ -122,24 +123,13 @@ export function AddSourceForm({
               _focusVisible: { borderColor: 'blue.400' },
             })}
           />
-          <button
+          <Button
+            variant="secondary"
             onClick={() => void handleSearch()}
             disabled={searching || !searchQ.trim()}
-            className={css({
-              px: '3',
-              py: '1.5',
-              fontSize: 'sm',
-              bg: 'bg.page',
-              border: '1px solid',
-              borderColor: 'bd.strong',
-              borderRadius: 'md',
-              cursor: 'pointer',
-              _hover: { bg: 'bg.surface' },
-              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-            })}
           >
             {searching ? '…' : 'Chercher'}
-          </button>
+          </Button>
         </div>
 
         {searchResults.length > 0 && (
@@ -170,9 +160,9 @@ export function AddSourceForm({
                   py: '2',
                   fontSize: 'sm',
                   borderBottom: '1px solid',
-                  borderColor: 'gray.100',
+                  borderColor: 'bd.subtle',
                   cursor: 'pointer',
-                  _hover: { bg: 'blue.50' },
+                  _hover: { bg: 'accent.subtle' },
                   _last: { borderBottom: 'none' },
                 })}
               >
@@ -254,25 +244,13 @@ export function AddSourceForm({
         </p>
       )}
 
-      <button
+      <Button
         onClick={() => void handleSave()}
         disabled={saving || !identifier.trim()}
-        className={css({
-          alignSelf: 'flex-start',
-          px: '4',
-          py: '1.5',
-          fontSize: 'sm',
-          fontWeight: 'medium',
-          bg: 'blue.500',
-          color: 'white',
-          borderRadius: 'md',
-          cursor: 'pointer',
-          _hover: { bg: 'blue.600' },
-          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-        })}
+        className={css({ alignSelf: 'flex-start' })}
       >
         {saving ? 'Ajout…' : 'Ajouter la source'}
-      </button>
+      </Button>
     </div>
   );
 }
