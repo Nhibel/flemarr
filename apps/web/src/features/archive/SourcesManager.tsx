@@ -30,7 +30,7 @@ export function SourcesManager({
   });
 
   const removeMutation = useMutation({
-    mutationFn: (identifier: string) => deleteSource(identifier),
+    mutationFn: (identifier: string) => deleteSource(identifier, system),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] }),
   });
 

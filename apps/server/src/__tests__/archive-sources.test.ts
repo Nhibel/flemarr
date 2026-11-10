@@ -5,7 +5,6 @@ import {
   getAllSystems,
   addSource,
   removeSource,
-  findSystemForIdentifier,
 } from '../services/archive-org/sources.js';
 import type { Database } from 'better-sqlite3';
 import type { ArchiveSource } from '@shared/archive.js';
@@ -33,10 +32,38 @@ describe('addSource / getSources', () => {
     expect(getSources(SNES, db)).toEqual([SRC_A]);
   });
 
-  it('ignores duplicate identifiers (INSERT OR IGNORE)', () => {
+  it('adding the same pair twice keeps one row', () => {
     addSource(SNES, SRC_A, db);
     addSource(SNES, SRC_A, db);
     expect(getSources(SNES, db)).toHaveLength(1);
+  });
+
+  // The multi-system collections in known-sources.ts ("ni-roms" hosts every
+  // No-Intro set) have to be registrable per system — the old identifier-only
+  // primary key silently dropped every system after the first.
+  it('stores the same identifier for several systems', () => {
+    addSource(SNES, SRC_A, db);
+    addSource(PS1, SRC_A, db);
+    expect(getSources(SNES, db)).toEqual([SRC_A]);
+    expect(getSources(PS1, db)).toEqual([SRC_A]);
+  });
+
+  it('re-adding a pair corrects its layout', () => {
+    addSource(SNES, SRC_A, db);
+    addSource(SNES, { ...SRC_A, layout: 'zip-collection' }, db);
+    expect(getSources(SNES, db)).toEqual([{ ...SRC_A, layout: 'zip-collection' }]);
+  });
+
+  it('re-adding a pair with no note keeps the stored one', () => {
+    addSource(SNES, { ...SRC_A, note: 'hand-written' }, db);
+    addSource(SNES, { ...SRC_A, note: '' }, db);
+    expect(getSources(SNES, db)[0]?.note).toBe('hand-written');
+  });
+
+  it('re-adding a pair overwrites the note when one is given', () => {
+    addSource(SNES, { ...SRC_A, note: 'old' }, db);
+    addSource(SNES, { ...SRC_A, note: 'new' }, db);
+    expect(getSources(SNES, db)[0]?.note).toBe('new');
   });
 
   it('returns empty array for unknown system', () => {
@@ -67,31 +94,36 @@ describe('getAllSystems', () => {
 });
 
 describe('removeSource', () => {
-  it('removes a source by identifier and returns true', () => {
+  it('removes a source and returns true', () => {
     addSource(SNES, SRC_A, db);
-    expect(removeSource(SRC_A.identifier, db)).toBe(true);
+    expect(removeSource(SRC_A.identifier, SNES, db)).toBe(true);
     expect(getSources(SNES, db)).toEqual([]);
   });
 
-  it('returns false when identifier does not exist', () => {
-    expect(removeSource('nonexistent', db)).toBe(false);
+  it('returns false when the identifier does not exist', () => {
+    expect(removeSource('nonexistent', SNES, db)).toBe(false);
+  });
+
+  it('returns false when the identifier exists under another system', () => {
+    addSource(SNES, SRC_A, db);
+    expect(removeSource(SRC_A.identifier, PS1, db)).toBe(false);
+    expect(getSources(SNES, db)).toEqual([SRC_A]);
   });
 
   it('removes the correct source when multiple exist', () => {
     addSource(SNES, SRC_A, db);
     addSource(SNES, SRC_B, db);
-    removeSource(SRC_A.identifier, db);
+    removeSource(SRC_A.identifier, SNES, db);
     expect(getSources(SNES, db)).toEqual([SRC_B]);
   });
-});
 
-describe('findSystemForIdentifier', () => {
-  it('returns the system for a known identifier', () => {
+  // Dropping a multi-system collection from one system must leave the others
+  // alone — the deletion is scoped to the (identifier, system) pair.
+  it('leaves the same identifier registered for other systems', () => {
     addSource(SNES, SRC_A, db);
-    expect(findSystemForIdentifier(SRC_A.identifier, db)).toBe(SNES);
-  });
-
-  it('returns undefined for unknown identifier', () => {
-    expect(findSystemForIdentifier('no-such-id', db)).toBeUndefined();
+    addSource(PS1, SRC_A, db);
+    removeSource(SRC_A.identifier, SNES, db);
+    expect(getSources(SNES, db)).toEqual([]);
+    expect(getSources(PS1, db)).toEqual([SRC_A]);
   });
 });

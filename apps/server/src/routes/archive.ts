@@ -47,12 +47,18 @@ archiveRoute.post('/archive/sources', async (c) => {
   return c.json({ ok: true }, 201);
 });
 
-// Remove a source by identifier
+// Remove a source. An identifier can be registered for several systems
+// (migration005), so the system scopes the deletion — without it, dropping a
+// multi-system collection from one system would remove it from all of them.
 archiveRoute.delete('/archive/sources/:identifier', (c) => {
   const identifier = c.req.param('identifier');
-  const removed = removeSource(identifier);
+  const system = c.req.query('system');
+  if (!system?.trim()) {
+    return errorJson(c, 400, 'MISSING_SYSTEM', 'Query parameter system is required');
+  }
+  const removed = removeSource(identifier, system);
   if (!removed) {
-    return errorJson(c, 404, 'NOT_FOUND', `Source ${identifier} not found`);
+    return errorJson(c, 404, 'NOT_FOUND', `Source ${identifier} not found for ${system}`);
   }
   clearResolverCache();
   return c.json({ ok: true });
