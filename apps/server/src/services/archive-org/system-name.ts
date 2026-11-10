@@ -43,6 +43,34 @@ export function baseName(path: string): string {
   return path.split('/').at(-1) ?? path;
 }
 
+/**
+ * Formats that *re-encode* a dump instead of containing it byte for byte:
+ * CHD (MAME), RVZ/GCZ/NKit (GameCube/Wii), WBFS, CISO/CSO, PBP. A DAT
+ * describes the original bytes, so such a file can never satisfy its CRC —
+ * downloading one always ends in a mismatch the worker treats as final.
+ *
+ * A container that preserves the bytes (.zip, .7z) is a different matter and
+ * stays matchable: per-game-zip collections store "Game.sfc" as "Game.zip",
+ * which is why name matching ignores extensions in the first place.
+ */
+const REENCODED_EXTENSIONS = new Set([
+  '.chd',
+  '.rvz',
+  '.gcz',
+  '.wbfs',
+  '.ciso',
+  '.cso',
+  '.pbp',
+  '.wux',
+]);
+
+/** Is this file a re-encode, whose bytes can never match a DAT entry? */
+export function isReencodedDump(name: string): boolean {
+  const base = baseName(name).toLowerCase();
+  const dot = base.lastIndexOf('.');
+  return dot > 0 && REENCODED_EXTENSIONS.has(base.slice(dot));
+}
+
 export function stripExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(0, dot) : name;
@@ -62,7 +90,40 @@ export function mentionsSystem(text: string, system: string): boolean {
   return systemNameVariants(system).some((v) => textMentionsVariant(text, v));
 }
 
+/** Collapse case and whitespace runs so two spellings compare equal. */
+function canonical(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+export type SystemMatch = 'exact' | 'loose';
+
+/**
+ * How strongly a text (a ZIP name, an item title…) identifies `system`.
+ *
+ * 'exact': the text's own system segment *is* this system. Collections name
+ * their per-system ZIPs after the No-Intro/Redump set
+ * ("Nintendo - Game Boy (20240101).zip"), so running the text through
+ * normalizeSystemName yields a bare system name to compare against.
+ *
+ * 'loose': the name merely appears somewhere in the text. That is needed for
+ * discovery (an item titled "No-Intro Game Boy fullset"), but it also matches
+ * a *longer* system: "Game Boy" is a substring of "Game Boy Advance", and
+ * "Nintendo Entertainment System" of its "Super" sibling. Since the longer
+ * system is usually the bigger download, a loose match must never outrank an
+ * exact one — picking by size alone lands on the wrong set and scores zero.
+ */
+export function systemMatchKind(text: string, system: string): SystemMatch | null {
+  const variants = systemNameVariants(system).map(canonical);
+  if (variants.includes(canonical(normalizeSystemName(text)))) return 'exact';
+  return mentionsSystem(text, system) ? 'loose' : null;
+}
+
+/** As systemMatchKind, for a ZIP path inside an archive.org item. */
+export function zipSystemMatch(zipPath: string, system: string): SystemMatch | null {
+  return systemMatchKind(stripExtension(baseName(zipPath)), system);
+}
+
 /** Does this ZIP look like it holds the whole set for `system`? */
 export function zipMatchesSystem(zipPath: string, system: string): boolean {
-  return mentionsSystem(stripExtension(baseName(zipPath)), system);
+  return zipSystemMatch(zipPath, system) !== null;
 }

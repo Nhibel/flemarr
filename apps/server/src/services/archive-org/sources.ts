@@ -31,23 +31,22 @@ export function getAllSystems(db: Database = getDb()): string[] {
   return rows.map((r) => r.system);
 }
 
+// Keyed on (identifier, system): the same collection can serve several
+// systems (see migration005). Re-adding a pair updates its layout, so
+// correcting a wrongly-detected layout works instead of being ignored; an
+// empty incoming note keeps the stored one rather than wiping it.
 export function addSource(system: string, source: ArchiveSource, db: Database = getDb()): void {
   db.prepare(
-    `INSERT OR IGNORE INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)
+     ON CONFLICT(identifier, system) DO UPDATE SET
+       layout = excluded.layout,
+       note = CASE WHEN excluded.note <> '' THEN excluded.note ELSE archive_sources.note END`,
   ).run(source.identifier, system, source.layout, source.note);
 }
 
-export function removeSource(identifier: string, db: Database = getDb()): boolean {
-  const result = db.prepare(`DELETE FROM archive_sources WHERE identifier = ?`).run(identifier);
+export function removeSource(identifier: string, system: string, db: Database = getDb()): boolean {
+  const result = db
+    .prepare(`DELETE FROM archive_sources WHERE identifier = ? AND system = ?`)
+    .run(identifier, system);
   return result.changes > 0;
-}
-
-export function findSystemForIdentifier(
-  identifier: string,
-  db: Database = getDb(),
-): string | undefined {
-  const row = db
-    .prepare(`SELECT system FROM archive_sources WHERE identifier = ?`)
-    .get(identifier) as { system: string } | undefined;
-  return row?.system;
 }

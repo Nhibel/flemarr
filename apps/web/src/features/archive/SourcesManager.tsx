@@ -29,10 +29,18 @@ export function SourcesManager({
     queryFn: () => fetchSources(system),
   });
 
+  // One shared mutation, but the row it is acting on is identified by
+  // `variables`, so only that row shows a pending state or an error — a
+  // failed delete used to disappear entirely (no onError, no feedback).
   const removeMutation = useMutation({
-    mutationFn: (identifier: string) => deleteSource(identifier),
+    mutationFn: (identifier: string) => deleteSource(identifier, system),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] }),
   });
+
+  const removeErrorFor = (identifier: string): string | null =>
+    removeMutation.variables === identifier && removeMutation.error instanceof Error
+      ? removeMutation.error.message
+      : null;
 
   const handleSuggest = async () => {
     setSuggesting(true);
@@ -49,11 +57,16 @@ export function SourcesManager({
 
   const handleAdopt = async (s: SuggestResponse['suggestions'][number]) => {
     await addSource(system, { identifier: s.identifier, layout: s.layout, note: s.title });
-    setSuggestions((prev) => prev?.filter((x) => x.identifier !== s.identifier) ?? null);
-    void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
+    await queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
   };
 
   const sources = data?.sources ?? [];
+  // Suggestions are re-validated on every run and never filtered server-side,
+  // so an already-configured collection comes back listed. Marking it from the
+  // live source list covers both that and a just-adopted one, without dropping
+  // rows — dropping them is what made the panel claim nothing had been found
+  // once the last suggestion was taken.
+  const configured = new Set(sources.map((src) => src.identifier));
 
   return (
     <section>
@@ -115,7 +128,12 @@ export function SourcesManager({
               })}
             >
               {suggestions.map((s) => (
-                <SuggestionRow key={s.identifier} suggestion={s} onAdopt={() => handleAdopt(s)} />
+                <SuggestionRow
+                  key={s.identifier}
+                  suggestion={s}
+                  onAdopt={() => handleAdopt(s)}
+                  configured={configured.has(s.identifier)}
+                />
               ))}
             </div>
           )}
@@ -135,7 +153,7 @@ export function SourcesManager({
 
       {sources.length === 0 && !showAdd ? (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          Aucune source configurée. Ajoutez un identifiant archive.org pour commencer.
+          Aucune source configurée. Ajoutez une collection archive.org pour commencer.
         </p>
       ) : (
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
@@ -144,6 +162,8 @@ export function SourcesManager({
               key={s.identifier}
               source={s}
               onRemove={() => removeMutation.mutate(s.identifier)}
+              removing={removeMutation.isPending && removeMutation.variables === s.identifier}
+              removeError={removeErrorFor(s.identifier)}
             />
           ))}
         </div>

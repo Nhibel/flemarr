@@ -6,6 +6,7 @@ import { openDownloadEvents, cancelDownload, downloadEventSchema } from '@/lib/a
 import type { DownloadEvent } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
+import { fullyDownloadedGameIds } from './completed-games.js';
 
 export interface QueuedDownload {
   jobId: string;
@@ -43,9 +44,15 @@ function triggerBrowserSave(url: string, filename: string): void {
 interface Props {
   jobs: QueuedDownload[];
   onAllDone?: () => void;
+  /**
+   * Reports games whose every ROM landed successfully, as soon as each one
+   * completes. The parent owns the selection and unchecks them, so what stays
+   * checked is exactly what failed or never ran.
+   */
+  onGamesDownloaded?: (gameIds: string[]) => void;
 }
 
-export function DownloadManager({ jobs, onAllDone }: Props) {
+export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
   const [jobStates, setJobStates] = useState<Map<string, JobState>>(new Map());
 
   const initJob = useCallback((queued: QueuedDownload) => {
@@ -157,6 +164,25 @@ export function DownloadManager({ jobs, onAllDone }: Props) {
       esRefs.current.forEach((es) => es.close());
     };
   }, [jobs, applyEvent]);
+
+  // Report each game once it is fully downloaded, not once the whole job is:
+  // the selection empties as the queue drains. Keyed by jobId so re-downloading
+  // the same game in a later job reports it again.
+  const reportedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!onGamesDownloaded) return;
+    const fresh: string[] = [];
+    jobStates.forEach((job) => {
+      for (const gameId of fullyDownloadedGameIds(job.items)) {
+        const key = `${job.jobId}/${gameId}`;
+        if (reportedRef.current.has(key)) continue;
+        reportedRef.current.add(key);
+        fresh.push(gameId);
+      }
+    });
+    if (fresh.length > 0) onGamesDownloaded(fresh);
+  }, [jobStates, onGamesDownloaded]);
 
   // Notify parent when all jobs are done
   useEffect(() => {

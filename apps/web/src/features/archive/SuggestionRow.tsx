@@ -6,9 +6,12 @@ import { LayoutBadge } from './LayoutBadge.js';
 export function SuggestionRow({
   suggestion,
   onAdopt,
+  configured = false,
 }: {
   suggestion: SuggestResponse['suggestions'][number];
   onAdopt: () => Promise<void>;
+  /** Already a source for this system — adopting it again would be a no-op. */
+  configured?: boolean;
 }) {
   const [adopting, setAdopting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +74,8 @@ export function SuggestionRow({
           {nameOnlyPct > 0 && (
             <span className={css({ color: 'fg.subtle' })}> + {nameOnlyPct} % nom seul</span>
           )}{' '}
-          (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
+          (échantillon de {suggestion.sampleSize} jeux) · {suggestion.fileCount} fichiers dans
+          l’item
         </p>
         {error && (
           <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text', mt: '1' })}>
@@ -79,26 +83,39 @@ export function SuggestionRow({
           </p>
         )}
       </div>
-      <button
-        onClick={() => void handleAdopt()}
-        disabled={adopting}
-        className={css({
-          px: '3',
-          py: '1',
-          fontSize: 'xs',
-          fontWeight: 'medium',
-          borderRadius: 'lg',
-          cursor: 'pointer',
-          bg: 'accent2.solid',
-          color: 'accent2.fg',
-          flexShrink: 0,
-          transition: 'background-color 0.15s',
-          _hover: { bg: 'accent2.hover' },
-          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-        })}
-      >
-        {adopting ? '…' : 'Adopter'}
-      </button>
+      {configured ? (
+        <span
+          className={css({
+            fontSize: 'xs',
+            fontWeight: 'medium',
+            color: 'status.success.text',
+            flexShrink: 0,
+          })}
+        >
+          ✓ Déjà ajoutée
+        </span>
+      ) : (
+        <button
+          onClick={() => void handleAdopt()}
+          disabled={adopting}
+          className={css({
+            px: '3',
+            py: '1',
+            fontSize: 'xs',
+            fontWeight: 'medium',
+            borderRadius: 'lg',
+            cursor: 'pointer',
+            bg: 'accent2.solid',
+            color: 'accent2.fg',
+            flexShrink: 0,
+            transition: 'background-color 0.15s',
+            _hover: { bg: 'accent2.hover' },
+            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {adopting ? '…' : 'Adopter'}
+        </button>
+      )}
     </div>
   );
 }

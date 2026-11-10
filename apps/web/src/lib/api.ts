@@ -119,13 +119,15 @@ export async function addSource(system: string, source: ArchiveSource): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ system, source }),
   });
-  await parseResponse(res, getSourcesResponseSchema.partial());
+  await ensureOk(res);
 }
 
-export async function deleteSource(identifier: string): Promise<void> {
-  const res = await fetch(`/api/archive/sources/${encodeURIComponent(identifier)}`, {
-    method: 'DELETE',
-  });
+// The system scopes the deletion: one identifier can serve several systems.
+export async function deleteSource(identifier: string, system: string): Promise<void> {
+  const res = await fetch(
+    `/api/archive/sources/${encodeURIComponent(identifier)}?system=${encodeURIComponent(system)}`,
+    { method: 'DELETE' },
+  );
   await ensureOk(res);
 }
 

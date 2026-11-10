@@ -77,9 +77,9 @@ beforeEach(() => {
     }));
   vi.mocked(urlExists).mockReset().mockResolvedValue(true);
   // Clean up any sources added in previous tests
-  removeSource('direct-snes');
-  removeSource('zip-snes');
-  removeSource('ni-like');
+  for (const id of ['direct-snes', 'zip-snes', 'ni-like']) {
+    removeSource(id, 'Nintendo - Super Nintendo Entertainment System');
+  }
 });
 
 describe('resolveGames — direct layout', () => {
@@ -138,7 +138,9 @@ describe('resolveGames — direct layout', () => {
       games: [
         {
           ...FIXTURE_DAT.games[0]!,
-          roms: [{ name: 'Super Mario World (USA).unh', size: 524288, crc: 'ffffffff', status: 'good' }],
+          roms: [
+            { name: 'Super Mario World (USA).unh', size: 524288, crc: 'ffffffff', status: 'good' },
+          ],
         },
       ],
     };
@@ -409,7 +411,7 @@ describe('resolveGames — multi-disc games', () => {
     ]);
 
     const results = await resolveGames(MULTI_DISC_DAT, 'dat2', ['ff7']);
-    removeSource('direct-psx');
+    removeSource('direct-psx', 'Sony - PlayStation');
 
     expect(results[0]?.gameName).toBe('Final Fantasy VII (USA)');
     expect(results[0]?.roms).toHaveLength(3);

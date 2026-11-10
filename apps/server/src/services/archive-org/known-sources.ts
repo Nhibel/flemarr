@@ -6,8 +6,13 @@
  * so a dead or renamed identifier simply stops appearing — nothing breaks.
  *
  * Most are access-restricted and only usable with archive.org credentials.
+ *
+ * All of these are No-Intro (cartridge) collections — proper1g1r-collection
+ * carries 173 systems and not one Sony entry. Seeding them for a Redump DAT
+ * can only waste scoring slots, so suggestSources seeds them by DAT source.
+ * A Redump equivalent would go in its own list.
  */
-export const KNOWN_MULTI_SYSTEM_IDENTIFIERS: string[] = [
+export const KNOWN_NO_INTRO_IDENTIFIERS: string[] = [
   'ni-roms', // No-Intro full sets, one ZIP per system (collection ni-romsets)
   'proper1g1r-collection', // 1G1R PropeR preset
   'hearto-1g1r-collection', // 1G1R Hearto preset

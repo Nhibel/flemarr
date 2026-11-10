@@ -285,7 +285,8 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
 
   // "Select all" keeps operating on baseFiltered: with the selected-only view
   // active it must still mean "all filtered games", not "the visible subset".
-  const { selected, toggle, selectAll, clearAll, isAllSelected } = useSelection(baseFiltered);
+  const { selected, toggle, selectAll, clearAll, deselect, isAllSelected } =
+    useSelection(baseFiltered);
 
   const [selectedOnly, setSelectedOnly] = useState(false);
   const filtered = useMemo(
@@ -429,7 +430,9 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
 
       {/* Downloads tab — kept mounted to preserve job progress */}
       <div className={css({ display: tab === 'downloads' ? 'block' : 'none' })}>
-        <DownloadManager jobs={downloadJobs} />
+        {/* Games that downloaded cleanly leave the selection, so a retry (or a
+            re-resolve) only ever covers what's left to fix. */}
+        <DownloadManager jobs={downloadJobs} onGamesDownloaded={deselect} />
       </div>
     </main>
   );

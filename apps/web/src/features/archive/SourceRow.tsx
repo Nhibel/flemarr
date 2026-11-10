@@ -6,7 +6,19 @@ import { LayoutBadge } from './LayoutBadge.js';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
 
-export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemove: () => void }) {
+export function SourceRow({
+  source,
+  onRemove,
+  removing = false,
+  removeError = null,
+}: {
+  source: ArchiveSource;
+  onRemove: () => void;
+  /** A delete is in flight for this source — don't let a second one fire. */
+  removing?: boolean;
+  /** Why the last delete of this source failed, if it did. */
+  removeError?: string | null;
+}) {
   const [preview, setPreview] = useState<{ fileCount: number } | null>(null);
   const [testing, setTesting] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -51,13 +63,18 @@ export function SourceRow({ source, onRemove }: { source: ArchiveSource; onRemov
             {testError}
           </p>
         )}
+        {removeError && (
+          <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text', mt: '1' })}>
+            Suppression échouée : {removeError}
+          </p>
+        )}
       </div>
       <div className={css({ display: 'flex', gap: '2', flexShrink: 0 })}>
         <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={testing}>
           {testing ? '…' : 'Tester'}
         </Button>
-        <Button variant="danger" size="sm" onClick={onRemove}>
-          Supprimer
+        <Button variant="danger" size="sm" onClick={onRemove} disabled={removing}>
+          {removing ? '…' : 'Supprimer'}
         </Button>
       </div>
     </Card>

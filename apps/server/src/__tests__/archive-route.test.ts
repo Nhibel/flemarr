@@ -53,7 +53,7 @@ const FIXTURE_DAT: DatFile = {
 };
 
 beforeEach(() => {
-  removeSource('test-id');
+  removeSource('test-id', 'Nintendo - Super Nintendo Entertainment System');
   vi.mocked(getIndex).mockReset();
   vi.mocked(resolveGames).mockReset().mockResolvedValue([]);
 });
@@ -80,7 +80,7 @@ describe('GET /api/archive/sources', () => {
     );
     const body = (await res.json()) as { sources: { identifier: string }[] };
     expect(body.sources.some((s) => s.identifier === 'test-id')).toBe(true);
-    removeSource('test-id');
+    removeSource('test-id', 'Nintendo - Super Nintendo Entertainment System');
   });
 });
 
@@ -104,7 +104,7 @@ describe('POST /api/archive/sources', () => {
       }),
     });
     expect(res.status).toBe(201);
-    removeSource('test-id');
+    removeSource('test-id', 'Nintendo - Super Nintendo Entertainment System');
   });
 
   it('invalidates the resolver cache when a source is added', async () => {
@@ -118,27 +118,68 @@ describe('POST /api/archive/sources', () => {
       }),
     });
     expect(vi.mocked(clearResolverCache)).toHaveBeenCalled();
-    removeSource('test-id');
+    removeSource('test-id', 'Nintendo - Super Nintendo Entertainment System');
   });
 });
 
 describe('DELETE /api/archive/sources/:identifier', () => {
-  it('returns 404 for a non-existent source', async () => {
+  const addTestSource = async (system: string): Promise<Response> =>
+    app.request('/api/archive/sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system,
+        source: { identifier: 'test-id', layout: 'direct', note: '' },
+      }),
+    });
+
+  it('returns 400 when the system is missing', async () => {
     const res = await app.request('/api/archive/sources/nonexistent', { method: 'DELETE' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 for a non-existent source', async () => {
+    const res = await app.request(
+      '/api/archive/sources/nonexistent?system=Nintendo%20-%20Super%20Nintendo%20Entertainment%20System',
+      {
+        method: 'DELETE',
+      },
+    );
     expect(res.status).toBe(404);
   });
 
   it('removes an existing source', async () => {
-    await app.request('/api/archive/sources', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system: 'Nintendo - Super Nintendo Entertainment System',
-        source: { identifier: 'test-id', layout: 'direct', note: '' },
-      }),
-    });
-    const res = await app.request('/api/archive/sources/test-id', { method: 'DELETE' });
+    await addTestSource('Nintendo - Super Nintendo Entertainment System');
+    const res = await app.request(
+      '/api/archive/sources/test-id?system=Nintendo%20-%20Super%20Nintendo%20Entertainment%20System',
+      {
+        method: 'DELETE',
+      },
+    );
     expect(res.status).toBe(200);
+  });
+
+  it('returns 404 when the source exists under a different system', async () => {
+    await addTestSource('Nintendo - Super Nintendo Entertainment System');
+    const res = await app.request('/api/archive/sources/test-id?system=Sony%20-%20PlayStation', {
+      method: 'DELETE',
+    });
+    expect(res.status).toBe(404);
+    removeSource('test-id', 'Nintendo - Super Nintendo Entertainment System');
+  });
+
+  // A multi-system collection dropped from one system stays on the others.
+  it('leaves the same identifier registered for other systems', async () => {
+    await addTestSource('Nintendo - Super Nintendo Entertainment System');
+    await addTestSource('Sony - PlayStation');
+    await app.request(
+      '/api/archive/sources/test-id?system=Nintendo%20-%20Super%20Nintendo%20Entertainment%20System',
+      { method: 'DELETE' },
+    );
+    const res = await app.request('/api/archive/sources?system=Sony%20-%20PlayStation');
+    const body = (await res.json()) as { sources: { identifier: string }[] };
+    expect(body.sources.some((s) => s.identifier === 'test-id')).toBe(true);
+    removeSource('test-id', 'Sony - PlayStation');
   });
 });
 

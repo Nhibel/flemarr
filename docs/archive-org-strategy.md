@@ -67,9 +67,13 @@ No hand-curated mapping. Sources are **per-system rows in SQLite**, managed from
 Two discovery paths feed the list:
 
 1. **Full-text search** (`GET /api/archive/search`): queries archive.org's advancedsearch with the system name, sorted so multi-GB items (real collections) rank above single-game uploads.
-2. **Suggestions** (`POST /api/archive/suggest`, `suggest.ts`): scores candidate collections by probing how many of a random sample of the loaded DAT's ROMs they actually contain, and reports a coverage percentage. For one-ZIP-per-system collections the coverage is measured against the ZIP's inner `view_archive` listing — the same path the resolver uses, so scoring and resolution agree.
+2. **Suggestions** (`POST /api/archive/suggest`, `suggest.ts`): scores candidate collections by probing how many of an evenly-strided sample of the loaded DAT's **games** they actually contain, and reports a coverage percentage. For one-ZIP-per-system collections the coverage is measured against the ZIP's inner `view_archive` listing — the same path the resolver uses, so scoring and resolution agree.
 
-`known-sources.ts` seeds the suggestion run with multi-system collection _candidates_ (ni-roms, proper1g1r-collection, …) whose identifiers never mention a specific system, so search can't surface them. They are re-validated on every run — a dead or renamed identifier simply stops appearing. Collection identifiers changing over time is handled by this re-validation, not by keeping a curated list fresh.
+   The sample is games, not ROM entries, and a game counts as present when _any_ of its ROMs matches (by CRC32, or by a file named after the ROM or after the game). Sampling entries instead systematically understated per-game-zip collections on disc systems: a Redump game is one `.cue` plus one `.bin` per track, so a ZIP named after the game could only ever match the cue — a 12-track game capped a perfect source at 8%. Coverage answers "do I get this game?", so games are what it counts. A partially-present disc is the resolver's business to report, not the suggester's.
+
+   Two things the percentage does **not** mean. A `crcCoverage` of 0 is normal for any `zip-collection` source: a `view_archive` listing gives inner file names, never hashes, so such a source can only ever be name-matched. And a low `coverage` is often correct rather than a scoring failure — large Redump sets are published as alphabetical slices (`sony_playstation_part1` is "#-D" of five), and each slice genuinely holds only its share.
+
+`known-sources.ts` seeds the suggestion run with multi-system collection _candidates_ (ni-roms, proper1g1r-collection, …) whose identifiers never mention a specific system, so search can't surface them. They are all No-Intro (cartridge) collections — `proper1g1r-collection` carries 173 systems and not one Sony entry — so they are seeded only for a No-Intro DAT; for a Redump DAT they could only waste scoring slots. They are re-validated on every run — a dead or renamed identifier simply stops appearing. Collection identifiers changing over time is handled by this re-validation, not by keeping a curated list fresh.
 
 ---
 
@@ -194,7 +198,10 @@ missing header's game-specific bytes from nothing.
 
 `suggest.ts`'s `scoreIndex` has the same blended-match issue at the
 collection-scoring level: its `coverage` fraction counts a name/ZIP-entry
-match exactly like a CRC match. It now also returns `crcCoverage` — the
+match exactly like a CRC match. Re-encoded dumps are excluded from name
+matching for the same reason the Headered case is hopeless — a `.chd`,
+`.rvz` or `.wbfs` holds the game but not the bytes the DAT describes, so no
+CRC it offers can ever match and every download from it would fail. It now also returns `crcCoverage` — the
 CRC-only subset — so a candidate whose high "coverage" is mostly name
 guesses (exactly what a Headered-DAT scoring run looks like) is visibly
 different from one that's genuinely well-matched.

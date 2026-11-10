@@ -6,13 +6,14 @@ import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
 import { getZipListing } from './zip-listing.js';
 import { hasArchiveCredentials } from './fetch.js';
-import { KNOWN_MULTI_SYSTEM_IDENTIFIERS } from './known-sources.js';
+import { KNOWN_NO_INTRO_IDENTIFIERS } from './known-sources.js';
 import {
   systemNameVariants,
   mentionsSystem,
   baseName,
   stripExtension,
-  zipMatchesSystem,
+  zipSystemMatch,
+  isReencodedDump,
 } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 
@@ -21,18 +22,27 @@ export interface SourceSuggestion {
   title: string;
   layout: ArchiveLayout;
   fileCount: number;
-  /** Fraction of the DAT sample found in the item (0..1) — CRC + name-only matches blended, used for ranking */
+  /** Fraction of the sampled *games* present in the item (0..1) — CRC + name-only blended, used for ranking */
   coverage: number;
   /** Fraction found specifically by CRC32 equality — the trustworthy subset of `coverage` */
   crcCoverage: number;
+  /** How many games were sampled (not ROM entries) */
   sampleSize: number;
 }
 
 export interface CoverageScore {
+  /** Games with at least one ROM matched by CRC32 */
   crcFound: number;
-  /** Found by name/ZIP-entry but NOT by CRC — a guess, not a guarantee */
+  /** Games matched by name/ZIP-entry only — a guess, not a guarantee */
   nameOnlyFound: number;
+  /** Games sampled */
   total: number;
+}
+
+/** A sampled game: its DAT name, and the ROMs that can be matched at all. */
+export interface SampledGame {
+  name: string;
+  roms: { name: string; crc: string }[];
 }
 
 const SAMPLE_SIZE = 50;
@@ -55,16 +65,27 @@ export function buildSearchQueries(system: string, source: DatFile['source']): s
   return [...new Set(queries)].slice(0, MAX_QUERIES);
 }
 
-/** Evenly-strided sample of ROM entries across the whole DAT. */
-export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; crc: string }[] {
-  // nodump ROMs have no CRC — nothing to compare a source's listing against,
-  // so they're never candidates for the coverage sample (see docs/dat-format.md).
-  const all = dat.games.flatMap((g) =>
-    g.roms.filter((r) => r.crc !== undefined).map((r) => ({ name: r.name, crc: r.crc! })),
-  );
+/**
+ * Evenly-strided sample of *games* across the whole DAT.
+ *
+ * Sampling ROM entries instead systematically understated per-game-zip
+ * collections on disc systems: a Redump game is one ".cue" plus one ".bin"
+ * per track, and a ZIP named after the game can only ever match the cue. A
+ * 12-track game therefore capped a perfect source at 8%. Coverage is a
+ * question about games ("do I get this game?"), so the sample is games.
+ */
+export function sampleGames(dat: DatFile, size = SAMPLE_SIZE): SampledGame[] {
+  // nodump ROMs have no CRC — nothing to compare a source's listing against
+  // (see docs/dat-format.md); a game with no scorable ROM at all is dropped.
+  const all = dat.games
+    .map((g) => ({
+      name: g.name,
+      roms: g.roms.filter((r) => r.crc !== undefined).map((r) => ({ name: r.name, crc: r.crc! })),
+    }))
+    .filter((g) => g.roms.length > 0);
   if (all.length <= size) return all;
   const stride = all.length / size;
-  const sample: { name: string; crc: string }[] = [];
+  const sample: SampledGame[] = [];
   for (let i = 0; i < size; i++) {
     const entry = all[Math.floor(i * stride)];
     if (entry) sample.push(entry);
@@ -73,34 +94,50 @@ export function sampleRoms(dat: DatFile, size = SAMPLE_SIZE): { name: string; cr
 }
 
 /**
- * Counts of the sample present in the item's file list, split by how
- * trustworthy the match is: `crcFound` is a real CRC32 equality (the
- * downloader's own check should pass); `nameOnlyFound` is a filename match —
- * extension ignored, so a ZIP named after the ROM (per-game-zip collections
- * store "Game.sfc" as "Game.zip") counts, and so does a DAT variant whose
- * naming convention doesn't match real uploads (e.g. a NES "Headerless" DAT
- * names its roms "*.unh", which no archive.org upload ever uses) — plausible,
- * but unconfirmed (see "Name-only matches" in docs/archive-org-strategy.md).
+ * Does any file name in `names` (already basename + extension-stripped) stand
+ * for this game? Either a file per ROM, or one named after the game itself —
+ * which is how per-game-zip collections store a multi-track disc.
+ *
+ * The game name is compared raw: DAT names carry no extension, and stripping
+ * one would mangle a title like "E.T. the Extra-Terrestrial (USA)".
  */
-export function scoreIndex(
-  files: ArchiveFile[],
-  sample: { name: string; crc: string }[],
-): CoverageScore {
+function gameMatchesByName(names: Set<string>, game: SampledGame): boolean {
+  if (names.has(game.name)) return true;
+  return game.roms.some((r) => names.has(stripExtension(r.name)));
+}
+
+/**
+ * How many sampled games the item's file list accounts for, split by how
+ * trustworthy the match is: `crcFound` means at least one of the game's ROMs
+ * matched by CRC32 (the downloader's own check should pass); `nameOnlyFound`
+ * is a filename match — extension ignored, so a ZIP named after the ROM or
+ * the game counts (per-game-zip collections store "Game.sfc" as "Game.zip"),
+ * and so does a DAT variant whose naming convention doesn't match real
+ * uploads (e.g. a NES "Headerless" DAT names its roms "*.unh", which no
+ * archive.org upload ever uses) — plausible, but unconfirmed (see
+ * "Name-only matches" in docs/archive-org-strategy.md).
+ */
+export function scoreIndex(files: ArchiveFile[], sample: SampledGame[]): CoverageScore {
   if (sample.length === 0) return { crcFound: 0, nameOnlyFound: 0, total: 0 };
 
   const crcs = new Set<string>();
   const names = new Set<string>();
   for (const f of files) {
     if (f.crc32) crcs.add(f.crc32.toLowerCase());
-    names.add(stripExtension(baseName(f.name)));
+    // A re-encode (.chd, .rvz…) carries the game but not the DAT's bytes.
+    // Since name matching ignores extensions, it would otherwise score as a
+    // hit for a file that is guaranteed to fail CRC validation on download.
+    if (!isReencodedDump(f.name)) names.add(stripExtension(baseName(f.name)));
   }
 
   let crcFound = 0;
   let nameOnlyFound = 0;
-  for (const rom of sample) {
-    if (crcs.has(rom.crc.toLowerCase())) {
+  for (const game of sample) {
+    // One matched ROM is enough to say the item carries the game: a partial
+    // disc is the resolver's problem to report, not the suggester's.
+    if (game.roms.some((r) => crcs.has(r.crc.toLowerCase()))) {
       crcFound++;
-    } else if (names.has(stripExtension(rom.name))) {
+    } else if (gameMatchesByName(names, game)) {
       nameOnlyFound++;
     }
   }
@@ -117,13 +154,21 @@ export function scoreIndex(
 async function probeSystemZip(
   info: ArchiveItemInfo,
   system: string,
-  sample: { name: string; crc: string }[],
+  sample: SampledGame[],
 ): Promise<number | null> {
   if (sample.length === 0 || !info.server || !info.dir) return null;
 
-  const zip = info.files
-    .filter((f) => f.name.toLowerCase().endsWith('.zip') && zipMatchesSystem(f.name, system))
-    .sort((a, b) => b.size - a.size)[0];
+  // Only an exact match is this system's own ZIP. A loose one can be a longer
+  // system's set ("Game Boy Advance" matches "Game Boy") and, holding far
+  // bigger ROMs, it used to win on size alone — then scored zero against this
+  // system's sample and sank the whole candidate below MIN_COVERAGE.
+  const matches = info.files
+    .filter((f) => f.name.toLowerCase().endsWith('.zip'))
+    .map((file) => ({ file, kind: zipSystemMatch(file.name, system) }))
+    .filter((m) => m.kind !== null);
+  const exact = matches.filter((m) => m.kind === 'exact');
+  const pool = exact.length > 0 ? exact : matches;
+  const zip = pool.sort((a, b) => b.file.size - a.file.size)[0]?.file;
   if (zip === undefined) return null;
 
   let entries: string[];
@@ -133,8 +178,10 @@ async function probeSystemZip(
     return null;
   }
   // Inner names are "<rom>.zip" (re-zipped) or the raw ROM — match by basename.
-  const innerBases = new Set(entries.map((e) => stripExtension(baseName(e))));
-  const hits = sample.filter((rom) => innerBases.has(stripExtension(rom.name))).length;
+  const innerBases = new Set(
+    entries.filter((e) => !isReencodedDump(e)).map((e) => stripExtension(baseName(e))),
+  );
+  const hits = sample.filter((game) => gameMatchesByName(innerBases, game)).length;
   logger.debug(
     { zip: zip.name, innerEntries: entries.length, sample: sample.length, hits },
     'system zip listing scored',
@@ -144,7 +191,7 @@ async function probeSystemZip(
 
 async function scoreCandidate(
   candidate: SearchResult,
-  sample: { name: string; crc: string }[],
+  sample: SampledGame[],
   system: string,
 ): Promise<SourceSuggestion | null> {
   let info: ArchiveItemInfo;
@@ -204,7 +251,7 @@ async function scoreCandidate(
  * candidates against a sample of the DAT and return them ranked by coverage.
  */
 export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> {
-  const sample = sampleRoms(dat);
+  const sample = sampleGames(dat);
   const queries = buildSearchQueries(dat.system, dat.source);
   logger.info({ system: dat.system, queries }, 'suggestion run started');
 
@@ -226,13 +273,16 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   if (candidates.size === 0 && lastError !== null) throw lastError;
 
   // Known multi-system collections never match a per-system search query —
-  // inject them as candidates; scoring validates them like the others.
-  for (const id of KNOWN_MULTI_SYSTEM_IDENTIFIERS) {
+  // inject them as candidates; scoring validates them like the others. They
+  // are all No-Intro sets, so for a Redump DAT they would only burn scoring
+  // slots on collections that cannot hold a single disc-based game.
+  const seedIds = dat.source === 'no-intro' ? KNOWN_NO_INTRO_IDENTIFIERS : [];
+  for (const id of seedIds) {
     if (!candidates.has(id)) {
       candidates.set(id, { identifier: id, title: id, description: '' });
     }
   }
-  const seeded = new Set(KNOWN_MULTI_SYSTEM_IDENTIFIERS);
+  const seeded = new Set(seedIds);
 
   // Curated multi-system identifiers first (no itemSize — they'd sink),
   // then candidates whose identifier/title mention the system (or an alias)
@@ -245,28 +295,40 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   );
   logger.info({ candidates: candidates.size }, 'candidates gathered');
 
-  // Restricted/unreachable candidates don't consume a scoring slot — keep
-  // going down the list until enough are actually scored.
+  // The budget counts candidates worth keeping, not candidates looked at: a
+  // zero-coverage result is as useless as an unreachable one, and counting it
+  // stopped the search before it ever reached the real sets. (A PS1 run spent
+  // its ten slots on No-Intro seeds and on PS2/PSP items that merely rank
+  // bigger, and surfaced nothing usable.) MAX_ATTEMPTS still bounds the cost.
   const suggestions: SourceSuggestion[] = [];
   let attempts = 0;
+  let kept = 0;
   for (
     let i = 0;
-    i < ordered.length && suggestions.length < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
+    i < ordered.length && kept < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
     i += SCORING_CONCURRENCY
   ) {
     const chunk = ordered.slice(i, i + SCORING_CONCURRENCY);
     attempts += chunk.length;
     const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample, dat.system)));
-    suggestions.push(...scored.filter((s): s is SourceSuggestion => s !== null));
+    for (const s of scored) {
+      if (s === null) continue;
+      suggestions.push(s);
+      if (s.coverage >= MIN_COVERAGE) kept++;
+    }
   }
 
-  const kept = suggestions
+  const results = suggestions
     .filter((s) => s.coverage >= MIN_COVERAGE)
     .sort((a, b) => b.coverage - a.coverage)
     .slice(0, MAX_RESULTS);
   logger.info(
-    { kept: kept.map((s) => ({ id: s.identifier, coverage: s.coverage })) },
+    {
+      attempts,
+      scored: suggestions.length,
+      kept: results.map((s) => ({ id: s.identifier, coverage: s.coverage })),
+    },
     'suggestion run finished',
   );
-  return kept;
+  return results;
 }
