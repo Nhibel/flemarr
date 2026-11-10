@@ -57,11 +57,16 @@ export function SourcesManager({
 
   const handleAdopt = async (s: SuggestResponse['suggestions'][number]) => {
     await addSource(system, { identifier: s.identifier, layout: s.layout, note: s.title });
-    setSuggestions((prev) => prev?.filter((x) => x.identifier !== s.identifier) ?? null);
-    void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
+    await queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
   };
 
   const sources = data?.sources ?? [];
+  // Suggestions are re-validated on every run and never filtered server-side,
+  // so an already-configured collection comes back listed. Marking it from the
+  // live source list covers both that and a just-adopted one, without dropping
+  // rows — dropping them is what made the panel claim nothing had been found
+  // once the last suggestion was taken.
+  const configured = new Set(sources.map((src) => src.identifier));
 
   return (
     <section>
@@ -124,7 +129,12 @@ export function SourcesManager({
               })}
             >
               {suggestions.map((s) => (
-                <SuggestionRow key={s.identifier} suggestion={s} onAdopt={() => handleAdopt(s)} />
+                <SuggestionRow
+                  key={s.identifier}
+                  suggestion={s}
+                  onAdopt={() => handleAdopt(s)}
+                  configured={configured.has(s.identifier)}
+                />
               ))}
             </div>
           )}

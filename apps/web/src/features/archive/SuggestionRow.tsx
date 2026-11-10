@@ -6,9 +6,12 @@ import { LayoutBadge } from './LayoutBadge.js';
 export function SuggestionRow({
   suggestion,
   onAdopt,
+  configured = false,
 }: {
   suggestion: SuggestResponse['suggestions'][number];
   onAdopt: () => Promise<void>;
+  /** Already a source for this system — adopting it again would be a no-op. */
+  configured?: boolean;
 }) {
   const [adopting, setAdopting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,26 +77,39 @@ export function SuggestionRow({
           </p>
         )}
       </div>
-      <button
-        onClick={() => void handleAdopt()}
-        disabled={adopting}
-        className={css({
-          px: '3',
-          py: '1',
-          fontSize: 'xs',
-          fontWeight: 'medium',
-          borderRadius: 'lg',
-          cursor: 'pointer',
-          bg: 'violet.500',
-          color: 'white',
-          flexShrink: 0,
-          transition: 'background-color 0.15s',
-          _hover: { bg: 'violet.600' },
-          _disabled: { opacity: 0.5, cursor: 'not-allowed' },
-        })}
-      >
-        {adopting ? '…' : 'Adopter'}
-      </button>
+      {configured ? (
+        <span
+          className={css({
+            fontSize: 'xs',
+            fontWeight: 'medium',
+            color: 'green.600',
+            flexShrink: 0,
+          })}
+        >
+          ✓ Déjà ajoutée
+        </span>
+      ) : (
+        <button
+          onClick={() => void handleAdopt()}
+          disabled={adopting}
+          className={css({
+            px: '3',
+            py: '1',
+            fontSize: 'xs',
+            fontWeight: 'medium',
+            borderRadius: 'lg',
+            cursor: 'pointer',
+            bg: 'violet.500',
+            color: 'white',
+            flexShrink: 0,
+            transition: 'background-color 0.15s',
+            _hover: { bg: 'violet.600' },
+            _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+          })}
+        >
+          {adopting ? '…' : 'Adopter'}
+        </button>
+      )}
     </div>
   );
 }

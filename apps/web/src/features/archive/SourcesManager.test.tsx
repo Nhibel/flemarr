@@ -69,3 +69,55 @@ describe('SourcesManager — remove', () => {
     release();
   });
 });
+
+describe('SourcesManager — suggestions', () => {
+  const SUGGESTION = {
+    identifier: 'ni-roms',
+    title: 'No-Intro full sets',
+    layout: 'zip-collection' as const,
+    fileCount: 120,
+    coverage: 0.9,
+    crcCoverage: 0.85,
+    sampleSize: 50,
+  };
+
+  it('marks a suggestion already configured for this system', async () => {
+    vi.mocked(api.suggestSources).mockResolvedValue({ suggestions: [SUGGESTION] });
+    renderManager();
+
+    await userEvent.click(await screen.findByRole('button', { name: /suggérer des sources/i }));
+
+    expect(await screen.findByText(/déjà ajoutée/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /adopter/i })).not.toBeInTheDocument();
+  });
+
+  // Filtering adopted rows out of the list is what made the panel announce
+  // "nothing found" once the last suggestion had been taken.
+  it('keeps an adopted suggestion listed instead of claiming nothing was found', async () => {
+    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [] });
+    vi.mocked(api.suggestSources).mockResolvedValue({ suggestions: [SUGGESTION] });
+    vi.mocked(api.addSource).mockResolvedValue(undefined);
+    renderManager();
+
+    await userEvent.click(await screen.findByRole('button', { name: /suggérer des sources/i }));
+    const adopt = await screen.findByRole('button', { name: /adopter/i });
+
+    vi.mocked(api.fetchSources).mockResolvedValue({
+      system: SYSTEM,
+      sources: [{ identifier: 'ni-roms', layout: 'zip-collection', note: 'No-Intro full sets' }],
+    });
+    await userEvent.click(adopt);
+
+    expect(await screen.findByText(/déjà ajoutée/i)).toBeInTheDocument();
+    expect(screen.queryByText(/aucune collection candidate/i)).not.toBeInTheDocument();
+  });
+
+  it('still reports a genuinely empty suggestion run', async () => {
+    vi.mocked(api.suggestSources).mockResolvedValue({ suggestions: [] });
+    renderManager();
+
+    await userEvent.click(await screen.findByRole('button', { name: /suggérer des sources/i }));
+
+    expect(await screen.findByText(/aucune collection candidate/i)).toBeInTheDocument();
+  });
+});

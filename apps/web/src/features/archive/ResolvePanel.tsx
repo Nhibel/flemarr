@@ -24,7 +24,12 @@ export function ResolvePanel({
   missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
 }) {
-  const [result, setResult] = useState<ResolveResponse | null>(null);
+  // Stored with the source list it was resolved against: the server drops its
+  // resolver cache when sources change, but these results are client state and
+  // would otherwise keep offering download URLs from a source just removed.
+  const [resolved, setResolved] = useState<{ result: ResolveResponse; sourceKey: string } | null>(
+    null,
+  );
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [excludeOwned, setExcludeOwned] = useState(true);
@@ -47,6 +52,14 @@ export function ResolvePanel({
   const romsRoot = useRomsRoot();
 
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
+  // Layout included: correcting a wrongly-detected layout changes which URLs
+  // resolve, not just which sources exist.
+  const sourceKey = (sourcesData?.sources ?? [])
+    .map((src) => `${src.identifier}:${src.layout}`)
+    .sort()
+    .join('|');
+  const result = resolved?.result ?? null;
+  const stale = resolved !== null && resolved.sourceKey !== sourceKey;
   const noFolder = downloadTarget === 'server' && settingsLoaded && destinationDir === '';
 
   const effectiveGameIds =
@@ -64,13 +77,13 @@ export function ResolvePanel({
     setError(null);
     try {
       const res = await resolveGames(datId, effectiveGameIds);
-      setResult(res);
+      setResolved({ result: res, sourceKey });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
       setResolving(false);
     }
-  }, [datId, effectiveGameIds]);
+  }, [datId, effectiveGameIds, sourceKey]);
 
   // One download item per resolved ROM — multi-disc games queue every disc.
   // The preferred (first) source decides the extraction mode; fallback URLs
@@ -97,6 +110,7 @@ export function ResolvePanel({
   }, [result]);
 
   const handleDownload = useCallback(async () => {
+    if (stale) return;
     if (downloadTarget === 'server' && !destinationDir) return;
     const items = buildItems();
     if (items.length === 0) return;
@@ -116,7 +130,7 @@ export function ResolvePanel({
     } finally {
       setQueuing(false);
     }
-  }, [buildItems, datId, destinationDir, downloadTarget, onQueueDownload]);
+  }, [buildItems, datId, destinationDir, downloadTarget, onQueueDownload, stale]);
 
   return (
     <section>
@@ -195,6 +209,13 @@ export function ResolvePanel({
         </p>
       )}
 
+      {stale && (
+        <p className={css({ fontSize: 'sm', color: 'amber.600', mb: '3' })}>
+          Les sources ont changé depuis cette résolution : relancez la recherche avant de
+          télécharger.
+        </p>
+      )}
+
       {result && (
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
           <div className={css({ display: 'flex', gap: '3' })}>
@@ -231,7 +252,7 @@ export function ResolvePanel({
             <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
               <Button
                 onClick={() => void handleDownload()}
-                disabled={queuing || (downloadTarget === 'server' && !destinationDir)}
+                disabled={queuing || stale || (downloadTarget === 'server' && !destinationDir)}
                 className={css({ flexShrink: 0 })}
               >
                 {queuing
