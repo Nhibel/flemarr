@@ -56,6 +56,28 @@ describe('useSelection', () => {
     expect(result.current.selected.size).toBe(0);
   });
 
+  it('deselect drops the given games and keeps the others', () => {
+    const { result } = renderHook(() => useSelection(GAMES));
+    act(() => result.current.selectAll());
+    act(() => result.current.deselect(['a', 'c']));
+    expect([...result.current.selected]).toEqual(['b']);
+  });
+
+  it('deselect ignores games that were not selected', () => {
+    const { result } = renderHook(() => useSelection(GAMES));
+    act(() => result.current.toggle('a'));
+    act(() => result.current.deselect(['b']));
+    expect([...result.current.selected]).toEqual(['a']);
+  });
+
+  it('deselect keeps the same Set identity when nothing matched', () => {
+    const { result } = renderHook(() => useSelection(GAMES));
+    act(() => result.current.toggle('a'));
+    const before = result.current.selected;
+    act(() => result.current.deselect(['b', 'c']));
+    expect(result.current.selected).toBe(before);
+  });
+
   it('isAllSelected is true when all filtered games are selected', () => {
     const { result } = renderHook(() => useSelection(GAMES));
     act(() => result.current.selectAll());

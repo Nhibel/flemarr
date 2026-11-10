@@ -26,7 +26,19 @@ export function useSelection(filteredGames: Game[]) {
     setSelected(new Set());
   }, []);
 
+  // Drops specific games from the selection. The downloader uses it to
+  // uncheck what it fetched successfully, leaving only what still needs
+  // attention checked. Stable identity (no deps) so effects can depend on it.
+  const deselect = useCallback((ids: readonly string[]) => {
+    setSelected((prev) => {
+      if (!ids.some((id) => prev.has(id))) return prev;
+      const next = new Set(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, []);
+
   const isAllSelected = filteredGames.length > 0 && filteredGames.every((g) => selected.has(g.id));
 
-  return { selected, toggle, selectAll, clearAll, isAllSelected };
+  return { selected, toggle, selectAll, clearAll, deselect, isAllSelected };
 }
