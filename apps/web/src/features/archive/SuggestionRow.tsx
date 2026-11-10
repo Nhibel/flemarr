@@ -69,7 +69,8 @@ export function SuggestionRow({
           {nameOnlyPct > 0 && (
             <span className={css({ color: 'fg.subtle' })}> + {nameOnlyPct} % nom seul</span>
           )}{' '}
-          (échantillon de {suggestion.sampleSize}) · {suggestion.fileCount} fichiers
+          (échantillon de {suggestion.sampleSize} jeux) · {suggestion.fileCount} fichiers dans
+          l’item
         </p>
         {error && (
           <p role="alert" className={css({ fontSize: 'xs', color: 'red.600', mt: '1' })}>

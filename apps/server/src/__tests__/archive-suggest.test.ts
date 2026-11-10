@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   buildSearchQueries,
   normalizeSystemName,
-  sampleRoms,
+  sampleGames,
   scoreIndex,
   suggestSources,
 } from '../services/archive-org/suggest.js';
+import type { SampledGame } from '../services/archive-org/suggest.js';
 import type { DatFile } from '@shared/dat.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
@@ -103,20 +104,28 @@ describe('buildSearchQueries', () => {
   });
 });
 
-describe('sampleRoms', () => {
+describe('sampleGames', () => {
   it('returns everything when the DAT is smaller than the sample size', () => {
-    expect(sampleRoms(makeDat(10), 50)).toHaveLength(10);
+    expect(sampleGames(makeDat(10), 50)).toHaveLength(10);
   });
 
   it('strides evenly across a large DAT', () => {
-    const sample = sampleRoms(makeDat(1000), 50);
+    const sample = sampleGames(makeDat(1000), 50);
     expect(sample).toHaveLength(50);
     // First and a late entry should span the whole set, not just the head
-    expect(sample[0]?.name).toBe('Game 0 (USA).sfc');
-    expect(sample.at(-1)?.name).toBe('Game 980 (USA).sfc');
+    expect(sample[0]?.name).toBe('Game 0 (USA)');
+    expect(sample.at(-1)?.name).toBe('Game 980 (USA)');
   });
 
-  it('excludes nodump ROMs — nothing to compare a listing against', () => {
+  it('carries each game’s ROMs along with its name', () => {
+    const sample = sampleGames(makeDat(1), 50);
+    expect(sample[0]).toEqual({
+      name: 'Game 0 (USA)',
+      roms: [{ name: 'Game 0 (USA).sfc', crc: '00000001' }],
+    });
+  });
+
+  it('drops a game whose every ROM is a nodump — nothing to compare', () => {
     const dat = makeDat(2);
     dat.games.push({
       id: 'proto',
@@ -126,18 +135,38 @@ describe('sampleRoms', () => {
       category: 'Game',
       roms: [{ name: 'Prototype (USA).sfc', size: 1024, status: 'nodump' }],
     });
-    const sample = sampleRoms(dat, 50);
-    expect(sample).toHaveLength(2);
-    expect(sample.every((r) => r.crc !== undefined)).toBe(true);
+    expect(sampleGames(dat, 50)).toHaveLength(2);
+  });
+
+  it('keeps a partly-nodump game, minus its unscorable ROMs', () => {
+    const dat = makeDat(0);
+    dat.games.push({
+      id: 'mixed',
+      name: 'Mixed (USA)',
+      region: ['USA'],
+      languages: [],
+      category: 'Game',
+      roms: [
+        { name: 'Mixed (USA) (Track 1).bin', size: 1024, crc: 'aaaaaaaa', status: 'good' },
+        { name: 'Mixed (USA) (Track 2).bin', size: 1024, status: 'nodump' },
+      ],
+    });
+    const sample = sampleGames(dat, 50);
+    expect(sample).toHaveLength(1);
+    expect(sample[0]?.roms).toEqual([{ name: 'Mixed (USA) (Track 1).bin', crc: 'aaaaaaaa' }]);
   });
 });
 
 describe('scoreIndex', () => {
-  const SAMPLE = [
-    { name: 'Game A (USA).sfc', crc: 'aaaaaaaa' },
-    { name: 'Game B (USA).sfc', crc: 'bbbbbbbb' },
-    { name: 'Game C (USA).sfc', crc: 'cccccccc' },
-    { name: 'Game D (USA).sfc', crc: 'dddddddd' },
+  const game = (letter: string, crc: string): SampledGame => ({
+    name: 'Game ' + letter + ' (USA)',
+    roms: [{ name: 'Game ' + letter + ' (USA).sfc', crc }],
+  });
+  const SAMPLE: SampledGame[] = [
+    game('A', 'aaaaaaaa'),
+    game('B', 'bbbbbbbb'),
+    game('C', 'cccccccc'),
+    game('D', 'dddddddd'),
   ];
 
   it('counts a CRC32 match (regardless of filename) as crcFound, not nameOnlyFound', () => {
@@ -160,8 +189,7 @@ describe('scoreIndex', () => {
     expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 0, nameOnlyFound: 2, total: 4 });
   });
 
-  it('a CRC match takes priority over a coincidental name match for the same ROM', () => {
-    // Same sample entry could satisfy either path — CRC wins, not double-counted.
+  it('a CRC match takes priority over a coincidental name match for the same game', () => {
     const files = [file('Game A (USA).sfc', 'aaaaaaaa')];
     expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 1, nameOnlyFound: 0, total: 4 });
   });
@@ -176,10 +204,11 @@ describe('scoreIndex', () => {
     expect(scoreIndex(files, SAMPLE)).toEqual({ crcFound: 2, nameOnlyFound: 2, total: 4 });
   });
 
-  it('counts a filename match ignoring extension (e.g. a Headerless NES DAT\'s ".unh" rom against a real ".nes" upload)', () => {
-    const headerlessSample = [{ name: 'Game A (USA).unh', crc: 'aaaaaaaa' }];
-    const files = [file('Game A (USA).nes', 'ffffffff')];
-    expect(scoreIndex(files, headerlessSample)).toEqual({
+  it('counts a filename match ignoring extension (a Headerless NES DAT’s ".unh" rom against a real ".nes" upload)', () => {
+    const headerless: SampledGame[] = [
+      { name: 'Headerless Title', roms: [{ name: 'Game A (USA).unh', crc: 'aaaaaaaa' }] },
+    ];
+    expect(scoreIndex([file('Game A (USA).nes', 'ffffffff')], headerless)).toEqual({
       crcFound: 0,
       nameOnlyFound: 1,
       total: 1,
@@ -192,6 +221,54 @@ describe('scoreIndex', () => {
       crcFound: 0,
       nameOnlyFound: 0,
       total: 4,
+    });
+  });
+});
+
+/**
+ * The reason the sample is games and not ROM entries: a Redump game is one
+ * ".cue" plus one ".bin" per track, so a per-game ZIP could only ever match
+ * the cue. Scoring per entry capped a perfect source at a few percent.
+ */
+describe('scoreIndex — multi-ROM disc games', () => {
+  const DISC: SampledGame[] = [
+    {
+      name: 'Disc Game (USA)',
+      roms: [
+        { name: 'Disc Game (USA).cue', crc: '11111111' },
+        { name: 'Disc Game (USA) (Track 1).bin', crc: '22222222' },
+        { name: 'Disc Game (USA) (Track 2).bin', crc: '33333333' },
+        { name: 'Disc Game (USA) (Track 3).bin', crc: '44444444' },
+      ],
+    },
+  ];
+
+  it('counts the whole game from a single ZIP named after it', () => {
+    expect(scoreIndex([file('Disc Game (USA).zip')], DISC)).toEqual({
+      crcFound: 0,
+      nameOnlyFound: 1,
+      total: 1,
+    });
+  });
+
+  it('counts the game once when every track is present', () => {
+    const files = DISC[0]!.roms.map((r) => file(r.name, r.crc));
+    expect(scoreIndex(files, DISC)).toEqual({ crcFound: 1, nameOnlyFound: 0, total: 1 });
+  });
+
+  it('counts the game from one matched track — a partial disc is the resolver’s to report', () => {
+    expect(scoreIndex([file('x.bin', '33333333')], DISC)).toEqual({
+      crcFound: 1,
+      nameOnlyFound: 0,
+      total: 1,
+    });
+  });
+
+  it('still finds nothing when the source has neither the tracks nor the game', () => {
+    expect(scoreIndex([file('Other Game (USA).zip')], DISC)).toEqual({
+      crcFound: 0,
+      nameOnlyFound: 0,
+      total: 1,
     });
   });
 });
