@@ -29,10 +29,18 @@ export function SourcesManager({
     queryFn: () => fetchSources(system),
   });
 
+  // One shared mutation, but the row it is acting on is identified by
+  // `variables`, so only that row shows a pending state or an error — a
+  // failed delete used to disappear entirely (no onError, no feedback).
   const removeMutation = useMutation({
     mutationFn: (identifier: string) => deleteSource(identifier, system),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] }),
   });
+
+  const removeErrorFor = (identifier: string): string | null =>
+    removeMutation.variables === identifier && removeMutation.error instanceof Error
+      ? removeMutation.error.message
+      : null;
 
   const handleSuggest = async () => {
     setSuggesting(true);
@@ -145,6 +153,8 @@ export function SourcesManager({
               key={s.identifier}
               source={s}
               onRemove={() => removeMutation.mutate(s.identifier)}
+              removing={removeMutation.isPending && removeMutation.variables === s.identifier}
+              removeError={removeErrorFor(s.identifier)}
             />
           ))}
         </div>

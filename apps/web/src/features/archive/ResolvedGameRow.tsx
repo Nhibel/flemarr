@@ -62,10 +62,12 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
                     key={rom.romName}
                     className={css({
                       fontSize: 'xs',
-                      color: source == null ? 'fg.faint' : source.verified ? 'fg.subtle' : 'amber.700',
+                      color:
+                        source == null ? 'fg.faint' : source.verified ? 'fg.subtle' : 'amber.700',
                       fontFamily: 'mono',
                       truncate: true,
-                      _dark: source != null && !source.verified ? { color: 'amber.400' } : undefined,
+                      _dark:
+                        source != null && !source.verified ? { color: 'amber.400' } : undefined,
                     })}
                   >
                     {source == null

@@ -36,21 +36,32 @@ export function AddSourceForm({
   const [layout, setLayout] = useState<LayoutChoice>('auto');
   const [note, setNote] = useState('');
   const [searchQ, setSearchQ] = useState(() => defaultSearchQuery(system, source));
+  // null means "no search run yet"; [] means "searched, found nothing" — the
+  // two have to read differently, or a fruitless search looks like a dead button.
   const [searchResults, setSearchResults] = useState<
-    { identifier: string; title: string; description: string }[]
-  >([]);
+    { identifier: string; title: string; description: string }[] | null
+  >(null);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
-    if (!searchQ.trim()) return;
+    const query = searchQ.trim();
+    // The Enter key reaches here too, and the button being disabled does not
+    // stop it: without this guard two searches overlap, and since archive.org
+    // gives no response-time guarantee the slower one overwrites the newer
+    // results.
+    if (!query || searching) return;
     setSearching(true);
+    setError(null);
     try {
-      const res = await searchArchive(searchQ.trim());
+      const res = await searchArchive(query);
       setSearchResults(res.results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Recherche échouée');
+      // Keeping the previous hits under an error message would suggest they
+      // answer the query that just failed.
+      setSearchResults(null);
     } finally {
       setSearching(false);
     }
@@ -132,7 +143,14 @@ export function AddSourceForm({
           </Button>
         </div>
 
-        {searchResults.length > 0 && (
+        {searchResults !== null && searchResults.length === 0 && !searching && (
+          <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
+            Aucune collection trouvée pour « {searchQ.trim()} ». Essayez un autre libellé, ou
+            saisissez l’identifiant directement ci-dessous.
+          </p>
+        )}
+
+        {searchResults !== null && searchResults.length > 0 && (
           <div
             className={css({
               mt: '2',
@@ -150,7 +168,7 @@ export function AddSourceForm({
                 onClick={() => {
                   setIdentifier(r.identifier);
                   setNote(r.title);
-                  setSearchResults([]);
+                  setSearchResults(null);
                 }}
                 className={css({
                   display: 'block',
