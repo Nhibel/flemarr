@@ -144,10 +144,12 @@ export function SourcesManager({
         <AddSourceForm
           system={system}
           source={source}
+          configured={configured}
           onDone={() => {
             setShowAdd(false);
             void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
           }}
+          onAdded={() => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] })}
         />
       )}
 

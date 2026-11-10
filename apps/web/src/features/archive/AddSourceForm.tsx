@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { css } from '@/styled-system/css';
 import { addSource, searchArchive, previewIndex } from '@/lib/api.js';
-import type { ArchiveLayout } from '@/lib/api.js';
+import type { ArchiveLayout, SearchResponse } from '@/lib/api.js';
 import type { DatSource } from './SourcesPanel.js';
 import { Button } from '@/components/Button.js';
+import { SearchResultRow } from './SearchResultRow.js';
+import { seriesBase } from '@/lib/archive-series.js';
 
 // "Nintendo - Super Nintendo Entertainment System (Retool)" → "Super Nintendo
 // Entertainment System" — vendor prefix and trailing tags pollute the search
@@ -27,20 +29,26 @@ export function AddSourceForm({
   system,
   source,
   onDone,
+  onAdded,
+  configured,
 }: {
   system: string;
   source: DatSource;
   onDone: () => void;
+  /** A search-result row was added directly — refresh the source list, but
+   *  keep the form open (there may be other parts of the same series left). */
+  onAdded: () => void;
+  /** Identifiers already configured for this system — shown as "✓ Déjà ajoutée". */
+  configured?: Set<string>;
 }) {
   const [identifier, setIdentifier] = useState('');
   const [layout, setLayout] = useState<LayoutChoice>('auto');
   const [note, setNote] = useState('');
   const [searchQ, setSearchQ] = useState(() => defaultSearchQuery(system, source));
+  const [seriesMode, setSeriesMode] = useState(false);
   // null means "no search run yet"; [] means "searched, found nothing" — the
   // two have to read differently, or a fruitless search looks like a dead button.
-  const [searchResults, setSearchResults] = useState<
-    { identifier: string; title: string; description: string }[] | null
-  >(null);
+  const [searchResults, setSearchResults] = useState<SearchResponse['results'] | null>(null);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +64,30 @@ export function AddSourceForm({
     setError(null);
     try {
       const res = await searchArchive(query);
-      setSearchResults(res.results);
+      let results = res.results;
+
+      // A collection can be split across several items with no fixed naming
+      // convention ("sony_playstation_part1".."part5" on archive.org) — the
+      // normal text search surfaces an arbitrary subset of them. Once one
+      // sibling is found, a prefix search for the rest (a trailing "*" is
+      // already plain archive.org query syntax, verified directly against
+      // advancedsearch.php) finds the others without the user having to know
+      // the naming pattern or type a wildcard by hand.
+      if (seriesMode) {
+        const bases = new Set(
+          results.map((r) => seriesBase(r.identifier)).filter((b): b is string => b !== null),
+        );
+        if (bases.size > 0) {
+          const extraBatches = await Promise.all([...bases].map((b) => searchArchive(`${b}*`)));
+          const merged = new Map(results.map((r) => [r.identifier, r]));
+          for (const batch of extraBatches) {
+            for (const r of batch.results) merged.set(r.identifier, r);
+          }
+          results = [...merged.values()];
+        }
+      }
+
+      setSearchResults(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Recherche échouée');
       // Keeping the previous hits under an error message would suggest they
@@ -67,20 +98,30 @@ export function AddSourceForm({
     }
   };
 
+  // Shared by the manual "Ajouter la source" button below and each search
+  // result's own "Ajouter" — detect the layout when asked to, then add.
+  const resolveLayoutAndAdd = async (
+    targetIdentifier: string,
+    targetLayout: LayoutChoice,
+    targetNote: string,
+  ) => {
+    let resolvedLayout: ArchiveLayout;
+    if (targetLayout === 'auto') {
+      // The index fetch tells us how the collection stores its ROMs
+      const idx = await previewIndex(targetIdentifier);
+      resolvedLayout = idx.suggestedLayout;
+    } else {
+      resolvedLayout = targetLayout;
+    }
+    await addSource(system, { identifier: targetIdentifier, layout: resolvedLayout, note: targetNote });
+  };
+
   const handleSave = async () => {
     if (!identifier.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      let resolvedLayout: ArchiveLayout;
-      if (layout === 'auto') {
-        // The index fetch tells us how the collection stores its ROMs
-        const idx = await previewIndex(identifier.trim());
-        resolvedLayout = idx.suggestedLayout;
-      } else {
-        resolvedLayout = layout;
-      }
-      await addSource(system, { identifier: identifier.trim(), layout: resolvedLayout, note });
+      await resolveLayoutAndAdd(identifier.trim(), layout, note);
       onDone();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur';
@@ -91,6 +132,14 @@ export function AddSourceForm({
       );
       setSaving(false);
     }
+  };
+
+  // Each search result adds itself independently (auto layout detection,
+  // like the manual field above) — the form stays open so the rest of a
+  // found series can be added right after.
+  const handleAddFromSearch = async (resultIdentifier: string, resultNote: string) => {
+    await resolveLayoutAndAdd(resultIdentifier, 'auto', resultNote);
+    onAdded();
   };
 
   return (
@@ -143,6 +192,25 @@ export function AddSourceForm({
           </Button>
         </div>
 
+        <label
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            mt: '2',
+            fontSize: 'xs',
+            color: 'fg.subtle',
+            cursor: 'pointer',
+          })}
+        >
+          <input
+            type="checkbox"
+            checked={seriesMode}
+            onChange={(e) => setSeriesMode(e.target.checked)}
+          />
+          Chercher toute la série (collection découpée en plusieurs parties/disques)
+        </label>
+
         {searchResults !== null && searchResults.length === 0 && !searching && (
           <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
             Aucune collection trouvée pour « {searchQ.trim()} ». Essayez un autre libellé, ou
@@ -163,36 +231,12 @@ export function AddSourceForm({
             })}
           >
             {searchResults.map((r) => (
-              <button
+              <SearchResultRow
                 key={r.identifier}
-                onClick={() => {
-                  setIdentifier(r.identifier);
-                  setNote(r.title);
-                  setSearchResults(null);
-                }}
-                className={css({
-                  display: 'block',
-                  w: 'full',
-                  textAlign: 'left',
-                  px: '3',
-                  py: '2',
-                  fontSize: 'sm',
-                  borderBottom: '1px solid',
-                  borderColor: 'bd.subtle',
-                  cursor: 'pointer',
-                  _hover: { bg: 'accent.subtle' },
-                  _last: { borderBottom: 'none' },
-                })}
-              >
-                <span
-                  className={css({ fontFamily: 'mono', color: 'accent.text', display: 'block' })}
-                >
-                  {r.identifier}
-                </span>
-                {r.title !== r.identifier && (
-                  <span className={css({ color: 'fg.subtle', fontSize: 'xs' })}>{r.title}</span>
-                )}
-              </button>
+                result={r}
+                onAdd={handleAddFromSearch}
+                configured={configured?.has(r.identifier) ?? false}
+              />
             ))}
           </div>
         )}

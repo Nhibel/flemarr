@@ -8,12 +8,16 @@ vi.mock('@/lib/api.js');
 
 const SYSTEM = 'Nintendo - Super Nintendo Entertainment System';
 
-function renderForm(onDone = vi.fn()) {
-  render(<AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} />);
+function renderForm(onDone = vi.fn(), onAdded = vi.fn()) {
+  render(
+    <AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} onAdded={onAdded} />,
+  );
   return {
     onDone,
+    onAdded,
     searchBtn: screen.getByRole('button', { name: /chercher/i }),
     queryInput: screen.getByPlaceholderText(/No-Intro SNES/i),
+    seriesCheckbox: screen.getByRole('checkbox', { name: /toute la série/i }),
   };
 }
 
@@ -96,6 +100,104 @@ describe('AddSourceForm — search', () => {
     releaseFirst();
     expect(await screen.findByText('first-query-hit')).toBeInTheDocument();
     expect(searchBtn).toBeEnabled();
+  });
+
+  // Deliberately not "sony_playstation_part1" — that exact string is also the
+  // app's own static hint-text example lower on the page, which would make
+  // `findByText` match two elements at once.
+  it('expands to the whole series when the box is checked and a hit looks like a split part', async () => {
+    vi.mocked(api.searchArchive).mockImplementation(async (q: string) => {
+      if (q === 'redump_test*') {
+        return {
+          results: [
+            { identifier: 'redump_test_part1', title: 'Part 1', description: '' },
+            { identifier: 'redump_test_part2', title: 'Part 2', description: '' },
+          ],
+        };
+      }
+      return {
+        results: [{ identifier: 'redump_test_part1', title: 'Part 1', description: '' }],
+      };
+    });
+    const { searchBtn, seriesCheckbox } = renderForm();
+
+    await userEvent.click(seriesCheckbox);
+    await userEvent.click(searchBtn);
+
+    expect(await screen.findByText('redump_test_part2')).toBeInTheDocument();
+    expect(screen.getByText('redump_test_part1')).toBeInTheDocument();
+    expect(vi.mocked(api.searchArchive)).toHaveBeenCalledWith('redump_test*');
+  });
+
+  it('does not expand to the series when the box is left unchecked', async () => {
+    vi.mocked(api.searchArchive).mockResolvedValue({
+      results: [{ identifier: 'redump_test_part1', title: 'Part 1', description: '' }],
+    });
+    const { searchBtn } = renderForm();
+
+    await userEvent.click(searchBtn);
+
+    expect(await screen.findByText('redump_test_part1')).toBeInTheDocument();
+    expect(vi.mocked(api.searchArchive)).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AddSourceForm — adding a search result directly', () => {
+  it('adds a result with auto-detected layout and keeps the form open', async () => {
+    vi.mocked(api.searchArchive).mockResolvedValue({
+      results: [{ identifier: 'snes-roms', title: 'SNES ROMs', description: '' }],
+    });
+    vi.mocked(api.previewIndex).mockResolvedValue({
+      identifier: 'snes-roms',
+      fileCount: 12,
+      preview: [],
+      suggestedLayout: 'zip-collection',
+    });
+    vi.mocked(api.addSource).mockResolvedValue(undefined);
+    const { searchBtn, onAdded, onDone } = renderForm();
+
+    await userEvent.click(searchBtn);
+    await userEvent.click(await screen.findByRole('button', { name: 'Ajouter' }));
+
+    await waitFor(() =>
+      expect(vi.mocked(api.addSource)).toHaveBeenCalledWith(SYSTEM, {
+        identifier: 'snes-roms',
+        layout: 'zip-collection',
+        note: 'SNES ROMs',
+      }),
+    );
+    expect(onAdded).toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it('shows a row-scoped error and leaves the other rows usable', async () => {
+    vi.mocked(api.searchArchive).mockResolvedValue({
+      results: [
+        { identifier: 'bad-item', title: 'Bad', description: '' },
+        { identifier: 'good-item', title: 'Good', description: '' },
+      ],
+    });
+    vi.mocked(api.previewIndex).mockImplementation(async (id: string) => {
+      if (id === 'bad-item') throw new Error('item introuvable');
+      return { identifier: id, fileCount: 1, preview: [], suggestedLayout: 'direct' };
+    });
+    vi.mocked(api.addSource).mockResolvedValue(undefined);
+    const { searchBtn } = renderForm();
+
+    await userEvent.click(searchBtn);
+    const addButtons = await screen.findAllByRole('button', { name: 'Ajouter' });
+    await userEvent.click(addButtons[0]!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('item introuvable');
+
+    await userEvent.click(addButtons[1]!);
+    await waitFor(() =>
+      expect(vi.mocked(api.addSource)).toHaveBeenCalledWith(SYSTEM, {
+        identifier: 'good-item',
+        layout: 'direct',
+        note: 'Good',
+      }),
+    );
   });
 });
 
