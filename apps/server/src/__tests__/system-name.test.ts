@@ -5,6 +5,7 @@ import {
   zipSystemMatch,
   zipMatchesSystem,
   mentionsSystem,
+  isReencodedDump,
 } from '../services/archive-org/system-name.js';
 
 const GB = 'Nintendo - Game Boy';
@@ -79,5 +80,27 @@ describe('existing helpers are unchanged', () => {
   it('mentionsSystem still keeps single-word aliases token-bound', () => {
     expect(mentionsSystem('Super Nintendo Entertainment System', NES)).toBe(true);
     expect(mentionsSystem('SNES fullset', NES)).toBe(false);
+  });
+});
+
+describe('isReencodedDump', () => {
+  it.each(['Game (USA).chd', 'Game.rvz', 'Game.wbfs', 'dir/Game.CISO', 'Game.pbp'])(
+    'rejects %s — a re-encode can never satisfy a DAT CRC',
+    (name) => {
+      expect(isReencodedDump(name)).toBe(true);
+    },
+  );
+
+  // Byte-preserving containers stay matchable: per-game-zip collections store
+  // "Game.sfc" as "Game.zip", which is why name matching ignores extensions.
+  it.each(['Game (USA).zip', 'Game.7z', 'Game.bin', 'Game.cue', 'Game.iso', 'Game.sfc'])(
+    'keeps %s',
+    (name) => {
+      expect(isReencodedDump(name)).toBe(false);
+    },
+  );
+
+  it('ignores a dot-prefixed name with no extension', () => {
+    expect(isReencodedDump('.DS_Store')).toBe(false);
   });
 });

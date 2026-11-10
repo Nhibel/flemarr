@@ -294,8 +294,10 @@ describe('suggestSources', () => {
 
     const suggestions = await suggestSources(dat);
     expect(suggestions.map((s) => s.identifier)).toEqual(['the-fullset']);
-    // the biggest candidates were fetched first (chunks of 3, stop at 10 scored)
-    expect(vi.mocked(getIndex).mock.calls.length).toBeLessThanOrEqual(12);
+    // The run stays bounded, but by the attempt budget (MAX_ATTEMPTS = 18) —
+    // not by the number of results scored, which used to stop a search before
+    // it reached a usable set once enough candidates had scored zero.
+    expect(vi.mocked(getIndex).mock.calls.length).toBeLessThanOrEqual(18);
     expect(vi.mocked(getIndex)).toHaveBeenCalledWith('the-fullset');
   });
 
@@ -527,5 +529,117 @@ describe('suggestSources — sibling systems with overlapping names', () => {
     const suggestions = await suggestSources(dat);
 
     expect(suggestions[0]?.coverage).toBe(1);
+  });
+});
+
+/**
+ * Regression: a Redump PS1 run surfaced only a CHD collection. Three causes,
+ * all reproduced here — the No-Intro seeds, the budget counting useless
+ * results, and re-encoded dumps scoring as name matches.
+ */
+describe('suggestSources — Redump disc systems', () => {
+  function psxDat(count: number): DatFile {
+    return {
+      source: 'redump',
+      system: 'Sony - PlayStation (Retool)',
+      games: Array.from({ length: count }, (_, i) => ({
+        id: `g${i}`,
+        name: `Disc Game ${i} (USA)`,
+        region: ['USA'],
+        languages: [],
+        category: 'Game',
+        roms: [
+          {
+            name: `Disc Game ${i} (USA).cue`,
+            size: 1024,
+            crc: (i + 1).toString(16).padStart(8, '0'),
+            status: 'good' as const,
+          },
+        ],
+      })),
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(searchArchive).mockReset().mockResolvedValue([]);
+    vi.mocked(getIndex).mockReset().mockResolvedValue([]);
+    vi.mocked(urlExists).mockReset().mockResolvedValue(false);
+    vi.mocked(getZipListing).mockReset().mockResolvedValue([]);
+    vi.mocked(getItemInfo)
+      .mockReset()
+      .mockImplementation(async (id: string) => ({
+        files: await getIndex(id),
+        restricted: false,
+        server: '',
+        dir: '',
+      }));
+  });
+
+  it('does not seed No-Intro collections for a Redump DAT', async () => {
+    await suggestSources(psxDat(8));
+
+    const probed = vi.mocked(getItemInfo).mock.calls.map((c) => c[0]);
+    expect(probed).not.toContain('ni-roms');
+    expect(probed).not.toContain('proper1g1r-collection');
+  });
+
+  it('still seeds them for a No-Intro DAT', async () => {
+    await suggestSources(makeDat(8));
+
+    const probed = vi.mocked(getItemInfo).mock.calls.map((c) => c[0]);
+    expect(probed).toContain('ni-roms');
+  });
+
+  // A .chd holds the game but not the DAT's bytes, so it always fails CRC on
+  // download. Since name matching ignores extensions, it used to score as a
+  // hit and was the only "source" a PS1 run ever surfaced.
+  it('does not count a re-encoded dump as a name match', async () => {
+    const dat = psxDat(8);
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'chd-collection', title: 'CHD PSX', description: '' },
+    ]);
+    vi.mocked(getIndex).mockResolvedValue(
+      dat.games.map((g) => file(g.roms[0]!.name.replace(/\.cue$/, '.chd'))),
+    );
+
+    expect(await suggestSources(dat)).toEqual([]);
+  });
+
+  it('still counts a byte-preserving zip as a name match', async () => {
+    const dat = psxDat(8);
+    vi.mocked(searchArchive).mockResolvedValue([
+      { identifier: 'zip-collection-psx', title: 'PSX zips', description: '' },
+    ]);
+    vi.mocked(getIndex).mockResolvedValue(
+      dat.games.map((g) => file(g.roms[0]!.name.replace(/\.cue$/, '.zip'))),
+    );
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions.map((s) => s.identifier)).toEqual(['zip-collection-psx']);
+  });
+
+  // The budget used to count zero-coverage results, so a run could exhaust its
+  // ten slots on useless candidates and stop before reaching a real set.
+  it('keeps scoring past zero-coverage candidates to reach a usable set', async () => {
+    const dat = psxDat(8);
+    const noise = Array.from({ length: 12 }, (_, i) => ({
+      identifier: `noise-${i}`,
+      title: 'PlayStation 2 collection',
+      description: '',
+    }));
+    vi.mocked(searchArchive).mockResolvedValue([
+      ...noise,
+      { identifier: 'real-psx-set', title: 'PlayStation set', description: '' },
+    ]);
+    vi.mocked(getIndex).mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 'real-psx-set'
+          ? dat.games.map((g) => file(g.roms[0]!.name, g.roms[0]!.crc))
+          : [file('unrelated.iso')],
+      ),
+    );
+
+    const suggestions = await suggestSources(dat);
+    expect(suggestions.map((s) => s.identifier)).toEqual(['real-psx-set']);
   });
 });

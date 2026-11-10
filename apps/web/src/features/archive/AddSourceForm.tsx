@@ -198,10 +198,15 @@ export function AddSourceForm({
 
       {/* Manual fields */}
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+        <p className={css({ fontSize: 'xs', color: 'fg.subtle' })}>
+          L’identifiant de la collection, c’est-à-dire la fin de son URL : archive.org/details/
+          <strong>sony_playstation_part1</strong>. Ce n’est pas votre compte archive.org, qui se
+          règle dans Paramètres.
+        </p>
         <div className={css({ display: 'flex', gap: '2' })}>
           <input
             type="text"
-            placeholder="Identifiant archive.org"
+            placeholder="Identifiant de l’item (ex. sony_playstation_part1)"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             className={css({

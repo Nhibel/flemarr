@@ -6,13 +6,14 @@ import type { ArchiveItemInfo } from './metadata.js';
 import { detectLayout } from './layout.js';
 import { getZipListing } from './zip-listing.js';
 import { hasArchiveCredentials } from './fetch.js';
-import { KNOWN_MULTI_SYSTEM_IDENTIFIERS } from './known-sources.js';
+import { KNOWN_NO_INTRO_IDENTIFIERS } from './known-sources.js';
 import {
   systemNameVariants,
   mentionsSystem,
   baseName,
   stripExtension,
   zipSystemMatch,
+  isReencodedDump,
 } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 
@@ -92,7 +93,10 @@ export function scoreIndex(
   const names = new Set<string>();
   for (const f of files) {
     if (f.crc32) crcs.add(f.crc32.toLowerCase());
-    names.add(stripExtension(baseName(f.name)));
+    // A re-encode (.chd, .rvz…) carries the game but not the DAT's bytes.
+    // Since name matching ignores extensions, it would otherwise score as a
+    // hit for a file that is guaranteed to fail CRC validation on download.
+    if (!isReencodedDump(f.name)) names.add(stripExtension(baseName(f.name)));
   }
 
   let crcFound = 0;
@@ -141,7 +145,9 @@ async function probeSystemZip(
     return null;
   }
   // Inner names are "<rom>.zip" (re-zipped) or the raw ROM — match by basename.
-  const innerBases = new Set(entries.map((e) => stripExtension(baseName(e))));
+  const innerBases = new Set(
+    entries.filter((e) => !isReencodedDump(e)).map((e) => stripExtension(baseName(e))),
+  );
   const hits = sample.filter((rom) => innerBases.has(stripExtension(rom.name))).length;
   logger.debug(
     { zip: zip.name, innerEntries: entries.length, sample: sample.length, hits },
@@ -234,13 +240,16 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   if (candidates.size === 0 && lastError !== null) throw lastError;
 
   // Known multi-system collections never match a per-system search query —
-  // inject them as candidates; scoring validates them like the others.
-  for (const id of KNOWN_MULTI_SYSTEM_IDENTIFIERS) {
+  // inject them as candidates; scoring validates them like the others. They
+  // are all No-Intro sets, so for a Redump DAT they would only burn scoring
+  // slots on collections that cannot hold a single disc-based game.
+  const seedIds = dat.source === 'no-intro' ? KNOWN_NO_INTRO_IDENTIFIERS : [];
+  for (const id of seedIds) {
     if (!candidates.has(id)) {
       candidates.set(id, { identifier: id, title: id, description: '' });
     }
   }
-  const seeded = new Set(KNOWN_MULTI_SYSTEM_IDENTIFIERS);
+  const seeded = new Set(seedIds);
 
   // Curated multi-system identifiers first (no itemSize — they'd sink),
   // then candidates whose identifier/title mention the system (or an alias)
@@ -253,28 +262,40 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   );
   logger.info({ candidates: candidates.size }, 'candidates gathered');
 
-  // Restricted/unreachable candidates don't consume a scoring slot — keep
-  // going down the list until enough are actually scored.
+  // The budget counts candidates worth keeping, not candidates looked at: a
+  // zero-coverage result is as useless as an unreachable one, and counting it
+  // stopped the search before it ever reached the real sets. (A PS1 run spent
+  // its ten slots on No-Intro seeds and on PS2/PSP items that merely rank
+  // bigger, and surfaced nothing usable.) MAX_ATTEMPTS still bounds the cost.
   const suggestions: SourceSuggestion[] = [];
   let attempts = 0;
+  let kept = 0;
   for (
     let i = 0;
-    i < ordered.length && suggestions.length < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
+    i < ordered.length && kept < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
     i += SCORING_CONCURRENCY
   ) {
     const chunk = ordered.slice(i, i + SCORING_CONCURRENCY);
     attempts += chunk.length;
     const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample, dat.system)));
-    suggestions.push(...scored.filter((s): s is SourceSuggestion => s !== null));
+    for (const s of scored) {
+      if (s === null) continue;
+      suggestions.push(s);
+      if (s.coverage >= MIN_COVERAGE) kept++;
+    }
   }
 
-  const kept = suggestions
+  const results = suggestions
     .filter((s) => s.coverage >= MIN_COVERAGE)
     .sort((a, b) => b.coverage - a.coverage)
     .slice(0, MAX_RESULTS);
   logger.info(
-    { kept: kept.map((s) => ({ id: s.identifier, coverage: s.coverage })) },
+    {
+      attempts,
+      scored: suggestions.length,
+      kept: results.map((s) => ({ id: s.identifier, coverage: s.coverage })),
+    },
     'suggestion run finished',
   );
-  return kept;
+  return results;
 }

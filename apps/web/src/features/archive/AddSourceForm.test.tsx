@@ -110,7 +110,7 @@ describe('AddSourceForm — save', () => {
     vi.mocked(api.addSource).mockResolvedValue(undefined);
     const { onDone } = renderForm();
 
-    await userEvent.type(screen.getByPlaceholderText(/identifiant archive\.org/i), 'snes-roms');
+    await userEvent.type(screen.getByPlaceholderText(/identifiant de l/i), 'snes-roms');
     await userEvent.click(screen.getByRole('button', { name: /ajouter la source/i }));
 
     await waitFor(() =>
@@ -133,7 +133,7 @@ describe('AddSourceForm — save', () => {
     vi.mocked(api.addSource).mockRejectedValue(new Error('HTTP 500'));
     const { onDone } = renderForm();
 
-    await userEvent.type(screen.getByPlaceholderText(/identifiant archive\.org/i), 'snes-roms');
+    await userEvent.type(screen.getByPlaceholderText(/identifiant de l/i), 'snes-roms');
     await userEvent.click(screen.getByRole('button', { name: /ajouter la source/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('HTTP 500');

@@ -43,6 +43,34 @@ export function baseName(path: string): string {
   return path.split('/').at(-1) ?? path;
 }
 
+/**
+ * Formats that *re-encode* a dump instead of containing it byte for byte:
+ * CHD (MAME), RVZ/GCZ/NKit (GameCube/Wii), WBFS, CISO/CSO, PBP. A DAT
+ * describes the original bytes, so such a file can never satisfy its CRC —
+ * downloading one always ends in a mismatch the worker treats as final.
+ *
+ * A container that preserves the bytes (.zip, .7z) is a different matter and
+ * stays matchable: per-game-zip collections store "Game.sfc" as "Game.zip",
+ * which is why name matching ignores extensions in the first place.
+ */
+const REENCODED_EXTENSIONS = new Set([
+  '.chd',
+  '.rvz',
+  '.gcz',
+  '.wbfs',
+  '.ciso',
+  '.cso',
+  '.pbp',
+  '.wux',
+]);
+
+/** Is this file a re-encode, whose bytes can never match a DAT entry? */
+export function isReencodedDump(name: string): boolean {
+  const base = baseName(name).toLowerCase();
+  const dot = base.lastIndexOf('.');
+  return dot > 0 && REENCODED_EXTENSIONS.has(base.slice(dot));
+}
+
 export function stripExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(0, dot) : name;
