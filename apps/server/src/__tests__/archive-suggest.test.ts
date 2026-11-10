@@ -419,3 +419,113 @@ describe('suggestSources', () => {
     expect(vi.mocked(getZipListing)).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Regression: a system whose name is a prefix of a longer one. "Game Boy" is
+ * a substring of "Game Boy Advance", so the GB suggester saw all three sibling
+ * ZIPs as candidates and, picking the largest, always probed the GBA set —
+ * which holds none of the GB sample, scored zero, and dropped the collection
+ * entirely. The user saw "no sources found" for Game Boy.
+ */
+describe('suggestSources — sibling systems with overlapping names', () => {
+  function gameBoyDat(count: number): DatFile {
+    return {
+      source: 'no-intro',
+      system: 'Nintendo - Game Boy',
+      games: Array.from({ length: count }, (_, i) => ({
+        id: `g${i}`,
+        name: `GB Game ${i} (USA)`,
+        region: ['USA'],
+        languages: [],
+        category: 'Game',
+        roms: [
+          {
+            name: `GB Game ${i} (USA).gb`,
+            size: 1024,
+            crc: (i + 1).toString(16).padStart(8, '0'),
+            status: 'good' as const,
+          },
+        ],
+      })),
+    };
+  }
+
+  // GBA ROMs are orders of magnitude larger than GB ones, which is exactly why
+  // "largest matching ZIP" picked the wrong set.
+  const SIBLING_ZIPS: ArchiveFile[] = [
+    { name: 'ROMs/Nintendo - Game Boy.zip', size: 500_000_000 },
+    { name: 'ROMs/Nintendo - Game Boy Color.zip', size: 2_000_000_000 },
+    { name: 'ROMs/Nintendo - Game Boy Advance.zip', size: 30_000_000_000 },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(searchArchive)
+      .mockReset()
+      .mockResolvedValue([
+        { identifier: 'ni-like', title: 'No-Intro collection', description: '' },
+      ]);
+    vi.mocked(getIndex).mockReset().mockResolvedValue([]);
+    vi.mocked(urlExists).mockReset().mockResolvedValue(false);
+    vi.mocked(getItemInfo)
+      .mockReset()
+      .mockImplementation((id: string) =>
+        Promise.resolve({
+          files: id === 'ni-like' ? SIBLING_ZIPS : [],
+          restricted: false,
+          server: 'ia800000.us.archive.org',
+          dir: '/17/items/ni-like',
+        }),
+      );
+  });
+
+  it('probes the system’s own ZIP, not its larger sibling', async () => {
+    const dat = gameBoyDat(8);
+    // Only the Game Boy ZIP holds the Game Boy ROMs.
+    vi.mocked(getZipListing)
+      .mockReset()
+      .mockImplementation((_server: string, _dir: string, zip: string) =>
+        Promise.resolve(
+          zip === 'ROMs/Nintendo - Game Boy.zip' ? dat.games.map((g) => g.roms[0]!.name) : [],
+        ),
+      );
+
+    const suggestions = await suggestSources(dat);
+
+    expect(vi.mocked(getZipListing)).toHaveBeenCalledWith(
+      'ia800000.us.archive.org',
+      '/17/items/ni-like',
+      'ROMs/Nintendo - Game Boy.zip',
+    );
+    expect(suggestions.map((s) => s.identifier)).toEqual(['ni-like']);
+    expect(suggestions[0]?.coverage).toBe(1);
+  });
+
+  it('never probes a sibling system’s ZIP when an exact match exists', async () => {
+    vi.mocked(getZipListing).mockReset().mockResolvedValue([]);
+
+    await suggestSources(gameBoyDat(8));
+
+    const probed = vi.mocked(getZipListing).mock.calls.map((c) => c[2]);
+    expect(probed).not.toContain('ROMs/Nintendo - Game Boy Advance.zip');
+    expect(probed).not.toContain('ROMs/Nintendo - Game Boy Color.zip');
+  });
+
+  it('falls back to a loose match when the system has no ZIP of its own', async () => {
+    const dat = gameBoyDat(8);
+    vi.mocked(getItemInfo).mockImplementation(() =>
+      Promise.resolve({
+        files: [{ name: 'Game Boy fullsets (GB + GBC).zip', size: 1_000_000 }],
+        restricted: false,
+        server: 'ia800000.us.archive.org',
+        dir: '/17/items/ni-like',
+      }),
+    );
+    vi.mocked(getZipListing)
+      .mockReset()
+      .mockResolvedValue(dat.games.map((g) => g.roms[0]!.name));
+
+    const suggestions = await suggestSources(dat);
+
+    expect(suggestions[0]?.coverage).toBe(1);
+  });
+});

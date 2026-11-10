@@ -5,7 +5,7 @@ import { getItemInfo, resolveDownloadUrl, resolveZipViewUrl } from './metadata.j
 import type { ArchiveItemInfo } from './metadata.js';
 import { urlExists } from './url-check.js';
 import { getZipListing } from './zip-listing.js';
-import { baseName, stripExtension, zipMatchesSystem } from './system-name.js';
+import { baseName, stripExtension, zipMatchesSystem, zipSystemMatch } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
@@ -70,14 +70,18 @@ function findZipFiles(files: ArchiveFile[]): ArchiveFile[] {
 
 // Rank ZIPs by likelihood of containing the ROM:
 // 1. named after the ROM (per-game-zip uploads),
-// 2. named after the system (one-zip-per-system collections),
-// 3. everything else.
+// 2. named exactly after the system (one-zip-per-system collections),
+// 3. merely mentioning the system — which a longer system's ZIP does too
+//    ("Game Boy Advance" mentions "Game Boy"), so it must come after 2,
+// 4. everything else.
 function orderZipCandidates(zips: ArchiveFile[], romName: string, system: string): ArchiveFile[] {
   const romBase = stripExtension(romName);
   const rank = (z: ArchiveFile): number => {
     if (stripExtension(baseName(z.name)) === romBase) return 0;
-    if (zipMatchesSystem(z.name, system)) return 1;
-    return 2;
+    const match = zipSystemMatch(z.name, system);
+    if (match === 'exact') return 1;
+    if (match === 'loose') return 2;
+    return 3;
   };
   return [...zips].sort((a, b) => rank(a) - rank(b));
 }

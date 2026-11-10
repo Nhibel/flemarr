@@ -12,7 +12,7 @@ import {
   mentionsSystem,
   baseName,
   stripExtension,
-  zipMatchesSystem,
+  zipSystemMatch,
 } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 
@@ -121,9 +121,17 @@ async function probeSystemZip(
 ): Promise<number | null> {
   if (sample.length === 0 || !info.server || !info.dir) return null;
 
-  const zip = info.files
-    .filter((f) => f.name.toLowerCase().endsWith('.zip') && zipMatchesSystem(f.name, system))
-    .sort((a, b) => b.size - a.size)[0];
+  // Only an exact match is this system's own ZIP. A loose one can be a longer
+  // system's set ("Game Boy Advance" matches "Game Boy") and, holding far
+  // bigger ROMs, it used to win on size alone — then scored zero against this
+  // system's sample and sank the whole candidate below MIN_COVERAGE.
+  const matches = info.files
+    .filter((f) => f.name.toLowerCase().endsWith('.zip'))
+    .map((file) => ({ file, kind: zipSystemMatch(file.name, system) }))
+    .filter((m) => m.kind !== null);
+  const exact = matches.filter((m) => m.kind === 'exact');
+  const pool = exact.length > 0 ? exact : matches;
+  const zip = pool.sort((a, b) => b.file.size - a.file.size)[0]?.file;
   if (zip === undefined) return null;
 
   let entries: string[];

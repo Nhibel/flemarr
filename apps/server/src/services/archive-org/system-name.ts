@@ -62,7 +62,40 @@ export function mentionsSystem(text: string, system: string): boolean {
   return systemNameVariants(system).some((v) => textMentionsVariant(text, v));
 }
 
+/** Collapse case and whitespace runs so two spellings compare equal. */
+function canonical(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+export type SystemMatch = 'exact' | 'loose';
+
+/**
+ * How strongly a text (a ZIP name, an item title…) identifies `system`.
+ *
+ * 'exact': the text's own system segment *is* this system. Collections name
+ * their per-system ZIPs after the No-Intro/Redump set
+ * ("Nintendo - Game Boy (20240101).zip"), so running the text through
+ * normalizeSystemName yields a bare system name to compare against.
+ *
+ * 'loose': the name merely appears somewhere in the text. That is needed for
+ * discovery (an item titled "No-Intro Game Boy fullset"), but it also matches
+ * a *longer* system: "Game Boy" is a substring of "Game Boy Advance", and
+ * "Nintendo Entertainment System" of its "Super" sibling. Since the longer
+ * system is usually the bigger download, a loose match must never outrank an
+ * exact one — picking by size alone lands on the wrong set and scores zero.
+ */
+export function systemMatchKind(text: string, system: string): SystemMatch | null {
+  const variants = systemNameVariants(system).map(canonical);
+  if (variants.includes(canonical(normalizeSystemName(text)))) return 'exact';
+  return mentionsSystem(text, system) ? 'loose' : null;
+}
+
+/** As systemMatchKind, for a ZIP path inside an archive.org item. */
+export function zipSystemMatch(zipPath: string, system: string): SystemMatch | null {
+  return systemMatchKind(stripExtension(baseName(zipPath)), system);
+}
+
 /** Does this ZIP look like it holds the whole set for `system`? */
 export function zipMatchesSystem(zipPath: string, system: string): boolean {
-  return mentionsSystem(stripExtension(baseName(zipPath)), system);
+  return zipSystemMatch(zipPath, system) !== null;
 }
