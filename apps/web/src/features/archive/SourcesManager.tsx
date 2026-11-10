@@ -154,7 +154,7 @@ export function SourcesManager({
 
       {sources.length === 0 && !showAdd ? (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          Aucune source configurée. Ajoutez un identifiant archive.org pour commencer.
+          Aucune source configurée. Ajoutez une collection archive.org pour commencer.
         </p>
       ) : (
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>

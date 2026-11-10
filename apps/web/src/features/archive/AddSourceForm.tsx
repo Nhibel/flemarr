@@ -146,7 +146,7 @@ export function AddSourceForm({
         {searchResults !== null && searchResults.length === 0 && !searching && (
           <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
             Aucune collection trouvée pour « {searchQ.trim()} ». Essayez un autre libellé, ou
-            saisissez l’identifiant directement ci-dessous.
+            saisissez l’identifiant de l’item directement ci-dessous.
           </p>
         )}
 
