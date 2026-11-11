@@ -155,10 +155,16 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           // Viewport-relative, not a flat pixel count: a fixed height stopped
           // fitting once the base font size grew, forcing both an inner
           // scrollbar on the list AND an outer one on the page. rem units in
-          // the subtracted term track the header/filters block above (which
-          // scale with the same root font size), so this keeps the list's
-          // own scrollbar as the only one in view across font-size changes.
-          maxHeight: 'max(240px, calc(100vh - 24rem))',
+          // the subtracted term track everything else that shares the
+          // viewport with the list — the header/tabs/filters block above
+          // *and* the pagination footer plus the reserved selection-summary
+          // slot below — measured directly (Playwright, 22px root, 900px
+          // viewport: ~548px/~25rem above, ~168px/~7.6rem below), rounded up
+          // for safety margin, so the page itself never needs to scroll to
+          // reach pagination or the summary. Reduce this if more chrome gets
+          // added above/below the list; the floor keeps the list itself
+          // usable even if the budget runs out on a very short viewport.
+          maxHeight: 'max(180px, calc(100vh - 36rem))',
           overflowY: 'auto',
           bg: 'bg.surface',
           border: '1px solid',

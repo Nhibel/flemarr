@@ -432,16 +432,17 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               isAllSelected={isAllSelected}
             />
             <GameList datId={dat.id} games={filtered} selected={selected} onToggle={toggle} />
-            {/* Sticky — in plain flow this sat right past the end of a long
-                filtered list, so it read as "half cut off" at the bottom of
-                the viewport instead of staying in view while scrolling. */}
+            {/* Reserved space, not sticky — a fixed slot below the table so
+                the summary's two states (plain text vs. the bordered chip)
+                don't shift the layout when the selection count changes.
+                Height scales with viewport so it doesn't look oversized on
+                a small window or cramped on a large one. */}
             <div
               className={css({
-                position: 'sticky',
-                bottom: '0',
                 mt: '3',
-                py: '2',
-                bg: 'bg.page',
+                minH: { base: '10', md: '12', lg: '14' },
+                display: 'flex',
+                alignItems: 'center',
               })}
             >
               <SelectionSummary games={games} selected={selected} />
