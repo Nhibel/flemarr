@@ -23,6 +23,20 @@ describe('useTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('cyberpunk');
   });
 
+  it('honors the new nintendo/megadrive/matrix themes', () => {
+    localStorage.setItem(STORAGE_KEY, 'megadrive');
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe('megadrive');
+    expect(document.documentElement.dataset.theme).toBe('megadrive');
+  });
+
+  it('honors the sonicmania theme', () => {
+    localStorage.setItem(STORAGE_KEY, 'sonicmania');
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe('sonicmania');
+    expect(document.documentElement.dataset.theme).toBe('sonicmania');
+  });
+
   it('falls back to the default when the stored value is invalid', () => {
     localStorage.setItem(STORAGE_KEY, 'solarized');
     const { result } = renderHook(() => useTheme());

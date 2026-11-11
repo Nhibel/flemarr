@@ -19,13 +19,14 @@ import { fetchGames, listDats, deleteDat, getSettings } from '@/lib/api.js';
 import { computeMissingGameIds } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
+import { LexiquePage } from '@/features/lexique/LexiquePage.js';
 import { useTheme } from '@/lib/use-theme.js';
 import type { DatUploadResponse } from '@shared/api.js';
-import { GearIcon, iconBtnClass } from '@/components/icons.js';
+import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
-type AppView = 'loader' | 'game' | 'settings';
+type AppView = 'loader' | 'game' | 'settings' | 'lexique';
 
 const TAB_LABELS: Record<Tab, string> = {
   games: 'Jeux',
@@ -50,6 +51,10 @@ export function App() {
     );
   }
 
+  if (view === 'lexique') {
+    return <LexiquePage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
+  }
+
   if (activeDat === null) {
     return (
       <LoaderView
@@ -60,6 +65,7 @@ export function App() {
           setView('game');
         }}
         onSettings={() => setView('settings')}
+        onLexique={() => setView('lexique')}
       />
     );
   }
@@ -72,6 +78,7 @@ export function App() {
         setView('loader');
       }}
       onSettings={() => setView('settings')}
+      onLexique={() => setView('lexique')}
     />
   );
 }
@@ -81,9 +88,16 @@ interface LoaderViewProps {
   onSetLoaderMode: (m: LoaderMode) => void;
   onLoaded: (dat: DatUploadResponse) => void;
   onSettings: () => void;
+  onLexique: () => void;
 }
 
-function LoaderView({ loaderMode, onSetLoaderMode, onLoaded, onSettings }: LoaderViewProps) {
+function LoaderView({
+  loaderMode,
+  onSetLoaderMode,
+  onLoaded,
+  onSettings,
+  onLexique,
+}: LoaderViewProps) {
   // DATs persisted server-side (SQLite) — lets the user resume without re-parsing
   const queryClient = useQueryClient();
   const { data: existingDats = [] } = useQuery({
@@ -105,9 +119,22 @@ function LoaderView({ loaderMode, onSetLoaderMode, onLoaded, onSettings }: Loade
       })}
     >
       <div className={css({ display: 'flex', alignItems: 'center', gap: '1', mb: '6' })}>
-        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+        <h1
+          className={css({
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            color: 'fg.heading',
+            flex: 1,
+            _cyberpunk: {
+              textShadow: '0 0 10px #FDF500, 0 0 24px rgba(253, 245, 0, 0.4)',
+            },
+          })}
+        >
           rom-curator
         </h1>
+        <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
+          <BookIcon />
+        </button>
         <button
           onClick={onSettings}
           title="Paramètres"
@@ -140,8 +167,8 @@ function LoaderView({ loaderMode, onSetLoaderMode, onLoaded, onSettings }: Loade
                   alignItems: 'center',
                   borderBottom: '1px solid',
                   borderColor: 'bd.subtle',
-                  bg: 'bg.page',
-                  _hover: { bg: 'bg.surface' },
+                  bg: 'transparent',
+                  _hover: { bg: 'bg.muted' },
                   _last: { borderBottom: 'none' },
                 })}
               >
@@ -213,9 +240,9 @@ function LoaderView({ loaderMode, onSetLoaderMode, onLoaded, onSettings }: Loade
               fontWeight: 'medium',
               cursor: 'pointer',
               transition: 'background-color 0.15s, color 0.15s',
-              bg: loaderMode === m ? 'accent.solid' : 'bg.page',
+              bg: loaderMode === m ? 'accent.solid' : 'bg.surface',
               color: loaderMode === m ? 'accent.fg' : 'fg.subtle',
-              _hover: { bg: loaderMode === m ? 'accent.solid' : 'bg.surface' },
+              _hover: { bg: loaderMode === m ? 'accent.solid' : 'bg.muted' },
             })}
           >
             {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
@@ -241,9 +268,10 @@ interface GameViewProps {
   dat: DatUploadResponse;
   onReset: () => void;
   onSettings: () => void;
+  onLexique: () => void;
 }
 
-function GameView({ dat, onReset, onSettings }: GameViewProps) {
+function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
@@ -321,6 +349,9 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
         <Button variant="secondary" size="sm" onClick={onReset}>
           Charger un autre DAT
         </Button>
+        <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
+          <BookIcon />
+        </button>
         <button
           onClick={onSettings}
           title="Paramètres"
@@ -401,7 +432,18 @@ function GameView({ dat, onReset, onSettings }: GameViewProps) {
               isAllSelected={isAllSelected}
             />
             <GameList datId={dat.id} games={filtered} selected={selected} onToggle={toggle} />
-            <div className={css({ mt: '3' })}>
+            {/* Sticky — in plain flow this sat right past the end of a long
+                filtered list, so it read as "half cut off" at the bottom of
+                the viewport instead of staying in view while scrolling. */}
+            <div
+              className={css({
+                position: 'sticky',
+                bottom: '0',
+                mt: '3',
+                py: '2',
+                bg: 'bg.page',
+              })}
+            >
               <SelectionSummary games={games} selected={selected} />
             </div>
           </>

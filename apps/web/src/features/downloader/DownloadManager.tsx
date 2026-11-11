@@ -254,7 +254,7 @@ function JobCard({ state }: { state: JobState }) {
           gap: '3',
           px: '4',
           py: '3',
-          bg: 'bg.surface',
+          bg: 'bg.muted',
           borderBottom: '1px solid',
           borderColor: 'bd.default',
         })}

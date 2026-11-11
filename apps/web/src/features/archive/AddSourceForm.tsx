@@ -46,6 +46,11 @@ export function AddSourceForm({
   const [note, setNote] = useState('');
   const [searchQ, setSearchQ] = useState(() => defaultSearchQuery(system, source));
   const [seriesMode, setSeriesMode] = useState(false);
+  // Collapsed by default — the manual identifier field sat directly under the
+  // search results, which read as "refine your search here" even though it's
+  // a separate, unrelated way to add a source. Hiding it behind an explicit
+  // toggle removes that false adjacency.
+  const [showManual, setShowManual] = useState(false);
   // null means "no search run yet"; [] means "searched, found nothing" — the
   // two have to read differently, or a fruitless search looks like a dead button.
   const [searchResults, setSearchResults] = useState<SearchResponse['results'] | null>(null);
@@ -113,7 +118,11 @@ export function AddSourceForm({
     } else {
       resolvedLayout = targetLayout;
     }
-    await addSource(system, { identifier: targetIdentifier, layout: resolvedLayout, note: targetNote });
+    await addSource(system, {
+      identifier: targetIdentifier,
+      layout: resolvedLayout,
+      note: targetNote,
+    });
   };
 
   const handleSave = async () => {
@@ -145,6 +154,7 @@ export function AddSourceForm({
   return (
     <div
       className={css({
+        position: 'relative',
         mb: '4',
         p: '4',
         border: '1px solid',
@@ -156,6 +166,27 @@ export function AddSourceForm({
         gap: '3',
       })}
     >
+      {/* The top-level "Annuler" toggle (in SourcesManager) closes this same
+          panel, but it's a scroll away once the results list fills the
+          screen — this puts a close affordance right where you're working. */}
+      <button
+        type="button"
+        onClick={onDone}
+        aria-label="Fermer"
+        className={css({
+          position: 'absolute',
+          top: '3',
+          right: '3',
+          fontSize: 'lg',
+          lineHeight: '1',
+          color: 'fg.faint',
+          cursor: 'pointer',
+          _hover: { color: 'fg.muted' },
+        })}
+      >
+        ×
+      </button>
+
       {/* Search */}
       <div>
         <p className={css({ fontSize: 'xs', color: 'fg.subtle', mb: '1.5' })}>
@@ -178,9 +209,15 @@ export function AddSourceForm({
               border: '1px solid',
               borderColor: 'bd.strong',
               borderRadius: 'md',
-              bg: 'bg.page',
+              bg: 'bg.surface',
               outline: 'none',
-              _focusVisible: { borderColor: 'accent.hover' },
+              _focusVisible: {
+                borderColor: 'accent.hover',
+                _cyberpunk: {
+                  borderColor: '#37EBF3',
+                  boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
+                },
+              },
             })}
           />
           <Button
@@ -214,7 +251,7 @@ export function AddSourceForm({
         {searchResults !== null && searchResults.length === 0 && !searching && (
           <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
             Aucune collection trouvée pour « {searchQ.trim()} ». Essayez un autre libellé, ou
-            saisissez l’identifiant de l’item directement ci-dessous.
+            utilisez « Je connais déjà l’identifiant » ci-dessous.
           </p>
         )}
 
@@ -225,7 +262,7 @@ export function AddSourceForm({
               border: '1px solid',
               borderColor: 'bd.default',
               borderRadius: 'md',
-              bg: 'bg.page',
+              bg: 'bg.surface',
               maxH: '48',
               overflowY: 'auto',
             })}
@@ -242,84 +279,128 @@ export function AddSourceForm({
         )}
       </div>
 
-      {/* Manual fields */}
-      <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-        <p className={css({ fontSize: 'xs', color: 'fg.subtle' })}>
-          L’identifiant de la collection, c’est-à-dire la fin de son URL : archive.org/details/
-          <strong>sony_playstation_part1</strong>. Ce n’est pas votre compte archive.org, qui se
-          règle dans Paramètres.
-        </p>
-        <div className={css({ display: 'flex', gap: '2' })}>
-          <input
-            type="text"
-            placeholder="Identifiant de l’item (ex. sony_playstation_part1)"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            className={css({
-              flex: 1,
-              px: '2.5',
-              py: '1.5',
-              fontSize: 'sm',
-              border: '1px solid',
-              borderColor: 'bd.strong',
-              borderRadius: 'md',
-              bg: 'bg.page',
-              outline: 'none',
-              fontFamily: 'mono',
-              _focusVisible: { borderColor: 'accent.hover' },
-            })}
-          />
-          <select
-            value={layout}
-            onChange={(e) => setLayout(e.target.value as LayoutChoice)}
-            className={css({
-              px: '2.5',
-              py: '1.5',
-              fontSize: 'sm',
-              border: '1px solid',
-              borderColor: 'bd.strong',
-              borderRadius: 'md',
-              bg: 'bg.page',
-              cursor: 'pointer',
-            })}
-          >
-            <option value="auto">layout auto</option>
-            <option value="direct">direct</option>
-            <option value="zip-collection">zip-collection</option>
-          </select>
-        </div>
-        <input
-          type="text"
-          placeholder="Note (optionnelle)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className={css({
-            px: '2.5',
-            py: '1.5',
-            fontSize: 'sm',
-            border: '1px solid',
-            borderColor: 'bd.strong',
-            borderRadius: 'md',
-            bg: 'bg.page',
-            outline: 'none',
-            _focusVisible: { borderColor: 'accent.hover' },
-          })}
-        />
-      </div>
-
       {error && (
         <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text' })}>
           {error}
         </p>
       )}
 
-      <Button
-        onClick={() => void handleSave()}
-        disabled={saving || !identifier.trim()}
-        className={css({ alignSelf: 'flex-start' })}
+      {/* Manual entry — a separate, unrelated way to add a source (skip the
+          search entirely), so it's collapsed behind its own toggle instead of
+          sitting right under the search results where it reads as part of it. */}
+      <div
+        className={css({
+          borderTop: '1px solid',
+          borderColor: 'bd.subtle',
+          pt: '3',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3',
+        })}
       >
-        {saving ? 'Ajout…' : 'Ajouter la source'}
-      </Button>
+        <button
+          type="button"
+          onClick={() => setShowManual((v) => !v)}
+          className={css({
+            alignSelf: 'flex-start',
+            fontSize: 'xs',
+            color: 'fg.faint',
+            cursor: 'pointer',
+            _hover: { color: 'fg.muted' },
+          })}
+        >
+          {showManual ? '− Masquer la saisie manuelle' : 'Je connais déjà l’identifiant'}
+        </button>
+
+        {showManual && (
+          <>
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+              <p className={css({ fontSize: 'xs', color: 'fg.subtle' })}>
+                L’identifiant de la collection, c’est-à-dire la fin de son URL :
+                archive.org/details/
+                <strong>sony_playstation_part1</strong>. Ce n’est pas votre compte archive.org, qui
+                se règle dans Paramètres.
+              </p>
+              <div className={css({ display: 'flex', gap: '2' })}>
+                <input
+                  type="text"
+                  placeholder="Identifiant de l’item (ex. sony_playstation_part1)"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className={css({
+                    flex: 1,
+                    px: '2.5',
+                    py: '1.5',
+                    fontSize: 'sm',
+                    border: '1px solid',
+                    borderColor: 'bd.strong',
+                    borderRadius: 'md',
+                    bg: 'bg.surface',
+                    outline: 'none',
+                    fontFamily: 'mono',
+                    _focusVisible: {
+                      borderColor: 'accent.hover',
+                      _cyberpunk: {
+                        borderColor: '#37EBF3',
+                        boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
+                      },
+                    },
+                  })}
+                />
+                <select
+                  value={layout}
+                  onChange={(e) => setLayout(e.target.value as LayoutChoice)}
+                  className={css({
+                    px: '2.5',
+                    py: '1.5',
+                    fontSize: 'sm',
+                    border: '1px solid',
+                    borderColor: 'bd.strong',
+                    borderRadius: 'md',
+                    bg: 'bg.surface',
+                    cursor: 'pointer',
+                  })}
+                >
+                  <option value="auto">layout auto</option>
+                  <option value="direct">direct</option>
+                  <option value="zip-collection">zip-collection</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                placeholder="Note (optionnelle)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className={css({
+                  px: '2.5',
+                  py: '1.5',
+                  fontSize: 'sm',
+                  border: '1px solid',
+                  borderColor: 'bd.strong',
+                  borderRadius: 'md',
+                  bg: 'bg.surface',
+                  outline: 'none',
+                  _focusVisible: {
+                    borderColor: 'accent.hover',
+                    _cyberpunk: {
+                      borderColor: '#37EBF3',
+                      boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
+                    },
+                  },
+                })}
+              />
+            </div>
+
+            <Button
+              onClick={() => void handleSave()}
+              disabled={saving || !identifier.trim()}
+              className={css({ alignSelf: 'flex-start' })}
+            >
+              {saving ? 'Ajout…' : 'Ajouter la source'}
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

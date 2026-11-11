@@ -36,7 +36,8 @@ export function SearchResultRow({
         py: '2',
         borderBottom: '1px solid',
         borderColor: 'bd.subtle',
-        bg: 'bg.page',
+        bg: 'transparent',
+        _hover: { bg: 'bg.muted' },
         _last: { borderBottom: 'none' },
       })}
     >

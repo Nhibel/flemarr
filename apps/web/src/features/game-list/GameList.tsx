@@ -24,9 +24,9 @@ const pageBtnClass = css({
   borderColor: 'bd.default',
   borderRadius: 'lg',
   cursor: 'pointer',
-  bg: 'bg.page',
-  _hover: { bg: 'bg.surface' },
-  _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.page' } },
+  bg: 'bg.surface',
+  _hover: { bg: 'bg.muted' },
+  _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.surface' } },
 });
 
 export function GameList({ datId, games, selected, onToggle }: Props) {
@@ -132,7 +132,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               border: '1px solid',
               borderRadius: 'lg',
               cursor: 'pointer',
-              bg: mode === m ? 'accent.solid' : 'bg.page',
+              bg: mode === m ? 'accent.solid' : 'bg.surface',
               color: mode === m ? 'accent.fg' : 'fg.muted',
               borderColor: mode === m ? 'accent.solid' : 'bd.strong',
               _hover: { borderColor: 'accent.hover' },
@@ -160,11 +160,17 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           // own scrollbar as the only one in view across font-size changes.
           maxHeight: 'max(240px, calc(100vh - 24rem))',
           overflowY: 'auto',
+          bg: 'bg.surface',
           border: '1px solid',
           borderColor: 'bd.default',
           borderRadius: 'xl',
           outline: 'none',
-          _focusVisible: { ring: '2px', ringColor: 'accent.subtleBorder', ringOffset: '2px' },
+          _focusVisible: {
+            ring: '2px',
+            ringColor: 'accent.subtleBorder',
+            ringOffset: '2px',
+            _cyberpunk: { ringColor: '#37EBF3' },
+          },
         })}
       >
         <div ref={listRef}>

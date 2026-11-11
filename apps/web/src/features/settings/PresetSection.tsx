@@ -56,11 +56,14 @@ export function PresetSection({
                 borderRadius: 'lg',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: active ? 'accent.hover' : 'bd.default',
-                bg: active ? 'accent.subtle' : 'bg.page',
+                borderColor: active ? 'accent.subtleBorder' : 'bd.default',
+                bg: active ? 'accent.subtle' : 'bg.surface',
                 transition: 'background-color 0.15s, border-color 0.15s',
-                _hover: { bg: active ? 'accent.subtle' : 'bg.surface' },
+                _hover: { bg: active ? 'accent.subtle' : 'bg.muted' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+                _cyberpunk: {
+                  boxShadow: active ? '0 0 10px #FDF500, 0 0 20px rgba(253, 245, 0, 0.3)' : 'none',
+                },
               })}
             >
               <span

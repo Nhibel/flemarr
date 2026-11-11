@@ -9,9 +9,7 @@ vi.mock('@/lib/api.js');
 const SYSTEM = 'Nintendo - Super Nintendo Entertainment System';
 
 function renderForm(onDone = vi.fn(), onAdded = vi.fn()) {
-  render(
-    <AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} onAdded={onAdded} />,
-  );
+  render(<AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} onAdded={onAdded} />);
   return {
     onDone,
     onAdded,
@@ -23,6 +21,16 @@ function renderForm(onDone = vi.fn(), onAdded = vi.fn()) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('AddSourceForm — close', () => {
+  it('calls onDone when the close button is clicked', async () => {
+    const { onDone } = renderForm();
+
+    await userEvent.click(screen.getByRole('button', { name: /fermer/i }));
+
+    expect(onDone).toHaveBeenCalled();
+  });
 });
 
 describe('AddSourceForm — search', () => {
@@ -212,6 +220,7 @@ describe('AddSourceForm — save', () => {
     vi.mocked(api.addSource).mockResolvedValue(undefined);
     const { onDone } = renderForm();
 
+    await userEvent.click(screen.getByRole('button', { name: /je connais déjà l.identifiant/i }));
     await userEvent.type(screen.getByPlaceholderText(/identifiant de l/i), 'snes-roms');
     await userEvent.click(screen.getByRole('button', { name: /ajouter la source/i }));
 
@@ -235,6 +244,7 @@ describe('AddSourceForm — save', () => {
     vi.mocked(api.addSource).mockRejectedValue(new Error('HTTP 500'));
     const { onDone } = renderForm();
 
+    await userEvent.click(screen.getByRole('button', { name: /je connais déjà l.identifiant/i }));
     await userEvent.type(screen.getByPlaceholderText(/identifiant de l/i), 'snes-roms');
     await userEvent.click(screen.getByRole('button', { name: /ajouter la source/i }));
 

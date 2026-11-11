@@ -67,10 +67,11 @@ export function GameFilters({
               key={r}
               onClick={() => onToggleRegion(r)}
               className={css(chipBase, {
-                bg: active ? 'accent.solid' : 'bg.page',
+                bg: active ? 'accent.solid' : 'bg.surface',
                 color: active ? 'accent.fg' : 'fg.muted',
                 borderColor: active ? 'accent.solid' : 'bd.strong',
                 _hover: { borderColor: 'accent.hover' },
+                _cyberpunk: { boxShadow: active ? '0 0 8px #FDF500' : 'none' },
               })}
             >
               {r}
@@ -91,10 +92,11 @@ export function GameFilters({
               key={c}
               onClick={() => onToggleCategory(c)}
               className={css(chipBase, {
-                bg: active ? 'accent2.solid' : 'bg.page',
+                bg: active ? 'accent2.solid' : 'bg.surface',
                 color: active ? 'accent2.fg' : 'fg.muted',
                 borderColor: active ? 'accent2.solid' : 'bd.strong',
                 _hover: { borderColor: 'accent2.hover' },
+                _cyberpunk: { boxShadow: active ? '0 0 8px #CB1DCD' : 'none' },
               })}
             >
               {c}
@@ -119,7 +121,7 @@ export function GameFilters({
             borderRadius: 'lg',
             fontSize: 'sm',
             cursor: 'pointer',
-            bg: 'bg.page',
+            bg: 'bg.surface',
             color: 'fg.default',
           })}
         >
@@ -133,7 +135,7 @@ export function GameFilters({
           onClick={onToggleSortDir}
           aria-label={filterState.sortDir === 'asc' ? 'Tri décroissant' : 'Tri croissant'}
           className={css(chipBase, {
-            bg: 'bg.page',
+            bg: 'bg.surface',
             color: 'fg.muted',
             borderColor: 'bd.strong',
             _hover: { borderColor: 'accent.hover' },
@@ -146,10 +148,11 @@ export function GameFilters({
           onClick={onToggleSelectedOnly}
           aria-pressed={selectedOnly}
           className={css(chipBase, {
-            bg: selectedOnly ? 'accent.solid' : 'bg.page',
+            bg: selectedOnly ? 'accent.solid' : 'bg.surface',
             color: selectedOnly ? 'accent.fg' : 'fg.muted',
             borderColor: selectedOnly ? 'accent.solid' : 'bd.strong',
             _hover: { borderColor: 'accent.hover' },
+            _cyberpunk: { boxShadow: selectedOnly ? '0 0 8px #FDF500' : 'none' },
           })}
         >
           Sélection uniquement ({selectedCount})
@@ -163,7 +166,7 @@ export function GameFilters({
           onClick={onSelectAll}
           disabled={isAllSelected}
           className={css(chipBase, {
-            bg: 'bg.page',
+            bg: 'bg.surface',
             color: 'fg.muted',
             borderColor: 'bd.strong',
             _hover: { borderColor: 'accent.hover' },
@@ -175,7 +178,7 @@ export function GameFilters({
         <button
           onClick={onClearAll}
           className={css(chipBase, {
-            bg: 'bg.page',
+            bg: 'bg.surface',
             color: 'fg.muted',
             borderColor: 'bd.strong',
             _hover: { borderColor: 'status.danger.subtleBorder' },
@@ -200,10 +203,12 @@ export function GameFilters({
           borderRadius: 'lg',
           fontSize: 'sm',
           outline: 'none',
+          bg: 'bg.surface',
           _focusVisible: {
             borderColor: 'accent.hover',
             ring: '2px',
             ringColor: 'accent.subtleBorder',
+            _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
           },
         })}
       />

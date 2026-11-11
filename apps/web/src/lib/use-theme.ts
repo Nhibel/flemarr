@@ -1,8 +1,25 @@
 import { useState } from 'react';
 
-export type Theme = 'light' | 'dark' | 'catppuccin' | 'cyberpunk';
+export type Theme =
+  | 'light'
+  | 'dark'
+  | 'catppuccin'
+  | 'cyberpunk'
+  | 'matrix'
+  | 'nintendo'
+  | 'megadrive'
+  | 'sonicmania';
 
-const THEMES: Theme[] = ['light', 'dark', 'catppuccin', 'cyberpunk'];
+const THEMES: Theme[] = [
+  'light',
+  'dark',
+  'catppuccin',
+  'cyberpunk',
+  'matrix',
+  'nintendo',
+  'megadrive',
+  'sonicmania',
+];
 
 const STORAGE_KEY = 'rom-curator-theme';
 
@@ -12,7 +29,7 @@ function getInitialTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-// All 4 themes are self-contained looks, selected via one data-theme
+// All themes are self-contained looks, selected via one data-theme
 // attribute (see panda.config.ts conditions) — not a theme × light/dark
 // matrix, so there's no separate "mode" to track alongside this.
 function applyTheme(theme: Theme) {

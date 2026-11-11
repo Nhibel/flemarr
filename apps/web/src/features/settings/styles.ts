@@ -8,9 +8,14 @@ export const inputClass = css({
   borderColor: 'bd.strong',
   borderRadius: 'lg',
   outline: 'none',
-  bg: 'bg.page',
+  bg: 'bg.surface',
   color: 'fg.default',
-  _focusVisible: { borderColor: 'accent.hover', ring: '2px', ringColor: 'accent.subtleBorder' },
+  _focusVisible: {
+    borderColor: 'accent.hover',
+    ring: '2px',
+    ringColor: 'accent.subtleBorder',
+    _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
+  },
 });
 
 export const sectionClass = css({

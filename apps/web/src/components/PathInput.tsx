@@ -121,7 +121,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
             left: 0,
             right: 0,
             zIndex: 50,
-            bg: 'bg.page',
+            bg: 'bg.surface',
             border: '1px solid',
             borderColor: 'bd.default',
             borderRadius: 'md',
@@ -164,7 +164,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 cursor: 'pointer',
                 borderBottom: '1px solid',
                 borderColor: 'bd.subtle',
-                _hover: { bg: 'bg.surface' },
+                _hover: { bg: 'bg.muted' },
               })}
             >
               <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>↑</span>
@@ -191,7 +191,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 cursor: 'pointer',
                 borderBottom: '1px solid',
                 borderColor: 'bd.subtle',
-                _hover: { bg: 'bg.surface' },
+                _hover: { bg: 'bg.muted' },
               })}
             >
               <span className={css({ color: 'fg.faint', flexShrink: 0 })}>
@@ -212,7 +212,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 py: '2',
                 borderTop: '1px solid',
                 borderColor: 'bd.default',
-                bg: 'bg.surface',
+                bg: 'bg.muted',
               })}
             >
               <div className={css({ display: 'flex', gap: '2' })}>
@@ -236,7 +236,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                     border: '1px solid',
                     borderColor: 'bd.strong',
                     borderRadius: 'sm',
-                    bg: 'bg.page',
+                    bg: 'bg.surface',
                     outline: 'none',
                   })}
                 />

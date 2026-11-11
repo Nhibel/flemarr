@@ -86,10 +86,16 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 borderRadius: 'lg',
                 cursor: 'pointer',
                 border: '1px solid',
-                borderColor: resolvedPreset === p ? 'accent.hover' : 'bd.strong',
-                bg: resolvedPreset === p ? 'accent.subtle' : 'bg.page',
+                borderColor: resolvedPreset === p ? 'accent.subtleBorder' : 'bd.strong',
+                bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface',
                 color: resolvedPreset === p ? 'accent.text' : 'fg.muted',
-                _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface' },
+                _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.muted' },
+                _cyberpunk: {
+                  boxShadow:
+                    resolvedPreset === p
+                      ? '0 0 10px #FDF500, 0 0 20px rgba(253, 245, 0, 0.3)'
+                      : 'none',
+                },
               })}
             >
               {p}
@@ -129,10 +135,12 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           borderColor: 'bd.strong',
           borderRadius: 'lg',
           outline: 'none',
+          bg: 'bg.surface',
           _focusVisible: {
             borderColor: 'accent.hover',
             ring: '2px',
             ringColor: 'accent.subtleBorder',
+            _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
           },
         })}
       />
@@ -166,6 +174,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
       {filtered.length > 0 && (
         <div
           className={css({
+            bg: 'bg.surface',
             border: '1px solid',
             borderColor: 'bd.default',
             borderRadius: 'xl',
@@ -189,7 +198,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                   borderBottom: '1px solid',
                   borderColor: 'bd.subtle',
                   _last: { borderBottom: 'none' },
-                  _hover: { bg: 'bg.surface' },
+                  _hover: { bg: 'bg.muted' },
                 })}
               >
                 <span className={css({ flex: 1, fontSize: 'sm', color: 'fg.default' })}>

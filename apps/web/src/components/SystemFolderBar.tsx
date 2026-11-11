@@ -116,9 +116,15 @@ export function SystemFolderBar({ system }: { system: string }) {
           border: '1px solid',
           borderColor: 'bd.strong',
           borderRadius: 'md',
-          bg: 'bg.page',
+          bg: 'bg.surface',
           outline: 'none',
-          _focusVisible: { borderColor: 'accent.hover' },
+          _focusVisible: {
+            borderColor: 'accent.hover',
+            _cyberpunk: {
+              borderColor: '#37EBF3',
+              boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
+            },
+          },
         })}
       />
       {save.error instanceof Error && (
