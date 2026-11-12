@@ -546,13 +546,19 @@ describe('resolveGames — restricted item via datanode zip listing', () => {
     expect(src?.innerPath).toBe('Bloody Roar II (USA).bin');
   });
 
-  it('does not fall back to a sibling rom\'s own file when this rom\'s real entry has a mismatched name', async () => {
-    // The real bug, found live: rr-sony-playstation-u's "Bloody Roar II
-    // (USA).7z" stores the .cue under a truncated inner name — "Roar II
-    // (USA).cue", not matching romBase/gameName at all. Without excluding
-    // sibling extensions, the .cue's resolution fell back to the .bin
-    // entry (the only one left in the base-matching candidate pool),
-    // which would download fine but always fail CRC.
+  it('trusts romName directly as the archive-container innerPath, ignoring a mis-rendered listing entry', async () => {
+    // The real bug: rr-sony-playstation-u's own view_archive.php listing
+    // renders the .cue's inner name truncated — "Roar II (USA).cue" — even
+    // though the real archive (downloaded and opened by hand to confirm)
+    // correctly stores it as "Bloody Roar II (USA).cue". Before this fix,
+    // the resolver only trusted the listing to say what the inner path
+    // was, so a mis-rendered entry meant never finding it (worse, an
+    // earlier version of this fix fell back to the sibling .bin instead,
+    // which would download fine but always fail CRC). Since the
+    // archive-container path extracts locally via 7z-wasm — which reads
+    // the archive's own real file table, not this listing — it doesn't
+    // need the listing to be right at all; it just tries the DAT's own
+    // romName directly.
     addSource('Sony - PlayStation', {
       identifier: 'rr-sony-playstation-u',
       layout: 'zip-collection',
@@ -587,13 +593,53 @@ describe('resolveGames — restricted item via datanode zip listing', () => {
     };
 
     const results = await resolveGames(discDat, 'dat1', ['bloody-roar-2']);
-    // The .bin resolves normally — its own extension isn't excluded by the
-    // sibling check (only the .cue's extension is a sibling for the .bin).
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
     expect(results[0]?.roms[0]?.sources[0]?.innerPath).toBe('Bloody Roar II (USA).bin');
-    // The .cue has no real match on this source at all — reported as not
-    // found here, instead of confidently pointing at the wrong (.bin) file.
-    expect(results[0]?.roms[1]?.sources).toHaveLength(0);
+    // The .cue resolves too, with innerPath guessed directly from romName —
+    // not derived from (or blocked by) the listing's wrong entry at all.
+    // No fallback either: the listing never produced a usable zip-view
+    // candidate for this rom to fall back to.
+    expect(results[0]?.roms[1]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[1]?.sources[0]?.innerPath).toBe('Bloody Roar II (USA).cue');
+    expect(results[0]?.roms[1]?.sources[0]?.container).toBe('archive-container');
+    expect(results[0]?.roms[1]?.sources[0]?.fallback).toBeUndefined();
+  });
+
+  it('still resolves an exact per-game match even when the listing fetch fails outright', async () => {
+    addSource('Sony - PlayStation', {
+      identifier: 'rr-sony-playstation-u',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [{ name: 'usa/Bloody Roar II (USA).7z', size: 291655606, format: '7z' }],
+      restricted: true,
+      server: 'ia600407.us.archive.org',
+      dir: '/11/items/rr-sony-playstation-u',
+    });
+    vi.mocked(getZipListing).mockRejectedValue(new Error('network error'));
+
+    const discDat: DatFile = {
+      source: 'redump',
+      system: 'Sony - PlayStation',
+      games: [
+        {
+          id: 'bloody-roar-2',
+          name: 'Bloody Roar II (USA)',
+          region: ['USA'],
+          languages: ['En'],
+          roms: [
+            { name: 'Bloody Roar II (USA).bin', size: 291650000, crc: 'f5ec130a', status: 'good' },
+          ],
+        },
+      ],
+    };
+
+    const results = await resolveGames(discDat, 'dat1', ['bloody-roar-2']);
+    const src = results[0]?.roms[0]?.sources[0];
+    expect(src?.container).toBe('archive-container');
+    expect(src?.innerPath).toBe('Bloody Roar II (USA).bin');
+    expect(src?.fallback).toBeUndefined();
   });
 });
 

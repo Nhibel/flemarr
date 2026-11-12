@@ -180,10 +180,29 @@ async function resolveViaZipListing(
   );
 
   for (const zip of zips.slice(0, 2)) {
+    const archiveFormat = isExactZipMatch(zip, romBase, gameName)
+      ? containerFormat(zip.name)
+      : undefined;
+
     let entries: string[];
     try {
       entries = await getZipListing(info.server, info.dir, zip.name);
     } catch {
+      // The listing fetch failed — but an exact per-game match doesn't
+      // actually need it for the fast path itself (only for an optional
+      // zip-view fallback below), so don't give up on it over a transient
+      // listing error.
+      if (archiveFormat) {
+        return {
+          identifier,
+          downloadUrl: resolveDownloadUrl(identifier, zip.name),
+          container: 'archive-container',
+          extractFromZip: false,
+          innerPath: romName,
+          archiveFormat,
+          verified: false,
+        };
+      }
       continue;
     }
     // Match by basename: inner is "<rom>.zip" (re-zipped), the raw ROM name,
@@ -206,49 +225,58 @@ async function resolveViaZipListing(
     const inner =
       innerCandidates.find((e) => baseName(e) === romName) ??
       innerCandidates.find((e) => !siblingExtensions.has(extensionOf(e)));
-    if (inner) {
-      const zipView: ResolvedSource = {
+    const zipView: ResolvedSource | undefined = inner
+      ? {
+          identifier,
+          downloadUrl: resolveZipViewUrl(info.server, info.dir, zip.name, inner),
+          container: 'zip-view',
+          // The inner entry's own name says whether view_archive's extract is
+          // itself a ZIP (ni-roms-style re-zipping, "Game.zip") or already
+          // the raw ROM (Redump-style per-game ZIPs, "Game (Track 1).bin")
+          // — see the extractFromZip comment on resolvedSourceSchema.
+          extractFromZip: inner.toLowerCase().endsWith('.zip'),
+          // A datanode listing only gives names, never hashes — always a guess.
+          verified: false,
+        }
+      : undefined;
+
+    // Per-game archive (Redump's rr-sony-* convention: the container is
+    // named exactly after this rom or its game, never a system-wide
+    // bundle) — the whole container can be fetched via the plain
+    // /download/ URL, which works even on a restricted item once
+    // authenticated (that's what the pre-fix "fast but wrong" bug was
+    // actually hitting), and extracted locally instead of going through
+    // view_archive.php's slow server-side extraction on every request.
+    // Deliberately scoped to the exact-match case: a system-wide bundle
+    // (ni-roms, proper1g1r-collection) must never be fetched whole just to
+    // pull one game out of it.
+    if (archiveFormat) {
+      // innerPath is romName itself, not whatever (if anything) the listing
+      // matched — confirmed live that view_archive.php's own HTML listing
+      // can mis-render an entry's name (rr-sony-playstation-u truncated
+      // "007 - Tomorrow Never Dies (USA).cue" to "- Tomorrow Never Dies
+      // (USA).cue" in the listing itself, even though the real archive's
+      // internal file name is correct — downloaded and opened by hand to
+      // confirm). The archive-container path extracts locally via 7z-wasm,
+      // which reads the archive's own real file table, not this listing —
+      // so it doesn't need the listing to be right, only the DAT's Redump
+      // naming convention to hold (it does, for every per-game archive
+      // checked so far). A wrong guess here just fails to find the entry
+      // (caught, falls through to the next candidate) — safe, since the
+      // actual bytes are still verified by CRC either way.
+      return {
         identifier,
-        downloadUrl: resolveZipViewUrl(info.server, info.dir, zip.name, inner),
-        container: 'zip-view',
-        // The inner entry's own name says whether view_archive's extract is
-        // itself a ZIP (ni-roms-style re-zipping, "Game.zip") or already the
-        // raw ROM (Redump-style per-game ZIPs, "Game (Track 1).bin") — see
-        // the extractFromZip comment on resolvedSourceSchema.
-        extractFromZip: inner.toLowerCase().endsWith('.zip'),
-        // A datanode listing only gives names, never hashes — always a guess.
+        downloadUrl: resolveDownloadUrl(identifier, zip.name),
+        container: 'archive-container',
+        extractFromZip: false,
+        innerPath: romName,
+        archiveFormat,
+        fallback: zipView,
         verified: false,
       };
-
-      // Per-game archive (Redump's rr-sony-* convention: the container is
-      // named exactly after this rom or its game, never a system-wide
-      // bundle) — the whole container can be fetched via the plain
-      // /download/ URL, which works even on a restricted item once
-      // authenticated (that's what the pre-fix "fast but wrong" bug was
-      // actually hitting), and extracted locally instead of going through
-      // view_archive.php's slow server-side extraction on every request.
-      // Deliberately scoped to the exact-match case: a system-wide bundle
-      // (ni-roms, proper1g1r-collection) must never be fetched whole just to
-      // pull one game out of it. The zip-view resolution above becomes the
-      // fallback if the whole-container fetch or local extraction fails.
-      const archiveFormat = isExactZipMatch(zip, romBase, gameName)
-        ? containerFormat(zip.name)
-        : undefined;
-      if (archiveFormat) {
-        return {
-          identifier,
-          downloadUrl: resolveDownloadUrl(identifier, zip.name),
-          container: 'archive-container',
-          extractFromZip: false,
-          innerPath: inner,
-          archiveFormat,
-          fallback: zipView,
-          verified: false,
-        };
-      }
-
-      return zipView;
     }
+
+    if (zipView) return zipView;
   }
   return null;
 }
