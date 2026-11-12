@@ -80,6 +80,7 @@ beforeEach(() => {
   for (const id of ['direct-snes', 'zip-snes', 'ni-like']) {
     removeSource(id, 'Nintendo - Super Nintendo Entertainment System');
   }
+  removeSource('sony_playstation_part1', 'Sony - PlayStation');
 });
 
 describe('resolveGames — direct layout', () => {
@@ -152,6 +153,21 @@ describe('resolveGames — direct layout', () => {
     expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
   });
 
+  it('does not name-match a re-encoded dump (.chd) against a raw-bytes ROM entry', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'direct-snes',
+      layout: 'direct',
+      note: '',
+    });
+    // Same basename, re-encoded container — would otherwise pass the
+    // extension-agnostic name match and hand the downloader a file
+    // guaranteed to fail its CRC check (see docs/archive-org-strategy.md).
+    vi.mocked(getIndex).mockResolvedValue([{ name: 'Super Mario World (USA).chd', size: 524288 }]);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
+  });
+
   it('matches files nested in subdirectories by basename', async () => {
     addSource('Nintendo - Super Nintendo Entertainment System', {
       identifier: 'direct-snes',
@@ -216,6 +232,9 @@ describe('resolveGames — restricted item via datanode zip listing', () => {
     expect(src?.downloadUrl).toContain('Super%20Mario%20World%20(USA).zip');
     // A datanode listing only gives names, never hashes.
     expect(src?.verified).toBe(false);
+    // The matched inner entry is itself re-zipped ("<name>.zip") — ni-roms's
+    // own layout, distinct from a Redump per-game zip's raw inner files.
+    expect(src?.extractFromZip).toBe(true);
   });
 
   it('returns no source when the inner listing has no matching entry', async () => {
@@ -234,6 +253,85 @@ describe('resolveGames — restricted item via datanode zip listing', () => {
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(0);
+  });
+
+  it('does not name-match a re-encoded dump (.chd) inside a datanode zip listing', async () => {
+    addSource('Nintendo - Super Nintendo Entertainment System', {
+      identifier: 'ni-like',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [{ name: 'roms/Nintendo - Super Nintendo Entertainment System.zip', size: 9e9 }],
+      restricted: true,
+      server: 'ia800000.us.archive.org',
+      dir: '/17/items/ni-like',
+    });
+    vi.mocked(getZipListing).mockResolvedValue(['Super Mario World (USA).chd']);
+
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(0);
+  });
+
+  it('does not let an unrelated system-name mention crowd out an exact per-game zip match', async () => {
+    // Reproduces the real Redump case: sony_playstation_part1 is a
+    // restricted per-game-zip collection, so "Bloody Roar (USA).zip" never
+    // mentions "PlayStation" itself — while plenty of *other* games' zips
+    // coincidentally do ("... (PlayStation Taiou).zip", a tie-in subtitle).
+    // The system-name filter must not let those crowd the real match out of
+    // the only two candidate slots that get a datanode listing fetched.
+    addSource('Sony - PlayStation', {
+      identifier: 'sony_playstation_part1',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [
+        { name: '10th Anniversary Memorial Save Data (PlayStation Taiou).zip', size: 1 },
+        { name: 'A Ressha de Ikou 4 - Evolution Global (PlayStation the Best).zip', size: 1 },
+        { name: 'Bloody Roar (USA).zip', size: 1 },
+      ],
+      restricted: true,
+      server: 'ia801505.us.archive.org',
+      dir: '/0/items/sony_playstation_part1',
+    });
+    vi.mocked(getZipListing).mockResolvedValue([
+      'Bloody Roar (USA) (Track 1).bin',
+      'Bloody Roar (USA) (Track 2).bin',
+      'Bloody Roar (USA).cue',
+    ]);
+
+    const discDat: DatFile = {
+      source: 'redump',
+      system: 'Sony - PlayStation',
+      games: [
+        {
+          id: 'bloody-roar',
+          name: 'Bloody Roar (USA)',
+          region: ['USA'],
+          languages: ['En'],
+          roms: [
+            {
+              name: 'Bloody Roar (USA) (Track 1).bin',
+              size: 575630832,
+              crc: 'b8f3aadb',
+              status: 'good',
+            },
+          ],
+        },
+      ],
+    };
+
+    const results = await resolveGames(discDat, 'dat1', ['bloody-roar']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('Bloody%20Roar%20(USA).zip');
+    // The two unrelated zips were never even fetched — the exact match won
+    // the sort outright and didn't need the system-name fallback at all.
+    expect(vi.mocked(getZipListing)).toHaveBeenCalledTimes(1);
+    // Redump's per-game ZIP holds the raw .bin directly — the matched inner
+    // entry is not itself re-zipped, so the downloader must not try to unzip
+    // it (that would fail: the bytes aren't ZIP-formatted at all).
+    expect(results[0]?.roms[0]?.sources[0]?.extractFromZip).toBe(false);
   });
 });
 
@@ -326,6 +424,52 @@ describe('resolveGames — zip-collection layout', () => {
 
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     expect(results[0]?.roms[0]?.sources).toHaveLength(0);
+  });
+
+  it('finds a multi-track disc rom whose zip is named after the game, not the track', async () => {
+    addSource('Sony - PlayStation', {
+      identifier: 'sony_playstation_part1',
+      layout: 'zip-collection',
+      note: '',
+    });
+    // Redump bundles every track + the .cue of one game into a single ZIP
+    // named after the *game* ("Bloody Roar (USA).zip") — never after an
+    // individual track. Padded with five unrelated ZIPs ranked no better
+    // than "everything else" so the right one would fall outside
+    // MAX_ZIP_HEAD_CHECKS (5) without also ranking by game name.
+    vi.mocked(getIndex).mockResolvedValue([
+      ...Array.from({ length: 5 }, (_, i) => ({
+        name: `Unrelated Game ${i} (USA).zip`,
+        size: 1,
+        format: 'ZIP',
+      })),
+      { name: 'Bloody Roar (USA).zip', size: 1, format: 'ZIP' },
+    ]);
+
+    const discDat: DatFile = {
+      source: 'redump',
+      system: 'Sony - PlayStation',
+      games: [
+        {
+          id: 'bloody-roar',
+          name: 'Bloody Roar (USA)',
+          region: ['USA'],
+          languages: ['En'],
+          roms: [
+            {
+              name: 'Bloody Roar (USA) (Track 1).bin',
+              size: 575630832,
+              crc: 'b8f3aadb',
+              status: 'good',
+            },
+          ],
+        },
+      ],
+    };
+
+    const results = await resolveGames(discDat, 'dat1', ['bloody-roar']);
+    expect(results[0]?.roms[0]?.sources).toHaveLength(1);
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain('Bloody%20Roar%20(USA).zip');
   });
 });
 

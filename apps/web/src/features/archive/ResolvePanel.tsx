@@ -94,9 +94,9 @@ export function ResolvePanel({
       r.roms
         .filter((rom) => rom.sources.length > 0)
         .map((rom) => {
-          const extractFromZip = rom.sources[0]!.container === 'zip-view';
+          const extractFromZip = rom.sources[0]!.extractFromZip;
           const urls = rom.sources
-            .filter((s) => (s.container === 'zip-view') === extractFromZip)
+            .filter((s) => s.extractFromZip === extractFromZip)
             .map((s) => s.downloadUrl);
           return {
             gameId: r.gameId,

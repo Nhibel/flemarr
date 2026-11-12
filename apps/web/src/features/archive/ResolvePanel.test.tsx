@@ -23,6 +23,7 @@ const RESOLVED: api.ResolveResponse = {
             {
               identifier: 'ni-roms',
               container: 'zip-view',
+              extractFromZip: true,
               downloadUrl: 'https://archive.org/view_archive.php?archive=x&file=y',
               verified: true,
             },
