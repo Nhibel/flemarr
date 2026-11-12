@@ -105,19 +105,23 @@ export function AddSourceForm({
 
   // Shared by the manual "Ajouter la source" button below and each search
   // result's own "Ajouter" — detect the layout when asked to, then add.
+  //
+  // previewIndex always runs, even when the layout is given explicitly and
+  // its own suggestion goes unused: it's also the only thing that confirms
+  // the identifier actually exists on archive.org. A typo'd or made-up
+  // identifier (archive.org's own metadata endpoint returns 200 with an
+  // empty `{}` for one, not a 404) used to only surface later, as "this
+  // source never finds anything" — indistinguishable from a real source
+  // that legitimately doesn't have the game, with no error anywhere. Now a
+  // bad identifier is rejected right here, for every layout choice.
   const resolveLayoutAndAdd = async (
     targetIdentifier: string,
     targetLayout: LayoutChoice,
     targetNote: string,
   ) => {
-    let resolvedLayout: ArchiveLayout;
-    if (targetLayout === 'auto') {
-      // The index fetch tells us how the collection stores its ROMs
-      const idx = await previewIndex(targetIdentifier);
-      resolvedLayout = idx.suggestedLayout;
-    } else {
-      resolvedLayout = targetLayout;
-    }
+    const idx = await previewIndex(targetIdentifier);
+    const resolvedLayout: ArchiveLayout =
+      targetLayout === 'auto' ? idx.suggestedLayout : targetLayout;
     await addSource(system, {
       identifier: targetIdentifier,
       layout: resolvedLayout,
@@ -134,11 +138,11 @@ export function AddSourceForm({
       onDone();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur';
-      setError(
-        layout === 'auto'
-          ? `${message} — impossible de détecter le layout, choisissez-le manuellement`
-          : message,
-      );
+      // previewIndex failing here means archive.org couldn't be read at
+      // all for this identifier (unreachable or doesn't exist) — true
+      // whether the layout was auto-detected or chosen by hand, so the
+      // message doesn't steer toward "pick it manually" anymore.
+      setError(`${message} — vérifiez que l'identifiant existe bien sur archive.org`);
       setSaving(false);
     }
   };

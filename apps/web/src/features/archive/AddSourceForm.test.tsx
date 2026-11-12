@@ -234,6 +234,30 @@ describe('AddSourceForm — save', () => {
     expect(onDone).toHaveBeenCalled();
   });
 
+  it('still validates the identifier exists even when the layout is chosen manually', async () => {
+    // archive.org's metadata endpoint returns 200 with an empty `{}` for an
+    // identifier that doesn't exist — previewIndex turns that into a
+    // rejection (see metadata.ts). Picking a layout by hand used to skip
+    // previewIndex entirely, so a typo'd/made-up identifier was accepted
+    // here and only ever surfaced later as "this source never finds
+    // anything", indistinguishable from a real but empty source.
+    vi.mocked(api.previewIndex).mockRejectedValue(
+      new Error('Unexpected metadata shape for rr-sony-playstation-b'),
+    );
+    const { onDone } = renderForm();
+
+    await userEvent.click(screen.getByRole('button', { name: /je connais déjà l.identifiant/i }));
+    await userEvent.type(screen.getByPlaceholderText(/identifiant de l/i), 'rr-sony-playstation-b');
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'direct');
+    await userEvent.click(screen.getByRole('button', { name: /ajouter la source/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unexpected metadata shape for rr-sony-playstation-b',
+    );
+    expect(vi.mocked(api.addSource)).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
   it('keeps the form open and explains when the add fails', async () => {
     vi.mocked(api.previewIndex).mockResolvedValue({
       identifier: 'snes-roms',
