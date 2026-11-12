@@ -345,6 +345,76 @@ describe('archive-container fast path — shared container dedup', () => {
     await expect(access(containerArgs.tempPath)).rejects.toThrow();
   });
 
+  it('fans the shared container\'s progress out to every rom waiting on it', async () => {
+    // A per-game archive is itself hundreds of MB — without fanning the one
+    // real download's progress out to every item sharing it, nothing at all
+    // showed in the UI until the whole container finished, which looked
+    // exactly like the download never started.
+    vi.mocked(downloadFile).mockImplementation(async ({ tempPath, onProgress }) => {
+      await mkdir(dirname(tempPath), { recursive: true });
+      await writeFile(tempPath, 'fake container bytes');
+      onProgress?.(50, 100);
+      return 'done';
+    });
+    vi.mocked(extractContainerEntry).mockResolvedValue('done');
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).bin',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).bin' }],
+        },
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).cue',
+          expectedCrc: 'bbbbbbbb',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).cue' }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const job = downloadJobs.get(jobId)!;
+    const binProgress = job.events.find((e) => e.type === 'progress' && e.romName === 'Game (USA).bin');
+    const cueProgress = job.events.find((e) => e.type === 'progress' && e.romName === 'Game (USA).cue');
+    expect(binProgress).toBeDefined();
+    expect(cueProgress).toBeDefined();
+  });
+
+  it('emits file-extracting once the container is fully downloaded, before extraction runs', async () => {
+    vi.mocked(downloadFile).mockImplementation(async ({ tempPath }) => {
+      await mkdir(dirname(tempPath), { recursive: true });
+      await writeFile(tempPath, 'fake container bytes');
+      return 'done';
+    });
+    vi.mocked(extractContainerEntry).mockResolvedValue('done');
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).bin',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).bin' }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const job = downloadJobs.get(jobId)!;
+    const types = job.events.map((e) => e.type);
+    expect(types.indexOf('file-extracting')).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf('file-extracting')).toBeLessThan(types.indexOf('file-done'));
+  });
+
   it('cleans up the shared container on cancelJob too', async () => {
     let resolveContainer: (() => Promise<void>) | undefined;
     vi.mocked(downloadFile).mockImplementation(
@@ -380,5 +450,87 @@ describe('archive-container fast path — shared container dedup', () => {
 
     expect(await cancelJob(jobId)).toBe(true);
     await expect(access(containerPath)).rejects.toThrow();
+  });
+
+  it('cancelling one item takes effect immediately, even while its container is still downloading', async () => {
+    // The real bug report: cancelling a row "en cours" had no visible
+    // effect. getOrFetchContainer deliberately uses the job's signal, not
+    // this item's own (a sibling might still need the container), so
+    // without racing against the item's own signal separately, aborting
+    // just this item's controller did nothing until the (possibly huge,
+    // possibly shared) container finished downloading on its own.
+    vi.mocked(downloadFile).mockImplementation(() => new Promise(() => undefined)); // never resolves
+    vi.mocked(extractContainerEntry).mockResolvedValue('done');
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).bin',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).bin' }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await cancelItem(jobId, 'g1', 'Game (USA).bin')).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+
+    const job = downloadJobs.get(jobId)!;
+    const cancelledEvent = job.events.find((e) => e.type === 'file-cancelled');
+    expect(cancelledEvent).toBeDefined();
+    // The job itself isn't cancelled — only this one item was.
+    expect(job.status).toBe('running');
+  });
+
+  it('aborts the shared container once every item using it has been cancelled, and the job reaches complete', async () => {
+    // The real bug report: cancelling both rows of a 2-item job left the
+    // real container download running to completion in the background
+    // regardless (nothing released its claim on the fetch), which also
+    // blocked the job from ever finishing — the job-level "Annuler" button
+    // stayed up long after both rows had already disappeared.
+    let containerSignal: AbortSignal | undefined;
+    vi.mocked(downloadFile).mockImplementation(
+      ({ signal }) =>
+        new Promise((resolve) => {
+          containerSignal = signal;
+          signal.addEventListener('abort', () => resolve('cancelled'));
+        }),
+    );
+    vi.mocked(extractContainerEntry).mockResolvedValue('done');
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).bin',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).bin' }],
+        },
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).cue',
+          expectedCrc: 'bbbbbbbb',
+          sources: [{ url: SHARED_URL, extractFromZip: false, innerPath: 'Game (USA).cue' }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await cancelItem(jobId, 'g1', 'Game (USA).bin')).toBe(true);
+    expect(await cancelItem(jobId, 'g1', 'Game (USA).cue')).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(containerSignal?.aborted).toBe(true);
+    const job = downloadJobs.get(jobId)!;
+    expect(job.events.at(-1)?.type).toBe('complete');
+    expect(job.status).toBe('done');
   });
 });

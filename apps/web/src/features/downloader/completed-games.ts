@@ -1,4 +1,4 @@
-export type DownloadItemStatus = 'queued' | 'downloading' | 'done' | 'failed';
+export type DownloadItemStatus = 'queued' | 'downloading' | 'extracting' | 'done' | 'failed';
 
 export interface GameScopedItem {
   gameId: string;

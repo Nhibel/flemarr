@@ -9,7 +9,12 @@ import { downloadFile, extractContainerEntry } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
 import { logger } from '@/lib/logger.js';
-import type { DownloadRequest, DownloadEvent, DownloadTarget, DownloadSource } from '@shared/download.js';
+import type {
+  DownloadRequest,
+  DownloadEvent,
+  DownloadTarget,
+  DownloadSource,
+} from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 // Browser-target files are staged here (outside any library root — they
 // never get placed, only served once and then deleted).
@@ -41,10 +46,29 @@ export interface DownloadJobState {
   completedAt?: number;
   // Several roms of the same game can share one archive-container (e.g. a
   // disc's .bin and .cue both live in the same per-game .7z) — dedup'd here
-  // by container URL so it's only fetched once per job. Cleaned up once,
-  // job-scoped (see cleanupContainerCache), not refcounted per item: fine
-  // for "one archive ≈ one small game", the only case this applies to today.
-  containerCache: Map<string, Promise<string>>;
+  // by container URL so it's only fetched once per job.
+  // `listeners` fans the one real download's progress out to every item
+  // waiting on it — a per-game .7z/.zip is itself multiple hundred MB, and
+  // without this nothing at all showed in the UI until the whole thing
+  // finished (looked exactly like the download never started).
+  // `refCount`/`controller`: once every item that needed this container has
+  // settled (done, failed, or cancelled — see getOrFetchContainer's
+  // `release`), the fetch itself is aborted if it's still running. Without
+  // this, cancelling every item sharing a container left the real download
+  // running to completion in the background regardless, which also blocked
+  // the job from ever reaching 'done' (cleanupContainerCache awaits it at
+  // job end) — the job-level "Annuler" button stayed up until a multi-
+  // hundred-MB download finished on its own, long after every row it was
+  // for had already disappeared.
+  containerCache: Map<
+    string,
+    {
+      promise: Promise<string>;
+      listeners: Set<(bytesDownloaded: number, totalBytes: number) => void>;
+      controller: AbortController;
+      refCount: number;
+    }
+  >;
 }
 
 export const downloadJobs = new Map<string, DownloadJobState>();
@@ -53,6 +77,21 @@ const JOB_RETENTION_MS = 30 * 60 * 1000;
 // One progress event per network chunk would grow job.events unbounded on
 // multi-GB files (and get replayed in full to every SSE client) — throttle.
 const PROGRESS_THROTTLE_MS = 250;
+
+// Resolves once the signal aborts — used to race a per-item cancel against
+// the archive-container fast path's own operations below, neither of which
+// otherwise ever check this item's signal mid-flight: getOrFetchContainer
+// deliberately uses the job's signal, not this item's own, since the fetch
+// may still be needed by sibling roms; extractContainerEntry takes no
+// signal at all. Without this, cancelling one item that's waiting on (or
+// extracting from) an archive-container had no effect at all until that
+// operation finished on its own.
+function abortSignal(signal: AbortSignal): Promise<'aborted'> {
+  if (signal.aborted) return Promise.resolve('aborted');
+  return new Promise((resolve) => {
+    signal.addEventListener('abort', () => resolve('aborted'), { once: true });
+  });
+}
 
 function evictOldJobs(): void {
   const cutoff = Date.now() - JOB_RETENTION_MS;
@@ -172,18 +211,43 @@ async function runQueue(
           // Archive-container fast path: fetch the whole container once
           // (shared across every rom of the same game that needs it — see
           // getOrFetchContainer), then extract this rom's own entry locally.
-          const containerPath = await getOrFetchContainer(
+          // Raced against this item's own signal at both steps — see
+          // abortSignal's comment for why neither step checks it on its own.
+          // `release()` (in the finally below) drops this item's claim on
+          // the shared container once it's done with it either way — once
+          // nothing claims it any more, the fetch itself is aborted instead
+          // of running to completion in the background for no one.
+          const { promise: containerPromise, release } = getOrFetchContainer(
             job,
             src.url,
             jobSignal,
             dirname(item.tempPath),
+            onProgress,
           );
-          result = await extractContainerEntry({
-            containerPath,
-            innerPath: src.innerPath,
-            outputPath: item.tempPath,
-            expectedCrc: item.expectedCrc,
-          });
+          try {
+            const containerResult = await Promise.race([containerPromise, abortSignal(signal)]);
+            if (containerResult === 'aborted') {
+              result = 'cancelled';
+            } else {
+              job.events.push({
+                type: 'file-extracting',
+                gameId: item.gameId,
+                romName: item.romName,
+              });
+              const extractResult = await Promise.race([
+                extractContainerEntry({
+                  containerPath: containerResult,
+                  innerPath: src.innerPath,
+                  outputPath: item.tempPath,
+                  expectedCrc: item.expectedCrc,
+                }),
+                abortSignal(signal),
+              ]);
+              result = extractResult === 'aborted' ? 'cancelled' : extractResult;
+            }
+          } finally {
+            release();
+          }
         } else {
           result = await downloadFile({
             url: src.url,
@@ -197,7 +261,10 @@ async function runQueue(
         break;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
-        logger.warn({ romName: item.romName, url: src.url, error: lastError }, 'download source failed');
+        logger.warn(
+          { romName: item.romName, url: src.url, error: lastError },
+          'download source failed',
+        );
         result = 'exhausted';
       }
     }
@@ -300,9 +367,14 @@ async function runQueue(
 
 // A container shared by several roms (see getOrFetchContainer) is job-scoped,
 // not any single item's own tempPath — cleaned up once, here, rather than
-// refcounted per item.
+// refcounted per item. By the time this runs (after every item has settled),
+// any container still fetching has already had its last claim released,
+// which aborts it — so this mostly awaits already-aborted/finished fetches,
+// not a full in-progress download.
 async function cleanupContainerCache(job: DownloadJobState): Promise<void> {
-  const settled = await Promise.allSettled(job.containerCache.values());
+  const settled = await Promise.allSettled(
+    [...job.containerCache.values()].map((entry) => entry.promise),
+  );
   await Promise.all(
     settled
       .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
@@ -314,27 +386,70 @@ async function cleanupContainerCache(job: DownloadJobState): Promise<void> {
 // rom that needs an entry from it (e.g. a disc's .bin and .cue in the same
 // per-game .7z). The check-then-set on containerCache is synchronous — no
 // `await` in between — so concurrent callers for the same URL never race
-// into two fetches. Uses the job's own signal, never a triggering item's
-// per-item one: if item A is individually cancelled while item B still
-// needs the same container, A's cancellation must not kill B's fetch too.
+// into two fetches.
+//
+// A per-game archive can be hundreds of MB — every item waiting on this
+// same fetch registers its own onProgress as a listener, so every one of
+// them (not just whichever item happened to trigger the fetch) sees real
+// progress while the shared container downloads, instead of nothing at all
+// until it's done (which looked exactly like the download never started).
+//
+// Returns a `release()` the caller must call (in a finally) once it's done
+// with the container either way. refCount tracks how many items still
+// claim it; once it hits zero the fetch is aborted if still running —
+// without this, cancelling every item sharing a container left the real
+// download running to completion in the background regardless, which also
+// blocked the job from ever finishing (cleanupContainerCache awaits it at
+// job end): the job-level "Annuler" button stayed up long after every row
+// it was for had already disappeared. The container's own controller still
+// cascades from the job's signal (whole-job cancel keeps working), but
+// cancelling one item must not aim it at siblings still using the same
+// container — only at this item's own claim.
 function getOrFetchContainer(
   job: DownloadJobState,
   containerUrl: string,
   jobSignal: AbortSignal,
   stagingDir: string,
-): Promise<string> {
-  let cached = job.containerCache.get(containerUrl);
-  if (!cached) {
+  onProgress: (bytesDownloaded: number, totalBytes: number) => void,
+): { promise: Promise<string>; release: () => void } {
+  let entry = job.containerCache.get(containerUrl);
+  if (!entry) {
+    const controller = new AbortController();
+    if (jobSignal.aborted) controller.abort();
+    else jobSignal.addEventListener('abort', () => controller.abort(), { once: true });
+
     const containerPath = join(stagingDir, `${randomUUID()}-container`);
-    cached = downloadFile({ url: containerUrl, tempPath: containerPath, signal: jobSignal }).then(
-      (result) => {
-        if (result !== 'done') throw new Error(`container fetch failed: ${result}`);
-        return containerPath;
+    const listeners = new Set([onProgress]);
+    const promise = downloadFile({
+      url: containerUrl,
+      tempPath: containerPath,
+      signal: controller.signal,
+      onProgress: (bytesDownloaded, totalBytes) => {
+        for (const listener of listeners) listener(bytesDownloaded, totalBytes);
       },
-    );
-    job.containerCache.set(containerUrl, cached);
+    }).then((result) => {
+      if (result !== 'done') throw new Error(`container fetch failed: ${result}`);
+      return containerPath;
+    });
+    entry = { promise, listeners, controller, refCount: 0 };
+    job.containerCache.set(containerUrl, entry);
+  } else {
+    entry.listeners.add(onProgress);
   }
-  return cached;
+
+  const activeEntry = entry;
+  activeEntry.refCount++;
+  let released = false;
+  return {
+    promise: activeEntry.promise,
+    release: () => {
+      if (released) return;
+      released = true;
+      activeEntry.listeners.delete(onProgress);
+      activeEntry.refCount--;
+      if (activeEntry.refCount <= 0) activeEntry.controller.abort();
+    },
+  };
 }
 
 /**

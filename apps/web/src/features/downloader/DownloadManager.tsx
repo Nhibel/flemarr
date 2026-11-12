@@ -23,7 +23,7 @@ export interface QueuedDownload {
 interface ItemState {
   gameId: string;
   romName: string;
-  status: 'queued' | 'downloading' | 'done' | 'failed';
+  status: 'queued' | 'downloading' | 'extracting' | 'done' | 'failed';
   // -1 means "unknown total" (archive.org's zip-view extraction streams
   // chunked, with no Content-Length — every restricted zip-collection
   // source hits this, not just an occasional one) — rendered as bytes
@@ -123,6 +123,9 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
             bytesDownloaded: event.bytesDownloaded,
           };
         }
+      } else if (event.type === 'file-extracting') {
+        const idx = findItem(event.gameId, event.romName);
+        if (idx !== -1) items[idx] = { ...items[idx]!, status: 'extracting' };
       } else if (event.type === 'file-done' || event.type === 'file-ready') {
         const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items[idx] = { ...items[idx]!, status: 'done', progress: 100 };
@@ -342,6 +345,7 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
   const icon = {
     queued: '○',
     downloading: '↓',
+    extracting: '⚙',
     done: '✓',
     failed: '✗',
   }[item.status];
@@ -349,6 +353,7 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
   const iconColor = {
     queued: 'fg.faint',
     downloading: 'accent.text',
+    extracting: 'accent.text',
     done: 'status.success.text',
     failed: 'status.danger.text',
   }[item.status];
@@ -368,7 +373,7 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
           display: 'flex',
           alignItems: 'center',
           gap: '2.5',
-          mb: item.status === 'downloading' ? '1.5' : '0',
+          mb: item.status === 'downloading' || item.status === 'extracting' ? '1.5' : '0',
         })}
       >
         <span
@@ -388,6 +393,11 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
         {item.status === 'downloading' && (
           <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
             {item.progress >= 0 ? `${item.progress}%` : `${formatSize(item.bytesDownloaded)}…`}
+          </span>
+        )}
+        {item.status === 'extracting' && (
+          <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
+            Décompression…
           </span>
         )}
         {item.status === 'failed' && item.failReason && (
@@ -416,7 +426,7 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
           </button>
         )}
       </div>
-      {item.status === 'downloading' && (
+      {(item.status === 'downloading' || item.status === 'extracting') && (
         <div
           className={css({
             ml: '6.5',
@@ -426,7 +436,7 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
             overflow: 'hidden',
           })}
         >
-          {item.progress >= 0 ? (
+          {item.status === 'downloading' && item.progress >= 0 ? (
             <div
               className={css({
                 h: 'full',

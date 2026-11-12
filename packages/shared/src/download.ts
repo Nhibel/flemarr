@@ -56,6 +56,15 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
     bytesDownloaded: z.number(),
     totalBytes: z.number(),
   }),
+  // The archive-container fast path's whole container finished downloading
+  // (100%) and is now being decompressed locally to pull out this rom's own
+  // entry — a real, sometimes multi-second step for a large per-game
+  // archive, distinct from "downloading" (no percentage to report here).
+  z.object({
+    type: z.literal('file-extracting'),
+    gameId: z.string(),
+    romName: z.string(),
+  }),
   z.object({
     type: z.literal('file-done'),
     gameId: z.string(),
