@@ -67,6 +67,23 @@ export default defineConfig({
             boxShadow: '0 0 18px #FDF500, 0 0 44px rgba(253, 245, 0, 0.6)',
           },
         },
+        // Every theme: a sliding stripe for download progress when the
+        // total size is unknown (archive.org's zip-view extraction streams
+        // chunked, with no Content-Length) — a static bar frozen at 0%
+        // read as stuck even while bytes were actually flowing.
+        //
+        // translateX() is a fraction of the bar's OWN width, not the
+        // track's, so reaching the track's actual edges — not stopping
+        // short of them — depends on the bar's width (25%, set where this
+        // is used): -100% puts its right edge exactly at the track's left
+        // edge (fully hidden, about to enter); 500% puts its left edge at
+        // 125% of the track (fully hidden past the right edge). Both ends
+        // sit off-track, so the infinite loop's snap back to 0% happens
+        // while the bar is invisible — no visible jump.
+        'indeterminate-slide': {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(500%)' },
+        },
       },
       semanticTokens: {
         colors: {

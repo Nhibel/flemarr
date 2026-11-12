@@ -19,8 +19,21 @@ interface ItemState {
   gameId: string;
   romName: string;
   status: 'queued' | 'downloading' | 'done' | 'failed';
-  progress: number; // 0-100
+  // -1 means "unknown total" (archive.org's zip-view extraction streams
+  // chunked, with no Content-Length — every restricted zip-collection
+  // source hits this, not just an occasional one) — rendered as bytes
+  // downloaded and an indeterminate bar instead of a percentage that would
+  // otherwise read as permanently stuck at 0.
+  progress: number; // 0-100, or -1
+  bytesDownloaded: number;
   failReason?: string;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(0)} KB`;
+  return `${bytes} B`;
 }
 
 interface JobState {
@@ -68,6 +81,7 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
           ...i,
           status: 'queued',
           progress: 0,
+          bytesDownloaded: 0,
         })),
       });
       return next;
@@ -100,7 +114,8 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
             progress:
               event.totalBytes > 0
                 ? Math.round((event.bytesDownloaded / event.totalBytes) * 100)
-                : 0,
+                : -1,
+            bytesDownloaded: event.bytesDownloaded,
           };
         }
       } else if (event.type === 'file-done' || event.type === 'file-ready') {
@@ -348,7 +363,7 @@ function DownloadRow({ item }: { item: ItemState }) {
         </span>
         {item.status === 'downloading' && (
           <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
-            {item.progress}%
+            {item.progress >= 0 ? `${item.progress}%` : `${formatSize(item.bytesDownloaded)}…`}
           </span>
         )}
         {item.status === 'failed' && item.failReason && (
@@ -367,15 +382,34 @@ function DownloadRow({ item }: { item: ItemState }) {
             overflow: 'hidden',
           })}
         >
-          <div
-            className={css({
-              h: 'full',
-              bg: 'accent.solid',
-              borderRadius: 'full',
-              transition: 'width 0.2s',
-            })}
-            style={{ width: `${item.progress}%` }}
-          />
+          {item.progress >= 0 ? (
+            <div
+              className={css({
+                h: 'full',
+                bg: 'accent.solid',
+                borderRadius: 'full',
+                transition: 'width 0.2s',
+              })}
+              style={{ width: `${item.progress}%` }}
+            />
+          ) : (
+            <div
+              className={css({
+                h: 'full',
+                // Width is load-bearing, not just styling — the
+                // indeterminate-slide keyframe's translateX values are
+                // percentages of THIS element's own width, tuned for 25% so
+                // the sweep's ends land exactly off-track (see the keyframe
+                // comment in panda.config.ts). Changing this without
+                // retuning the keyframe brings back the "stops short, then
+                // jumps back" look this was fixing.
+                w: '25%',
+                bg: 'accent.solid',
+                borderRadius: 'full',
+                animation: 'indeterminate-slide 1.2s linear infinite',
+              })}
+            />
+          )}
         </div>
       )}
     </div>
