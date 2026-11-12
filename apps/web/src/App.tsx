@@ -300,6 +300,9 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   const tabs: Tab[] = showScanner
     ? ['games', 'scanner', 'sources', 'downloads']
     : ['games', 'sources', 'downloads'];
+  // Tabs always start with 'games' — this is specifically the Games tab's
+  // own "next" shortcut, not a generic next-tab-in-general affordance.
+  const nextTab = tabs[tabs.indexOf('games') + 1];
 
   const {
     filtered: baseFiltered,
@@ -336,11 +339,42 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         mt: { base: '6', md: '8' },
         px: { base: '4', md: '6', lg: '10' },
         pb: '12',
+        // A real `height`, not `minHeight` — flex-grow only has space to
+        // distribute when its container's own size is definite. With only
+        // a minimum, this element simply grows to fit its content (its own
+        // flex:1 child included), which defeats the point: the Games tab's
+        // listbox would render at its full, unclipped content height
+        // instead of being squeezed into the viewport. `overflowY: auto`
+        // here (not on <html>/<body>) means the *other* tabs — plain block
+        // children, not flex:1 — still scroll normally once their own
+        // content exceeds 100dvh, same as before this change.
+        height: '100dvh',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
       })}
     >
       {/* Header */}
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '4', mb: '4' })}>
-        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
+      <div
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4',
+          mb: '4',
+          flexShrink: '0',
+        })}
+      >
+        <h1
+          title={dat.system}
+          className={css({
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            color: 'fg.heading',
+            flex: 1,
+            minWidth: '0',
+            truncate: true,
+          })}
+        >
           {dat.system}
         </h1>
         <span className={css({ fontSize: 'sm', color: 'fg.faint' })}>
@@ -364,7 +398,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
 
       {/* The system's library folder — only relevant to the scanner and to
           server-target downloads, both absent in "browser" mode */}
-      {showScanner && <SystemFolderBar system={dat.system} />}
+      {showScanner && (
+        <div className={css({ flexShrink: '0' })}>
+          <SystemFolderBar system={dat.system} />
+        </div>
+      )}
 
       {/* Tabs */}
       <div
@@ -376,6 +414,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           borderBottom: '1px solid',
           borderColor: 'bd.default',
           flexWrap: 'wrap',
+          flexShrink: '0',
         })}
       >
         {tabs.map((t) => (
@@ -403,8 +442,19 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         ))}
       </div>
 
-      {/* Games tab — kept mounted to preserve filter/selection state */}
-      <div className={css({ display: tab === 'games' ? 'block' : 'none' })}>
+      {/* Games tab — kept mounted to preserve filter/selection state. Flex
+          column, not a plain block: GameList's own listbox is the one
+          flexible child (flex: 1 inside it) that soaks up whatever
+          vertical space the rest of this tab doesn't need, on any screen
+          height — see the comment on that listbox in GameList.tsx. */}
+      <div
+        className={css({
+          display: tab === 'games' ? 'flex' : 'none',
+          flexDirection: 'column',
+          flex: '1',
+          minHeight: '0',
+        })}
+      >
         {isLoading && (
           <p className={css({ color: 'fg.faint', fontSize: 'sm' })}>Chargement des jeux…</p>
         )}
@@ -415,37 +465,50 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         )}
         {!isLoading && !error && (
           <>
-            <GameFilters
-              filterState={filterState}
-              totalCount={games.length}
-              filteredCount={filtered.length}
-              selectedOnly={selectedOnly}
-              selectedCount={selected.size}
-              onToggleSelectedOnly={() => setSelectedOnly((v) => !v)}
-              onSearch={setSearch}
-              onToggleRegion={toggleRegion}
-              onToggleCategory={toggleCategory}
-              onSetSortBy={setSortBy}
-              onToggleSortDir={toggleSortDir}
-              onSelectAll={selectAll}
-              onClearAll={clearAll}
-              isAllSelected={isAllSelected}
-            />
+            <div className={css({ flexShrink: '0' })}>
+              <GameFilters
+                filterState={filterState}
+                totalCount={games.length}
+                filteredCount={filtered.length}
+                selectedOnly={selectedOnly}
+                selectedCount={selected.size}
+                onToggleSelectedOnly={() => setSelectedOnly((v) => !v)}
+                onSearch={setSearch}
+                onToggleRegion={toggleRegion}
+                onToggleCategory={toggleCategory}
+                onSetSortBy={setSortBy}
+                onToggleSortDir={toggleSortDir}
+                onSelectAll={selectAll}
+                onClearAll={clearAll}
+                isAllSelected={isAllSelected}
+              />
+            </div>
             <GameList datId={dat.id} games={filtered} selected={selected} onToggle={toggle} />
             {/* Reserved space, not sticky — a fixed slot below the table so
                 the summary's two states (plain text vs. the bordered chip)
                 don't shift the layout when the selection count changes.
                 Height scales with viewport so it doesn't look oversized on
-                a small window or cramped on a large one. */}
+                a small window or cramped on a large one. The next-tab
+                button lives in the same row instead of adding one of its
+                own — every row here is vertical space taken from the list. */}
             <div
               className={css({
+                flexShrink: '0',
                 mt: '3',
                 minH: { base: '10', md: '12', lg: '14' },
                 display: 'flex',
                 alignItems: 'center',
+                gap: '3',
               })}
             >
-              <SelectionSummary games={games} selected={selected} />
+              <div className={css({ flex: '1', minWidth: '0' })}>
+                <SelectionSummary games={games} selected={selected} />
+              </div>
+              {nextTab && (
+                <Button variant="secondary" size="sm" onClick={() => setTab(nextTab)}>
+                  {TAB_LABELS[nextTab]} ›
+                </Button>
+              )}
             </div>
           </>
         )}

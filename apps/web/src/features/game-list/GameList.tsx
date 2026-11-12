@@ -117,6 +117,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           justifyContent: 'flex-end',
           gap: '1',
           mb: '2',
+          flexShrink: '0',
         })}
       >
         {DISPLAY_MODES.map((m) => (
@@ -152,19 +153,18 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           if (resolvedFocus < 0 && pageItems.length > 0) setFocusedIndex(0);
         }}
         className={css({
-          // Viewport-relative, not a flat pixel count: a fixed height stopped
-          // fitting once the base font size grew, forcing both an inner
-          // scrollbar on the list AND an outer one on the page. rem units in
-          // the subtracted term track everything else that shares the
-          // viewport with the list — the header/tabs/filters block above
-          // *and* the pagination footer plus the reserved selection-summary
-          // slot below — measured directly (Playwright, 22px root, 900px
-          // viewport: ~548px/~25rem above, ~168px/~7.6rem below), rounded up
-          // for safety margin, so the page itself never needs to scroll to
-          // reach pagination or the summary. Reduce this if more chrome gets
-          // added above/below the list; the floor keeps the list itself
-          // usable even if the budget runs out on a very short viewport.
-          maxHeight: 'max(180px, calc(100vh - 36rem))',
+          // Flex child, not a viewport-relative calc — an earlier version
+          // subtracted a fixed rem budget from 100vh for "everything else
+          // on screen", but that budget was tuned against one specific
+          // window (1400×900) and either overflowed (more chrome added
+          // above/below) or hit its floor and showed as few as 3 rows on a
+          // short screen (Steam Deck's ~800px). The parent tab panel
+          // (App.tsx) is a flex column with every sibling here pinned to
+          // its natural size (flexShrink: 0) — this is the only flexible
+          // one, so it gets exactly whatever's left, on any screen, with
+          // nothing to retune when a sibling's height changes.
+          flex: '1',
+          minHeight: '0',
           overflowY: 'auto',
           bg: 'bg.surface',
           border: '1px solid',
@@ -206,6 +206,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
             mt: '2',
             fontSize: 'sm',
             color: 'fg.muted',
+            flexShrink: '0',
           })}
         >
           <button
