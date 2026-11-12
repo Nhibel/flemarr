@@ -1,15 +1,29 @@
 import { z } from 'zod';
 
+// One ordered candidate for fetching a rom. Different candidates can need
+// different extraction instructions (e.g. a fast whole-container fetch
+// first, falling back to the slower already-working zip-view resolution),
+// which a flat downloadUrls[] + single extractFromZip couldn't express.
+const downloadSourceSchema = z.object({
+  url: z.string().url(),
+  // The fetched bytes are a ZIP wrapping the ROM (restricted re-zipped
+  // collections) — the downloader extracts the single entry before validating.
+  extractFromZip: z.boolean().default(false),
+  // Present only when this candidate is a whole archive container
+  // (.zip/.7z/.rar) that must be downloaded in full and extracted locally —
+  // see ResolvedSource's archive-container kind in archive.ts.
+  innerPath: z.string().optional(),
+  archiveFormat: z.enum(['zip', '7z', 'rar']).optional(),
+});
+export type DownloadSource = z.infer<typeof downloadSourceSchema>;
+
 const downloadItemSchema = z.object({
   gameId: z.string().min(1),
   romName: z.string().min(1),
   expectedCrc: z.string().length(8),
-  // Ordered candidates — the downloader falls back to the next URL on
+  // Ordered candidates — the downloader falls back to the next one on
   // HTTP/network failure (never on CRC mismatch: bad source, user decides).
-  downloadUrls: z.array(z.string().url()).min(1),
-  // The fetched bytes are a ZIP wrapping the ROM (restricted re-zipped
-  // collections) — the downloader extracts the single entry before validating.
-  extractFromZip: z.boolean().default(false),
+  sources: z.array(downloadSourceSchema).min(1),
 });
 export const downloadRequestSchema = z
   .object({
@@ -59,6 +73,15 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
     gameId: z.string(),
     romName: z.string(),
     reason: z.string(),
+  }),
+  // Deliberately cancelled (one item, or every unfinished item when the
+  // whole job is cancelled) — distinct from file-failed: a cancelled item
+  // isn't a bad source, so the UI drops it from the list instead of
+  // showing it as an error to investigate.
+  z.object({
+    type: z.literal('file-cancelled'),
+    gameId: z.string(),
+    romName: z.string(),
   }),
   z.object({ type: z.literal('cancelled') }),
   z.object({ type: z.literal('complete') }),

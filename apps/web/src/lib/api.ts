@@ -189,6 +189,17 @@ export async function cancelDownload(jobId: string): Promise<void> {
   await fetch(`/api/downloads/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
 }
 
+export async function cancelDownloadItem(
+  jobId: string,
+  gameId: string,
+  romName: string,
+): Promise<void> {
+  await fetch(
+    `/api/downloads/${encodeURIComponent(jobId)}/items/${encodeURIComponent(gameId)}/${encodeURIComponent(romName)}/cancel`,
+    { method: 'POST' },
+  );
+}
+
 // Re-export schema for use in components
 export { downloadEventSchema };
 

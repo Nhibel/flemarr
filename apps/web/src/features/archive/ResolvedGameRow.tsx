@@ -1,7 +1,15 @@
 import { css } from '@/styled-system/css';
 import type { ResolveResponse } from '@/lib/api.js';
 
-export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][number] }) {
+interface Props {
+  game: ResolveResponse['results'][number];
+  // Keyed by `${gameId}/${romName}` — absent means "use the first source",
+  // same default as before this picker existed.
+  selectedSourceIndex: Map<string, number>;
+  onSelectSource: (gameId: string, romName: string, index: number) => void;
+}
+
+export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: Props) {
   const foundCount = game.roms.filter((rom) => rom.sources.length > 0).length;
   const allFound = game.roms.length > 0 && foundCount === game.roms.length;
   const noneFound = foundCount === 0;
@@ -47,28 +55,69 @@ export function ResolvedGameRow({ game }: { game: ResolveResponse['results'][num
           ) : (
             <div className={css({ display: 'flex', flexDirection: 'column', gap: '1', mt: '1' })}>
               {game.roms.map((rom) => {
-                const source = rom.sources[0];
+                const key = `${game.gameId}/${rom.romName}`;
+                const chosenIndex = selectedSourceIndex.get(key) ?? 0;
+                const source = rom.sources[chosenIndex] ?? rom.sources[0];
                 return (
-                  <p
-                    key={rom.romName}
-                    className={css({
-                      fontSize: 'xs',
-                      color:
-                        source == null
-                          ? 'fg.faint'
-                          : source.verified
-                            ? 'fg.subtle'
-                            : 'status.warning.text',
-                      fontFamily: 'mono',
-                      truncate: true,
-                    })}
-                  >
-                    {source == null
-                      ? `— ${rom.romName} — introuvable`
-                      : source.verified
-                        ? `✓ ${rom.romName} — [${source.container}] ${source.identifier}`
-                        : `⚠ ${rom.romName} — [${source.container}] ${source.identifier} (nom seul, CRC non confirmé)`}
-                  </p>
+                  <div key={rom.romName}>
+                    <p
+                      className={css({
+                        fontSize: 'xs',
+                        color:
+                          source == null
+                            ? 'fg.faint'
+                            : source.verified
+                              ? 'fg.subtle'
+                              : 'status.warning.text',
+                        fontFamily: 'mono',
+                        truncate: true,
+                      })}
+                    >
+                      {source == null
+                        ? `— ${rom.romName} — introuvable`
+                        : source.verified
+                          ? `✓ ${rom.romName} — [${source.container}] ${source.identifier}`
+                          : `⚠ ${rom.romName} — [${source.container}] ${source.identifier} (nom seul, CRC non confirmé)`}
+                    </p>
+                    {/* Only shown when there's an actual choice to make — a
+                        single-source rom looks exactly like it did before
+                        this picker existed. */}
+                    {rom.sources.length > 1 && (
+                      <div
+                        className={css({
+                          display: 'flex',
+                          gap: '1',
+                          flexWrap: 'wrap',
+                          mt: '0.5',
+                          ml: '3',
+                        })}
+                      >
+                        {rom.sources.map((s, i) => (
+                          <button
+                            key={s.identifier}
+                            type="button"
+                            onClick={() => onSelectSource(game.gameId, rom.romName, i)}
+                            title={`${s.container}${s.verified ? ' · CRC confirmé' : ' · nom seul'}`}
+                            className={css({
+                              px: '1.5',
+                              py: '0.5',
+                              fontSize: 'xs',
+                              fontFamily: 'mono',
+                              borderRadius: 'md',
+                              border: '1px solid',
+                              cursor: 'pointer',
+                              borderColor: i === chosenIndex ? 'accent.solid' : 'bd.strong',
+                              bg: i === chosenIndex ? 'accent.subtle' : 'bg.surface',
+                              color: i === chosenIndex ? 'accent.text' : 'fg.muted',
+                              _hover: { borderColor: 'accent.hover' },
+                            })}
+                          >
+                            {s.identifier}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

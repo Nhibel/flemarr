@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/api.js';
 import type { ResolveResponse } from '@/lib/api.js';
+import type { DownloadSource } from '@shared/download.js';
+import type { ResolvedSource } from '@shared/archive.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { Button } from '@/components/Button.js';
@@ -34,6 +36,11 @@ export function ResolvePanel({
   const [error, setError] = useState<string | null>(null);
   const [excludeOwned, setExcludeOwned] = useState(true);
   const [queuing, setQueuing] = useState(false);
+  // Keyed by `${gameId}/${romName}` — which of a rom's matching sources to
+  // actually download from, when more than one configured source has it.
+  // Absent means "use the first" (today's behavior, unchanged when there's
+  // only one match anyway).
+  const [selectedSourceIndex, setSelectedSourceIndex] = useState<Map<string, number>>(new Map());
 
   const { data: sourcesData } = useQuery({
     queryKey: ['archive-sources', system],
@@ -78,6 +85,9 @@ export function ResolvePanel({
     try {
       const res = await resolveGames(datId, effectiveGameIds);
       setResolved({ result: res, sourceKey });
+      // A fresh resolve invalidates any earlier per-rom source choice — the
+      // set of matching sources (and their order) may have changed.
+      setSelectedSourceIndex(new Map());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
@@ -85,29 +95,57 @@ export function ResolvePanel({
     }
   }, [datId, effectiveGameIds, sourceKey]);
 
+  // A ResolvedSource flattens straight into one ordered candidate — see
+  // downloadSourceSchema. innerPath/archiveFormat are only ever set on the
+  // archive-container kind; omitted otherwise.
+  const toDownloadSource = (s: {
+    downloadUrl: string;
+    extractFromZip: boolean;
+    innerPath?: string;
+    archiveFormat?: 'zip' | '7z' | 'rar';
+  }): DownloadSource => ({
+    url: s.downloadUrl,
+    extractFromZip: s.extractFromZip,
+    innerPath: s.innerPath,
+    archiveFormat: s.archiveFormat,
+  });
+
   // One download item per resolved ROM — multi-disc games queue every disc.
-  // The preferred (first) source decides the extraction mode; fallback URLs
-  // are limited to sources of the same kind so extraction stays consistent.
+  // The preferred source (the user's pick, via the per-rom picker below, or
+  // the first match by default) is tried first, then its own fallback (the
+  // archive-container fast path's slower-but-already-working alternative,
+  // if it has one), then other configured sources of the same container
+  // kind as further network-failure fallbacks.
   const buildItems = useCallback(() => {
     if (!result) return [];
     return result.results.flatMap((r) =>
       r.roms
         .filter((rom) => rom.sources.length > 0)
         .map((rom) => {
-          const extractFromZip = rom.sources[0]!.extractFromZip;
-          const urls = rom.sources
-            .filter((s) => s.extractFromZip === extractFromZip)
-            .map((s) => s.downloadUrl);
+          const chosenIndex = selectedSourceIndex.get(`${r.gameId}/${rom.romName}`) ?? 0;
+          const chosen: ResolvedSource = rom.sources[chosenIndex] ?? rom.sources[0]!;
+
+          const sources: DownloadSource[] = [toDownloadSource(chosen)];
+          if (chosen.fallback) {
+            sources.push({
+              url: chosen.fallback.downloadUrl,
+              extractFromZip: chosen.fallback.extractFromZip,
+            });
+          }
+          for (const s of rom.sources) {
+            if (s === chosen || s.container !== chosen.container) continue;
+            sources.push(toDownloadSource(s));
+          }
+
           return {
             gameId: r.gameId,
             romName: rom.romName,
             expectedCrc: rom.expectedCrc,
-            downloadUrls: urls,
-            extractFromZip,
+            sources,
           };
         }),
     );
-  }, [result]);
+  }, [result, selectedSourceIndex]);
 
   const handleDownload = useCallback(async () => {
     if (stale) return;
@@ -277,7 +315,18 @@ export function ResolvePanel({
 
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
             {result.results.map((r) => (
-              <ResolvedGameRow key={r.gameId} game={r} />
+              <ResolvedGameRow
+                key={r.gameId}
+                game={r}
+                selectedSourceIndex={selectedSourceIndex}
+                onSelectSource={(gameId, romName, index) =>
+                  setSelectedSourceIndex((prev) => {
+                    const next = new Map(prev);
+                    next.set(`${gameId}/${romName}`, index);
+                    return next;
+                  })
+                }
+              />
             ))}
           </div>
         </div>

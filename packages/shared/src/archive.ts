@@ -97,20 +97,45 @@ const resolvedSourceSchema = z.object({
   // direct: raw file. zip-entry: archive.org extracts a file from a ZIP on the
   // fly (raw ROM). zip-view: datanode view_archive extract — restricted/darked
   // collections only (archive.org/download/* 403s anonymously for these).
-  container: z.enum(['direct', 'zip-entry', 'zip-view']),
+  // archive-container: a restricted per-game archive (.zip/.7z/.rar), fetched
+  // whole via the plain (fast, works even restricted once authenticated)
+  // download URL and extracted locally — see innerPath/archiveFormat/fallback
+  // below and docs/archive-org-strategy.md's "Pattern E".
+  container: z.enum(['direct', 'zip-entry', 'zip-view', 'archive-container']),
   // Whether the downloader must unzip the fetched bytes before CRC
-  // validation. direct/zip-entry: never — both already serve the raw ROM.
-  // zip-view: depends on the *collection's own* layout, not just the
-  // container kind — ni-roms/proper1g1r-collection re-zip each ROM one more
-  // time inside their per-system ZIP ("Game.md" stored as "Game.zip" inside
-  // "<system>.zip"), so the view_archive extract is itself a small ZIP to
-  // open. Redump's per-game-zip collections (sony_playstation_part1-5) store
-  // the real .bin/.cue files directly inside the per-game ZIP, so their
-  // view_archive extract IS the raw ROM already — unzipping it would fail
-  // (it isn't ZIP-formatted data at all). The resolver decides this per
-  // source by checking the inner entry name it actually matched, not by
-  // assuming every zip-view hit is re-zipped.
+  // validation. direct/zip-entry/archive-container: never — direct/zip-entry
+  // already serve the raw ROM, and archive-container's own extraction step
+  // handles this instead (see innerPath). zip-view: depends on the
+  // *collection's own* layout, not just the container kind —
+  // ni-roms/proper1g1r-collection re-zip each ROM one more time inside their
+  // per-system ZIP ("Game.md" stored as "Game.zip" inside "<system>.zip"), so
+  // the view_archive extract is itself a small ZIP to open. Redump's
+  // per-game-zip collections (sony_playstation_part1-5) store the real
+  // .bin/.cue files directly inside the per-game ZIP, so their view_archive
+  // extract IS the raw ROM already — unzipping it would fail (it isn't
+  // ZIP-formatted data at all). The resolver decides this per source by
+  // checking the inner entry name it actually matched, not by assuming every
+  // zip-view hit is re-zipped.
   extractFromZip: z.boolean(),
+  // archive-container only: the exact entry to extract from the whole
+  // container once it's downloaded, and the container's own format (its
+  // own extension never changes based on the DAT, unlike the ROM's name).
+  innerPath: z.string().optional(),
+  archiveFormat: z.enum(['zip', '7z', 'rar']).optional(),
+  // archive-container only: the slower-but-already-working zip-view
+  // resolution for the same rom/source, used by the downloader if the fast
+  // whole-container fetch or local extraction fails for any reason (network
+  // error, corrupt archive, unsupported sub-format). Nested rather than a
+  // second ResolvedSource in the same `sources` array — the UI's source
+  // picker (ResolvedGameRow.tsx) keys and labels buttons by `identifier`,
+  // and two entries from the same source would collide.
+  fallback: z
+    .object({
+      downloadUrl: z.string(),
+      container: z.enum(['direct', 'zip-entry', 'zip-view', 'archive-container']),
+      extractFromZip: z.boolean(),
+    })
+    .optional(),
   // True only when archive.org's own metadata reported a CRC32 equal to the
   // DAT's expected one — a real guarantee. False means the match is by
   // filename (or ZIP-entry name) alone: plausible, but unconfirmed until the

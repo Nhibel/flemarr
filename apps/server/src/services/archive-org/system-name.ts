@@ -1,3 +1,5 @@
+import type { ArchiveFile } from '@shared/archive.js';
+
 /**
  * "Nintendo - Super Nintendo Entertainment System (Retool)"
  * → "Super Nintendo Entertainment System": drop the vendor prefix and any
@@ -71,9 +73,54 @@ export function isReencodedDump(name: string): boolean {
   return dot > 0 && REENCODED_EXTENSIONS.has(base.slice(dot));
 }
 
+/**
+ * Archive formats a per-game collection re-packs a ROM into — "Game.sfc"
+ * stored as "Game.zip" or "Game.7z". Unlike a re-encode, these preserve the
+ * original bytes exactly, so view_archive's extract (or archive.org's own
+ * Pattern B magic URL) hands back the raw ROM, byte for byte. The real bug
+ * this covers: Redump's rr-sony-playstation-* items store "Game.7z" the
+ * same way others store "Game.zip" — missing .7z here mis-detects the whole
+ * collection as `direct` layout (detectLayout only ever counted .zip), which
+ * then let `findMatch`'s name fallback match the compressed .7z file itself
+ * as if it *were* the raw .bin — downloaded fine (no extraction, so fast),
+ * and guaranteed to fail CRC (a .7z's bytes are never the ROM's bytes).
+ */
+const ARCHIVE_CONTAINER_EXTENSIONS = new Set(['.zip', '.7z', '.rar']);
+
+function isArchiveContainerName(name: string): boolean {
+  const base = baseName(name).toLowerCase();
+  const dot = base.lastIndexOf('.');
+  return dot > 0 && ARCHIVE_CONTAINER_EXTENSIONS.has(base.slice(dot));
+}
+
+/** Is this file an archive container (.zip, .7z, .rar) by name or reported format? */
+export function isArchiveContainer(file: Pick<ArchiveFile, 'name' | 'format'>): boolean {
+  const format = file.format?.toUpperCase();
+  return format === 'ZIP' || format === '7Z' || format === 'RAR' || isArchiveContainerName(file.name);
+}
+
+/** The container's own extraction format, from its filename — undefined if it isn't one. */
+export function containerFormat(name: string): 'zip' | '7z' | 'rar' | undefined {
+  const base = baseName(name).toLowerCase();
+  const dot = base.lastIndexOf('.');
+  if (dot <= 0) return undefined;
+  const ext = base.slice(dot);
+  if (ext === '.zip') return 'zip';
+  if (ext === '.7z') return '7z';
+  if (ext === '.rar') return 'rar';
+  return undefined;
+}
+
 export function stripExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(0, dot) : name;
+}
+
+/** The (lowercased, dot-included) extension of a bare filename, or '' if none. */
+export function extensionOf(name: string): string {
+  const base = baseName(name);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot).toLowerCase() : '';
 }
 
 // Multi-word variants match as substrings; single-word variants must match a

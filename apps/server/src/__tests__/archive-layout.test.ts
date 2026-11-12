@@ -39,6 +39,28 @@ describe('detectLayout', () => {
     expect(detectLayout(files)).toBe('zip-collection');
   });
 
+  it('detects zip-collection from one-7z-per-game uploads (Redump rr-sony-* style)', () => {
+    // The real bug: a collection like rr-sony-playstation-u stores every
+    // game as "Game.7z", never ".zip" — this used to mis-detect as
+    // `direct`, which then let findMatch's name fallback treat the
+    // compressed .7z as if it were the raw ROM inside it.
+    const files = [
+      file('Bloody Roar (USA).7z', '7z'),
+      file('Bloody Roar II (USA).7z', '7z'),
+      file('collection_meta.xml'),
+    ];
+    expect(detectLayout(files)).toBe('zip-collection');
+  });
+
+  it('detects zip-collection from one-rar-per-game uploads', () => {
+    const files = [
+      file('Bloody Roar (USA).rar', 'rar'),
+      file('Bloody Roar II (USA).rar', 'rar'),
+      file('collection_meta.xml'),
+    ];
+    expect(detectLayout(files)).toBe('zip-collection');
+  });
+
   it('detects direct when zips are a minority (e.g. bonus archives)', () => {
     const files = [
       file('Game A.sfc'),

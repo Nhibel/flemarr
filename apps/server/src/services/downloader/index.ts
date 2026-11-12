@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { rename, rm } from 'node:fs/promises';
-import { join, basename } from 'node:path';
+import { join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { libraryRoots } from '@/lib/library-root.js';
-import { downloadFile } from './worker.js';
+import { downloadFile, extractContainerEntry } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
 import { logger } from '@/lib/logger.js';
-import type { DownloadRequest, DownloadEvent, DownloadTarget } from '@shared/download.js';
+import type { DownloadRequest, DownloadEvent, DownloadTarget, DownloadSource } from '@shared/download.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 // Browser-target files are staged here (outside any library root — they
 // never get placed, only served once and then deleted).
@@ -19,10 +19,17 @@ interface DownloadItemState {
   gameId: string;
   romName: string;
   expectedCrc: string;
-  downloadUrls: string[];
-  extractFromZip: boolean;
-  status: 'queued' | 'downloading' | 'done' | 'failed';
+  // Ordered candidates — see downloadSourceSchema. A candidate with
+  // innerPath set is an archive-container fast path (fetch the whole
+  // container via getOrFetchContainer, then extractContainerEntry); others
+  // go straight through downloadFile as before.
+  sources: DownloadSource[];
+  status: 'queued' | 'downloading' | 'done' | 'failed' | 'cancelled';
   tempPath: string;
+  // Own controller, separate from the job's — lets one item be cancelled
+  // without aborting its siblings. Combined with the job's own signal (see
+  // processItem) so the existing "cancel everything" action still works.
+  controller: AbortController;
 }
 
 export interface DownloadJobState {
@@ -32,6 +39,12 @@ export interface DownloadJobState {
   events: DownloadEvent[];
   controller: AbortController;
   completedAt?: number;
+  // Several roms of the same game can share one archive-container (e.g. a
+  // disc's .bin and .cue both live in the same per-game .7z) — dedup'd here
+  // by container URL so it's only fetched once per job. Cleaned up once,
+  // job-scoped (see cleanupContainerCache), not refcounted per item: fine
+  // for "one archive ≈ one small game", the only case this applies to today.
+  containerCache: Map<string, Promise<string>>;
 }
 
 export const downloadJobs = new Map<string, DownloadJobState>();
@@ -77,6 +90,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
     ...item,
     status: 'queued',
     tempPath: join(stagingDir, `${jobId}-${basename(item.romName)}`),
+    controller: new AbortController(),
   }));
 
   const events: DownloadEvent[] = [];
@@ -86,6 +100,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
     items: jobItems,
     events,
     controller,
+    containerCache: new Map(),
   };
   downloadJobs.set(jobId, job);
 
@@ -104,12 +119,24 @@ async function runQueue(
   if (!job) return;
 
   const concurrency = getSettings().downloaderConcurrency;
-  const { signal } = job.controller;
+  const jobSignal = job.controller.signal;
   const queue = [...job.items];
   const inFlight = new Set<Promise<void>>();
 
   const processItem = async (item: DownloadItemState): Promise<void> => {
-    if (signal.aborted) return;
+    // Aborts if EITHER this item's own controller fires (cancelItem) or the
+    // job's shared one does (cancelJob, "cancel everything") — one signal
+    // for both cancellation paths, so the rest of this function doesn't
+    // need to know which one happened.
+    const signal = AbortSignal.any([jobSignal, item.controller.signal]);
+    if (signal.aborted) {
+      // Covers both "still queued, never started" and "was downloading,
+      // now aborted" — either way, nothing ran, so there's nothing to clean
+      // up beyond the event that tells the UI to drop this row.
+      item.status = 'cancelled';
+      job.events.push({ type: 'file-cancelled', gameId: item.gameId, romName: item.romName });
+      return;
+    }
 
     item.status = 'downloading';
     let lastProgressAt = 0;
@@ -128,30 +155,49 @@ async function runQueue(
       });
     };
 
-    // Try candidate URLs in order. HTTP/network failures fall through to the
-    // next source; done, cancelled and crc-mismatch are final (a CRC mismatch
-    // means a bad source, not a glitch — per docs/archive-org-strategy.md).
+    // Try candidate sources in order. HTTP/network failures fall through to
+    // the next one; done, cancelled and crc-mismatch are final (a CRC
+    // mismatch means a bad source, not a glitch — per
+    // docs/archive-org-strategy.md).
     let result: WorkerResult | 'exhausted' = 'exhausted';
     let lastError = '';
-    for (const url of item.downloadUrls) {
+    for (const src of item.sources) {
       if (signal.aborted) {
         result = 'cancelled';
         break;
       }
       try {
-        logger.info({ romName: item.romName, url }, 'download started');
-        result = await downloadFile({
-          url,
-          tempPath: item.tempPath,
-          expectedCrc: item.expectedCrc,
-          extractFromZip: item.extractFromZip,
-          signal,
-          onProgress,
-        });
+        logger.info({ romName: item.romName, url: src.url }, 'download started');
+        if (src.innerPath !== undefined) {
+          // Archive-container fast path: fetch the whole container once
+          // (shared across every rom of the same game that needs it — see
+          // getOrFetchContainer), then extract this rom's own entry locally.
+          const containerPath = await getOrFetchContainer(
+            job,
+            src.url,
+            jobSignal,
+            dirname(item.tempPath),
+          );
+          result = await extractContainerEntry({
+            containerPath,
+            innerPath: src.innerPath,
+            outputPath: item.tempPath,
+            expectedCrc: item.expectedCrc,
+          });
+        } else {
+          result = await downloadFile({
+            url: src.url,
+            tempPath: item.tempPath,
+            expectedCrc: item.expectedCrc,
+            extractFromZip: src.extractFromZip,
+            signal,
+            onProgress,
+          });
+        }
         break;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
-        logger.warn({ romName: item.romName, url, error: lastError }, 'download source failed');
+        logger.warn({ romName: item.romName, url: src.url, error: lastError }, 'download source failed');
         result = 'exhausted';
       }
     }
@@ -202,7 +248,8 @@ async function runQueue(
     }
 
     if (result === 'cancelled') {
-      item.status = 'failed';
+      item.status = 'cancelled';
+      job.events.push({ type: 'file-cancelled', gameId: item.gameId, romName: item.romName });
       return;
     }
 
@@ -226,8 +273,10 @@ async function runQueue(
   };
 
   for (const item of queue) {
-    if (signal.aborted) break;
-
+    // Not "if aborted, stop queuing" — every item still goes through
+    // processItem even after the whole job is cancelled, so each one still
+    // gets its own file-cancelled event (and the UI can drop it). The
+    // per-item fast path at the top of processItem makes this cheap.
     if (inFlight.size >= concurrency) {
       await Promise.race(inFlight);
     }
@@ -237,8 +286,9 @@ async function runQueue(
   }
 
   await Promise.all(inFlight);
+  await cleanupContainerCache(job);
 
-  if (signal.aborted) {
+  if (jobSignal.aborted) {
     job.status = 'cancelled';
     job.events.push({ type: 'cancelled' });
   } else {
@@ -246,6 +296,45 @@ async function runQueue(
     job.events.push({ type: 'complete' });
   }
   job.completedAt = Date.now();
+}
+
+// A container shared by several roms (see getOrFetchContainer) is job-scoped,
+// not any single item's own tempPath — cleaned up once, here, rather than
+// refcounted per item.
+async function cleanupContainerCache(job: DownloadJobState): Promise<void> {
+  const settled = await Promise.allSettled(job.containerCache.values());
+  await Promise.all(
+    settled
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+      .map((r) => rm(r.value, { force: true }).catch(() => undefined)),
+  );
+}
+
+// Fetches a whole archive container once per job, sharing it across every
+// rom that needs an entry from it (e.g. a disc's .bin and .cue in the same
+// per-game .7z). The check-then-set on containerCache is synchronous — no
+// `await` in between — so concurrent callers for the same URL never race
+// into two fetches. Uses the job's own signal, never a triggering item's
+// per-item one: if item A is individually cancelled while item B still
+// needs the same container, A's cancellation must not kill B's fetch too.
+function getOrFetchContainer(
+  job: DownloadJobState,
+  containerUrl: string,
+  jobSignal: AbortSignal,
+  stagingDir: string,
+): Promise<string> {
+  let cached = job.containerCache.get(containerUrl);
+  if (!cached) {
+    const containerPath = join(stagingDir, `${randomUUID()}-container`);
+    cached = downloadFile({ url: containerUrl, tempPath: containerPath, signal: jobSignal }).then(
+      (result) => {
+        if (result !== 'done') throw new Error(`container fetch failed: ${result}`);
+        return containerPath;
+      },
+    );
+    job.containerCache.set(containerUrl, cached);
+  }
+  return cached;
 }
 
 /**
@@ -274,6 +363,25 @@ export async function cancelJob(jobId: string): Promise<boolean> {
   // Best-effort cleanup of temp files
   const tempPaths = job.items.map((i) => i.tempPath);
   await Promise.all(tempPaths.map((p) => rm(p, { force: true }).catch(() => undefined)));
+  await cleanupContainerCache(job);
+
+  return true;
+}
+
+// Cancels a single item without touching its siblings — the job keeps
+// running and finishes normally (status 'done') once every other item
+// settles; only this one gets a file-cancelled event.
+export async function cancelItem(jobId: string, gameId: string, romName: string): Promise<boolean> {
+  const job = downloadJobs.get(jobId);
+  if (!job || job.status !== 'running') return false;
+
+  const item = job.items.find((i) => i.gameId === gameId && i.romName === romName);
+  if (!item || item.status === 'done' || item.status === 'failed' || item.status === 'cancelled') {
+    return false;
+  }
+
+  item.controller.abort();
+  await rm(item.tempPath, { force: true }).catch(() => undefined);
 
   return true;
 }

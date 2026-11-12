@@ -2,7 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
-import { openDownloadEvents, cancelDownload, downloadEventSchema } from '@/lib/api.js';
+import {
+  openDownloadEvents,
+  cancelDownload,
+  cancelDownloadItem,
+  downloadEventSchema,
+} from '@/lib/api.js';
 import type { DownloadEvent } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
@@ -124,6 +129,11 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
       } else if (event.type === 'file-failed') {
         const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items[idx] = { ...items[idx]!, status: 'failed', failReason: event.reason };
+      } else if (event.type === 'file-cancelled') {
+        // Dropped outright, not marked — a cancelled item isn't a failure
+        // to show and investigate, it's "never mind, don't want this one."
+        const idx = findItem(event.gameId, event.romName);
+        if (idx !== -1) items.splice(idx, 1);
       } else if (event.type === 'complete') {
         next.set(jobId, { ...job, items, status: 'done' });
         return next;
@@ -307,14 +317,28 @@ function JobCard({ state }: { state: JobState }) {
       {/* Items */}
       <div className={css({ display: 'flex', flexDirection: 'column' })}>
         {state.items.map((item) => (
-          <DownloadRow key={`${item.gameId}/${item.romName}`} item={item} />
+          <DownloadRow key={`${item.gameId}/${item.romName}`} jobId={state.jobId} item={item} />
         ))}
       </div>
     </Card>
   );
 }
 
-function DownloadRow({ item }: { item: ItemState }) {
+function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
+  const [cancelling, setCancelling] = useState(false);
+  const cancellable = item.status === 'queued' || item.status === 'downloading';
+
+  const handleCancelItem = async () => {
+    setCancelling(true);
+    try {
+      await cancelDownloadItem(jobId, item.gameId, item.romName);
+    } finally {
+      // No need to reset on success: the file-cancelled event removes this
+      // row entirely. Only matters if the request itself failed/404'd.
+      setCancelling(false);
+    }
+  };
+
   const icon = {
     queued: '○',
     downloading: '↓',
@@ -370,6 +394,26 @@ function DownloadRow({ item }: { item: ItemState }) {
           <span className={css({ fontSize: 'xs', color: 'status.danger.text', flexShrink: 0 })}>
             {item.failReason}
           </span>
+        )}
+        {cancellable && (
+          <button
+            type="button"
+            onClick={() => void handleCancelItem()}
+            disabled={cancelling}
+            aria-label="Annuler ce téléchargement"
+            title="Annuler ce téléchargement"
+            className={css({
+              fontSize: 'lg',
+              lineHeight: '1',
+              color: 'fg.faint',
+              cursor: 'pointer',
+              flexShrink: 0,
+              _hover: { color: 'status.danger.text' },
+              _disabled: { opacity: 0.5, cursor: 'not-allowed' },
+            })}
+          >
+            ×
+          </button>
         )}
       </div>
       {item.status === 'downloading' && (

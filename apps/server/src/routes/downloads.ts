@@ -7,6 +7,7 @@ import { downloadRequestSchema } from '@shared/download.js';
 import {
   startDownload,
   cancelJob,
+  cancelItem,
   downloadJobs,
   findBrowserFile,
 } from '@/services/downloader/index.js';
@@ -94,6 +95,19 @@ downloadsRoute.post('/downloads/:jobId/cancel', async (c) => {
 
   if (!cancelled) {
     return errorJson(c, 404, 'NOT_FOUND', `Job ${jobId} not found or already finished`);
+  }
+
+  return c.json({ ok: true });
+});
+
+downloadsRoute.post('/downloads/:jobId/items/:gameId/:romName/cancel', async (c) => {
+  const jobId = c.req.param('jobId');
+  const gameId = c.req.param('gameId');
+  const romName = decodeURIComponent(c.req.param('romName'));
+
+  const cancelled = await cancelItem(jobId, gameId, romName);
+  if (!cancelled) {
+    return errorJson(c, 404, 'NOT_FOUND', 'Item not found, already settled, or job finished');
   }
 
   return c.json({ ok: true });

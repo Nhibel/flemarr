@@ -7,6 +7,9 @@ import { urlExists } from './url-check.js';
 import { getZipListing } from './zip-listing.js';
 import {
   baseName,
+  containerFormat,
+  extensionOf,
+  isArchiveContainer,
   isReencodedDump,
   stripExtension,
   zipMatchesSystem,
@@ -58,6 +61,7 @@ function findMatch(
   romName: string,
   romCrc: string,
   files: ArchiveFile[],
+  siblingExtensions: Set<string>,
 ): { file: ArchiveFile; verified: boolean } | undefined {
   const crcLower = romCrc.toLowerCase();
   const byCrc = files.find((f) => f.crc32?.toLowerCase() === crcLower);
@@ -66,17 +70,48 @@ function findMatch(
   // A re-encode (.chd, .rvz…) carries the game but never the DAT's exact
   // bytes — matching one by name here would hand the downloader a file
   // guaranteed to fail its CRC check (see system-name.ts's isReencodedDump).
-  const byName = files.find(
-    (f) => !isReencodedDump(f.name) && stripExtension(baseName(f.name)) === romBase,
+  // An archive container (.zip, .7z) is excluded for a different reason: it
+  // might genuinely *hold* the ROM, but it isn't the ROM — a `direct`-layout
+  // source is only ever supposed to list raw files, so a container showing
+  // up here means the layout was mis-detected (see layout.ts's
+  // detectLayout), not that this is a real match. This is what actually
+  // broke "Bloody Roar II" on a rr-sony-playstation-* source: its per-game
+  // .7z files weren't recognized, got the whole collection mis-detected as
+  // `direct`, and then matched the compressed .7z itself as the "found" ROM
+  // — fast to download (no extraction) and guaranteed to fail CRC.
+  const byNameCandidates = files.filter(
+    (f) =>
+      !isReencodedDump(f.name) &&
+      !isArchiveContainer(f) &&
+      stripExtension(baseName(f.name)) === romBase,
   );
+  // A disc game's own sibling files (one .cue plus N .bin tracks) often
+  // share this exact stripped base — "Bloody Roar II (USA).bin" and
+  // "Bloody Roar II (USA).cue" both reduce to "Bloody Roar II (USA)" for a
+  // single-track game. Without preferring the exact (extension-included)
+  // name first, resolving the .cue ROM could silently return the .bin file
+  // instead, since both satisfy the stripped-base filter above. The
+  // fallback to a mismatched-extension candidate (the genuine case: a NES
+  // Headerless DAT's "*.unh" vs the real "*.nes" upload, where there's only
+  // ever one real file per game) must not pick up a sibling rom's own file
+  // instead — excluding any extension that belongs to one of this game's
+  // *other* roms catches a disc game's .bin standing in for a missing .cue
+  // (a real bug found live: rr-sony-playstation-u stores Bloody Roar II's
+  // .cue under a truncated inner name, "Roar II (USA).cue" — not matching
+  // the DAT's expected romBase at all — so without this check, every other
+  // candidate sharing the romBase/gameName "Bloody Roar II (USA)" base, i.e.
+  // the .bin, would be wrongly accepted as the .cue's download; the CRC
+  // check would catch it before anything got corrupted, but only after
+  // downloading hundreds of MB to find out).
+  const byName =
+    byNameCandidates.find((f) => baseName(f.name) === romName) ??
+    byNameCandidates.find((f) => !siblingExtensions.has(extensionOf(f.name)));
   return byName ? { file: byName, verified: false } : undefined;
 }
 
-// For zip-collection sources, find the ZIP files in the index.
+// For zip-collection sources, find the archive files (.zip, .7z) in the index.
 function findZipFiles(files: ArchiveFile[]): ArchiveFile[] {
-  return files.filter(
-    (f) => f.format?.toUpperCase() === 'ZIP' || f.name.toLowerCase().endsWith('.zip'),
-  );
+  return files.filter((f) => isArchiveContainer(f));
 }
 
 // Rank ZIPs by likelihood of containing the ROM:
@@ -125,6 +160,7 @@ async function resolveViaZipListing(
   system: string,
   identifier: string,
   info: ArchiveItemInfo,
+  siblingExtensions: Set<string>,
 ): Promise<ResolvedSource | null> {
   if (!info.server || !info.dir) return null;
 
@@ -155,13 +191,23 @@ async function resolveViaZipListing(
     // see orderZipCandidates). Re-encoded entries (.chd, .rvz…) are excluded
     // for the same reason as findMatch above — they'd never pass the
     // downloader's CRC check.
-    const inner = entries.find((e) => {
+    const innerCandidates = entries.filter((e) => {
       if (isReencodedDump(e)) return false;
       const base = stripExtension(baseName(e));
       return base === romBase || base === gameName;
     });
+    // For a single-track disc game, romBase === gameName, so a .cue and its
+    // .bin both pass the filter above — prefer the entry whose extension
+    // also matches this specific rom before falling back to another
+    // stripped-base match, and never fall back to one whose extension
+    // belongs to a *sibling* rom of this same game (see findMatch's byName
+    // for the full reasoning and the real rr-sony-playstation-u case this
+    // catches).
+    const inner =
+      innerCandidates.find((e) => baseName(e) === romName) ??
+      innerCandidates.find((e) => !siblingExtensions.has(extensionOf(e)));
     if (inner) {
-      return {
+      const zipView: ResolvedSource = {
         identifier,
         downloadUrl: resolveZipViewUrl(info.server, info.dir, zip.name, inner),
         container: 'zip-view',
@@ -173,6 +219,35 @@ async function resolveViaZipListing(
         // A datanode listing only gives names, never hashes — always a guess.
         verified: false,
       };
+
+      // Per-game archive (Redump's rr-sony-* convention: the container is
+      // named exactly after this rom or its game, never a system-wide
+      // bundle) — the whole container can be fetched via the plain
+      // /download/ URL, which works even on a restricted item once
+      // authenticated (that's what the pre-fix "fast but wrong" bug was
+      // actually hitting), and extracted locally instead of going through
+      // view_archive.php's slow server-side extraction on every request.
+      // Deliberately scoped to the exact-match case: a system-wide bundle
+      // (ni-roms, proper1g1r-collection) must never be fetched whole just to
+      // pull one game out of it. The zip-view resolution above becomes the
+      // fallback if the whole-container fetch or local extraction fails.
+      const archiveFormat = isExactZipMatch(zip, romBase, gameName)
+        ? containerFormat(zip.name)
+        : undefined;
+      if (archiveFormat) {
+        return {
+          identifier,
+          downloadUrl: resolveDownloadUrl(identifier, zip.name),
+          container: 'archive-container',
+          extractFromZip: false,
+          innerPath: inner,
+          archiveFormat,
+          fallback: zipView,
+          verified: false,
+        };
+      }
+
+      return zipView;
     }
   }
   return null;
@@ -185,10 +260,11 @@ async function resolveRomInSource(
   system: string,
   source: { identifier: string; layout: 'direct' | 'zip-collection' },
   info: ArchiveItemInfo,
+  siblingExtensions: Set<string>,
 ): Promise<ResolvedSource | null> {
   const files = info.files;
   if (source.layout === 'direct') {
-    const match = findMatch(romName, romCrc, files);
+    const match = findMatch(romName, romCrc, files, siblingExtensions);
     if (!match) return null;
     return {
       identifier: source.identifier,
@@ -202,7 +278,14 @@ async function resolveRomInSource(
   // Restricted items can't be HEAD-probed anonymously — go through the datanode
   // listing instead.
   if (info.restricted) {
-    return resolveViaZipListing(romName, gameName, system, source.identifier, info);
+    return resolveViaZipListing(
+      romName,
+      gameName,
+      system,
+      source.identifier,
+      info,
+      siblingExtensions,
+    );
   }
 
   // Public zip-collection — probe candidate ZIPs (best first) and keep the
@@ -252,6 +335,16 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
       continue;
     }
 
+    // Extensions belonging to this game's *other* roms — a fallback match
+    // (see findMatch/resolveViaZipListing) must never pick up a sibling
+    // rom's own file by mistake (a disc's .bin standing in for its missing
+    // .cue). Own extension excluded: a multi-track disc's tracks share the
+    // same extension as each other, and that's not a sibling conflict.
+    const siblingExtensions = new Set(
+      game.roms.filter((r) => r !== rom).map((r) => extensionOf(r.name)),
+    );
+    siblingExtensions.delete(extensionOf(rom.name));
+
     const resolvedSources: ResolvedSource[] = [];
     for (const source of sources) {
       let info: ArchiveItemInfo;
@@ -268,6 +361,7 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
         dat.system,
         source,
         info,
+        siblingExtensions,
       );
       if (resolved) resolvedSources.push(resolved);
     }

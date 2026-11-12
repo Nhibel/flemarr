@@ -24,7 +24,7 @@ const VALID_BODY = {
       gameId: 'smw',
       romName: 'Super Mario World (USA).sfc',
       expectedCrc: 'b19ed489',
-      downloadUrls: ['https://archive.org/download/test/game.sfc'],
+      sources: [{ url: 'https://archive.org/download/test/game.sfc', extractFromZip: false }],
     },
   ],
   destinationDir: '/roms/snes',
@@ -119,6 +119,7 @@ describe('GET /api/downloads/:jobId/events', () => {
       items: [],
       events: [{ type: 'complete' }],
       controller: new AbortController(),
+      containerCache: new Map(),
     });
 
     const res = await app.request('/api/downloads/job-456/events');

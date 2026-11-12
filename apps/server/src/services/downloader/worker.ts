@@ -1,6 +1,8 @@
 import { createWriteStream, unlink } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { dirname, basename, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { unzipSync } from 'fflate';
 import { Crc32Accumulator, computeCrc32Buffer } from '@/lib/crc32.js';
 import { stripInesHeaderIfMatches } from '@/lib/ines-header.js';
@@ -11,7 +13,11 @@ export type WorkerResult = 'done' | 'crc-mismatch' | 'cancelled' | 'error';
 export interface DownloadFileOptions {
   url: string;
   tempPath: string;
-  expectedCrc: string;
+  // Omitted for a plain whole-file fetch with no hash to check yet (the
+  // archive-container fast path: the container's own bytes are never the
+  // ROM's bytes, so there's nothing meaningful to compare here — the actual
+  // ROM is extracted and CRC-checked afterward by extractContainerEntry).
+  expectedCrc?: string;
   signal: AbortSignal;
   // The fetched file is a ZIP wrapping the ROM — extract the single entry and
   // validate its CRC instead of the ZIP's own bytes.
@@ -56,6 +62,117 @@ async function extractAndValidate(tempPath: string, expectedCrc: string): Promis
 
 async function deleteFile(path: string): Promise<void> {
   await new Promise<void>((resolve) => unlink(path, () => resolve()));
+}
+
+// Minimal shape of the 7z-wasm module we actually use — its own .d.ts
+// targets plain ESM default-import consumption and doesn't type-check
+// cleanly through a NodeNext dynamic import of a CJS/UMD package, so it's
+// loaded via createRequire below (the same runtime value either way: the
+// package sets both `module.exports` and `module.exports.default` to the
+// same factory function).
+interface SevenZipModule {
+  FS: {
+    mkdir(path: string): void;
+    mount(type: unknown, opts: { root: string }, mountpoint: string): void;
+    chdir(path: string): void;
+  };
+  NODEFS: unknown;
+  callMain(args: string[]): void;
+}
+interface SevenZipFactory {
+  (opts: {
+    quit: (code: number) => void;
+    onExit: (code: number) => void;
+    onAbort: (what: unknown) => void;
+    print: (s: string) => void;
+    printErr: (s: string) => void;
+  }): Promise<SevenZipModule>;
+}
+
+export interface ExtractContainerEntryOptions {
+  // A whole archive container already fully downloaded to disk (the
+  // archive-container fast path's own fetch step — see downloader/index.ts's
+  // getOrFetchContainer).
+  containerPath: string;
+  // The exact entry to pull out of it, as named in the DAT/resolver's match.
+  innerPath: string;
+  // Where the validated ROM bytes get written on success.
+  outputPath: string;
+  expectedCrc: string;
+}
+
+// Extracts one named entry from a whole downloaded archive container
+// (.zip/.7z/.rar) and validates its CRC — the local half of the
+// archive-container fast path (resolver.ts's isExactZipMatch; see
+// docs/archive-org-strategy.md's "Pattern E"). 7-Zip auto-detects the actual
+// format from the container's own content, so there's no format switch here.
+//
+// On CRC mismatch, only the bad extracted output is deleted — never
+// containerPath itself, which sibling ROMs from the same archive (e.g. a
+// disc's .bin and .cue) may still need; see downloader/index.ts's
+// containerCache. Any extraction error (corrupt archive, missing inner
+// entry, unsupported sub-format) throws, which the downloader's existing
+// per-candidate try/catch already treats as "this candidate failed, try the
+// next" — falling through to the source's `fallback` automatically.
+export async function extractContainerEntry(
+  opts: ExtractContainerEntryOptions,
+): Promise<WorkerResult> {
+  const { containerPath, innerPath, outputPath, expectedCrc } = opts;
+  const extractDirName = `${basename(containerPath)}.extract-${randomUUID()}`;
+  const extractDir = join(dirname(containerPath), extractDirName);
+
+  // IMPORTANT: 7z-wasm's own CLI example wires `quit` to `process.exit` —
+  // never do that here. This runs inside the long-lived server process, and
+  // one corrupt or unsupported archive must not be able to kill it. These
+  // callbacks just swallow the exit status instead of acting on it;
+  // smoke-testing confirmed 7-Zip doesn't reliably call them on every
+  // failure anyway (a missing inner entry reports "no files to process" via
+  // onExit/quit, both uncalled) — so success/failure here is decided by
+  // whether the expected output file actually exists afterward, not by any
+  // exit code. callMain can also throw synchronously (sometimes a bare exit
+  // code rather than an Error, confirmed by smoke-testing an unsupported
+  // write operation) on a genuinely fatal condition — wrapped below too.
+  const require = createRequire(import.meta.url);
+  const SevenZip = require('7z-wasm') as SevenZipFactory;
+  let sevenZip: SevenZipModule;
+  try {
+    sevenZip = await SevenZip({
+      quit: () => undefined,
+      onExit: () => undefined,
+      onAbort: () => undefined,
+      print: () => undefined,
+      printErr: () => undefined,
+    });
+
+    const mountRoot = '/nodefs';
+    sevenZip.FS.mkdir(mountRoot);
+    sevenZip.FS.mount(sevenZip.NODEFS, { root: dirname(containerPath) }, mountRoot);
+    sevenZip.FS.chdir(mountRoot);
+    sevenZip.callMain(['x', basename(containerPath), innerPath, `-o${extractDirName}`, '-y']);
+  } catch (err) {
+    await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
+    throw err instanceof Error ? err : new Error(`7z-wasm extraction failed: ${String(err)}`);
+  }
+
+  let rom: Buffer;
+  try {
+    rom = await readFile(join(extractDir, innerPath));
+  } catch {
+    await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
+    throw new Error(`entry not found in container: ${innerPath}`);
+  }
+  await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
+
+  if (computeCrc32Buffer(rom) === expectedCrc.toLowerCase()) {
+    await writeFile(outputPath, rom);
+    return 'done';
+  }
+  const stripped = stripInesHeaderIfMatches(rom, expectedCrc);
+  if (stripped) {
+    await writeFile(outputPath, stripped);
+    return 'done';
+  }
+  return 'crc-mismatch';
 }
 
 // archive.org signals overload with 429/503 — back off and retry the same
@@ -170,6 +287,13 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
       return 'cancelled';
     }
     throw err;
+  }
+
+  // A plain whole-file fetch with nothing to validate yet (the
+  // archive-container fast path fetches the container itself this way,
+  // before extractContainerEntry pulls out and CRC-checks the actual ROM).
+  if (expectedCrc === undefined) {
+    return 'done';
   }
 
   // The streamed bytes are a ZIP wrapper — validate the ROM inside it instead.

@@ -58,6 +58,14 @@ The catch: the response is itself a small ZIP wrapping the requested ROM. The do
 
 The game isn't in any of the identifiers we know about. Surface this clearly in the UI: don't silently fail, don't pretend to download something that doesn't exist.
 
+### Pattern E — Restricted per-game container, fetched whole and extracted locally (`archive-container`)
+
+Redump's `rr-sony-*` items store one archive per **game**, not per system (`Bloody Roar II (USA).7z`, `Bloody Roar II (USA).rar`, …) — restricted, same as Pattern C. Pattern C's `view_archive.php` extraction still works here, but it's slow: archive.org decompresses server-side on every request (~1 MB/s observed vs ~7.5 MB/s raw throughput), because that's the _only_ way to reach one entry inside a restricted archive via Pattern B's magic URL.
+
+A plain whole-file fetch (`archive.org/download/<identifier>/<file>`, no inner path) isn't subject to that restriction — it works even on a restricted item once authenticated, and since one archive here ≈ one game, downloading it whole costs barely more than extracting just the needed entry would. So for the exact-match case only (the container is named after this ROM or its game — `isExactZipMatch` in `resolver.ts`, never a system-wide bundle like ni-roms), the resolver returns a `container: 'archive-container'` source instead: `downloadUrl` is the whole-container URL, `innerPath` is the entry to pull out of it, `archiveFormat` is `'zip' | '7z' | 'rar'`. The downloader (`downloader/index.ts`'s `getOrFetchContainer`) fetches the container once — shared across every ROM of the same game that needs an entry from it (a disc's `.bin` and `.cue` share one archive) — then `worker.ts`'s `extractContainerEntry` pulls out the one entry and validates its CRC32, deleting only the bad extracted output (never the shared container) on mismatch. The source's `fallback` field carries the Pattern C resolution as a backup if the fast fetch or local extraction fails for any reason.
+
+**Library choice**: extraction uses `7z-wasm` (a WASM build of the real `7zz` CLI) for all three formats, not a native-binary tool. This project already hit the alpine/musl prebuilt-binary mismatch once — `better-sqlite3` has to be compiled from source in the Docker builder stage because no musl-compatible prebuilt binary exists for it — and a native 7z/unrar binary (`7zip-bin`, `node-7z`, …) would risk the same failure on `node:20-alpine`. `7z-wasm` has no native binary, so no such risk; it bundles an unRAR-licensed `7zz` build, so `.rar` is covered by the same library rather than a second dependency. `.rar` support is best-effort: nothing confirms `view_archive.php` actually lists `.rar` inner entries (used as the `fallback`'s source of truth for which entry to extract), so a rar-based per-game archive that doesn't list may simply not resolve — same as "not found" today, not a crash.
+
 ---
 
 ## Source mapping
@@ -115,10 +123,11 @@ Schemas live in `packages/shared/src/archive.ts`; routes in `apps/server/src/rou
 //        → { suggestions: [{ identifier, title, layout, fileCount, coverage, sampleSize }] }
 // POST   /api/archive/resolve                       body: { datId, gameIds }
 //        → { results: [{ gameId, gameName, roms: [{ romName, expectedCrc,
-//             sources: [{ identifier, downloadUrl, container: 'direct' | 'zip-entry' | 'zip-view' }] }] }] }
+//             sources: [{ identifier, downloadUrl, container: 'direct' | 'zip-entry' | 'zip-view' | 'archive-container',
+//               innerPath?, archiveFormat?, fallback? }] }] }] }
 ```
 
-Resolve returns one entry per ROM of the game — multi-disc games resolve every disc. The downloader consumes the `downloadUrl` values ordered by preference and never thinks about Pattern A vs B; the only container distinction it acts on is `zip-view` (`extractFromZip`), because the fetched bytes must be unwrapped before CRC validation.
+Resolve returns one entry per ROM of the game — multi-disc games resolve every disc. The downloader flattens each `ResolvedSource` into an ordered candidate (`packages/shared/src/download.ts`'s `downloadSourceSchema`) and never thinks about Pattern A vs B; the container distinctions it acts on are `zip-view`'s `extractFromZip` (the fetched bytes must be unwrapped before CRC validation) and `archive-container`'s `innerPath`/`archiveFormat` (fetch the whole container, then extract that one entry locally — see Pattern E). A `fallback` on the chosen source is tried next if the primary candidate fails.
 
 ---
 

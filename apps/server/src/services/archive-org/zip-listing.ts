@@ -11,8 +11,15 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-// view_archive lists inner files as <a href="…/zip/<inner>">inner name</a>.
-const ENTRY_RE = /<a href="\/\/[^"]+\.zip\/[^"]+">([^<]+)<\/a>/g;
+// view_archive lists inner files as <a href="…/<archive>/<inner>">inner
+// name</a> — the archive itself is .zip, .7z or .rar (Redump's rr-sony-*
+// items store per-game .7z, not .zip; missing this here left getZipListing
+// returning zero entries for any .7z archive even after resolver.ts learned
+// to find them as candidates). .rar is included on the same assumption,
+// unconfirmed against a real restricted .rar item — if view_archive.php
+// never lists .rar members at all, a rar-based per-game archive simply
+// won't resolve (same as "not found" today), not a crash.
+const ENTRY_RE = /<a href="\/\/[^"]+\.(?:zip|7z|rar)\/[^"]+">([^<]+)<\/a>/gi;
 
 export function parseZipListing(html: string): string[] {
   const entries: string[] = [];
