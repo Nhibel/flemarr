@@ -158,13 +158,32 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           // on screen", but that budget was tuned against one specific
           // window (1400×900) and either overflowed (more chrome added
           // above/below) or hit its floor and showed as few as 3 rows on a
-          // short screen (Steam Deck's ~800px). The parent tab panel
-          // (App.tsx) is a flex column with every sibling here pinned to
-          // its natural size (flexShrink: 0) — this is the only flexible
-          // one, so it gets exactly whatever's left, on any screen, with
-          // nothing to retune when a sibling's height changes.
-          flex: '1',
-          minHeight: '0',
+          // short screen (Steam Deck's ~800px).
+          //
+          // flexGrow: 0 (not 1) — this box sizes to its own content (however
+          // many rows actually render) and only *shrinks* under pressure; a
+          // short filtered list no longer stretches to fill the whole tab on
+          // a tall screen just because the space is there. flexShrink: 1 is
+          // what actually bounds it to "whatever's left" when content is
+          // taller than available space (every sibling in the parent tab
+          // panel — App.tsx — is pinned to its natural size, so this is the
+          // only thing left to shrink); minHeight overrides a flex item's
+          // normal content-based shrink floor so that shrinking — and the
+          // overflowY below — can actually kick in instead of forcing the
+          // page itself to grow past the viewport.
+          //
+          // The 180px floor on minHeight is a *different* bound, on top of
+          // that: on a short viewport with a lot of filter chrome above
+          // (Steam Deck's ~800px, wrapped filter rows), shrinking with no
+          // floor at all could squeeze this down to a sliver — unusable,
+          // not just cramped. 180px keeps the list itself always usable;
+          // the page (already scrollable — see the 100dvh container in
+          // App.tsx) scrolls a little further to reach the footer below
+          // instead.
+          flexGrow: '0',
+          flexShrink: '1',
+          flexBasis: 'auto',
+          minHeight: '180px',
           overflowY: 'auto',
           bg: 'bg.surface',
           border: '1px solid',

@@ -444,9 +444,10 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
 
       {/* Games tab — kept mounted to preserve filter/selection state. Flex
           column, not a plain block: GameList's own listbox is the one
-          flexible child (flex: 1 inside it) that soaks up whatever
-          vertical space the rest of this tab doesn't need, on any screen
-          height — see the comment on that listbox in GameList.tsx. */}
+          child here that isn't pinned to its natural size (flexShrink: 0)
+          — it sizes to its own content but shrinks (down to a floor) when
+          that content plus everything else here doesn't fit the screen —
+          see the comment on that listbox in GameList.tsx. */}
       <div
         className={css({
           display: tab === 'games' ? 'flex' : 'none',
