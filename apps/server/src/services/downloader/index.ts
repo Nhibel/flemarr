@@ -209,6 +209,22 @@ async function runQueue(
     }
   }
 
+  // Conversion is CPU/disk-bound (chdman), not network — running it inside
+  // a game's own download slot would hold that slot for the conversion's
+  // full duration, blocking a later game from even starting its download
+  // while an earlier one just sits there converting. Queued here instead:
+  // a finished game hands its conversion off and its download slot frees
+  // immediately, so the next game can start downloading right away.
+  // Conversions themselves still run one at a time (chained, not
+  // parallel) — chdman's own disk I/O doesn't benefit from overlapping.
+  // `.catch` resets the chain to resolved even if a task somehow throws
+  // (today's maybeConvertGame*/ convertGameToChd always catch internally
+  // and never reject), so one bad conversion can't stall every later one.
+  let conversionQueue: Promise<void> = Promise.resolve();
+  function enqueueConversion(task: () => Promise<void>): void {
+    conversionQueue = conversionQueue.catch(() => undefined).then(task);
+  }
+
   const processItem = async (item: DownloadItemState, eligible: boolean): Promise<void> => {
     // Aborts if EITHER this item's own controller fires (cancelItem) or the
     // job's shared one does (cancelJob, "cancel everything") — one signal
@@ -406,11 +422,13 @@ async function runQueue(
     if (!roms) return;
 
     if (items.every((i) => i.status === 'done')) {
-      if (target === 'server') {
-        await maybeConvertGame(job, gameId, destinationDir!, roms);
-      } else {
-        await maybeConvertGameForBrowser(job, jobId, gameId, roms);
-      }
+      // Handed off to the background queue, not awaited here — see
+      // enqueueConversion above for why.
+      enqueueConversion(() =>
+        target === 'server'
+          ? maybeConvertGame(job, gameId, destinationDir!, roms)
+          : maybeConvertGameForBrowser(job, jobId, gameId, roms),
+      );
       return;
     }
 
@@ -442,6 +460,10 @@ async function runQueue(
   }
 
   await Promise.all(inFlight);
+  // Every download slot is free once this resolves, but a game's own
+  // conversion can still be running (or queued) in the background — the
+  // job isn't actually finished until that drains too.
+  await conversionQueue;
   await cleanupContainerCache(job);
 
   if (jobSignal.aborted) {

@@ -891,4 +891,51 @@ describe('autoConvertChd', () => {
     await access(binItem.tempPath);
     await rm(binItem.tempPath, { force: true });
   });
+
+  it('starts the next game downloading while an earlier one is still converting, even at concurrency 1', async () => {
+    updateSettings({ autoConvertChd: true, downloaderConcurrency: 1 });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+
+    let releaseConversion: (() => void) | undefined;
+    const conversionGate = new Promise<void>((resolve) => {
+      releaseConversion = resolve;
+    });
+    vi.mocked(convertGameToChd).mockImplementation(async () => {
+      await conversionGate;
+      return { ok: true, chdPath: join(TMP, 'Game (USA).chd') };
+    });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: [
+        ...discItems,
+        {
+          gameId: 'g2',
+          romName: 'Other Game (USA).sfc',
+          expectedCrc: 'dddddddd',
+          sources: [{ url: 'https://x/g2', extractFromZip: false }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+
+    // g1 (eligible, has a .cue) finishes downloading and hands off to the
+    // conversion queue, where it's now stuck on conversionGate. g2 (not in
+    // DISC_DAT, so not conversion-eligible) must not need that gate
+    // released to get its own download slot and finish.
+    await new Promise((r) => setTimeout(r, 100));
+
+    const job = downloadJobs.get(jobId)!;
+    const g2Item = job.items.find((i) => i.gameId === 'g2')!;
+    expect(g2Item.status).toBe('done');
+    // The job itself isn't done yet — g1's conversion is still pending,
+    // and the job must wait for it before reporting complete.
+    expect(job.status).toBe('running');
+
+    releaseConversion!();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(downloadJobs.get(jobId)!.status).toBe('done');
+  });
 });
