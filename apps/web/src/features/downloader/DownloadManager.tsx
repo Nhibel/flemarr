@@ -41,12 +41,20 @@ function formatSize(bytes: number): string {
   return `${bytes} B`;
 }
 
+interface GameConversionState {
+  status: 'converting' | 'converted' | 'failed';
+  reason?: string;
+}
+
 interface JobState {
   jobId: string;
   target: 'server' | 'browser';
   destinationDir?: string;
   status: 'running' | 'done' | 'cancelled' | 'error';
   items: ItemState[];
+  // Keyed by gameId, not romName — CHD conversion is a whole-game step
+  // (every rom of a disc folds into one .chd), not a per-file one.
+  gameConversions: Map<string, GameConversionState>;
 }
 
 /** Triggers the browser's native save for an already-validated file. */
@@ -88,6 +96,7 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
           progress: 0,
           bytesDownloaded: 0,
         })),
+        gameConversions: new Map(),
       });
       return next;
     });
@@ -137,6 +146,21 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
         // to show and investigate, it's "never mind, don't want this one."
         const idx = findItem(event.gameId, event.romName);
         if (idx !== -1) items.splice(idx, 1);
+      } else if (event.type === 'game-converting') {
+        const gameConversions = new Map(job.gameConversions);
+        gameConversions.set(event.gameId, { status: 'converting' });
+        next.set(jobId, { ...job, items, gameConversions });
+        return next;
+      } else if (event.type === 'game-converted') {
+        const gameConversions = new Map(job.gameConversions);
+        gameConversions.set(event.gameId, { status: 'converted' });
+        next.set(jobId, { ...job, items, gameConversions });
+        return next;
+      } else if (event.type === 'game-convert-failed') {
+        const gameConversions = new Map(job.gameConversions);
+        gameConversions.set(event.gameId, { status: 'failed', reason: event.reason });
+        next.set(jobId, { ...job, items, gameConversions });
+        return next;
       } else if (event.type === 'complete') {
         next.set(jobId, { ...job, items, status: 'done' });
         return next;
@@ -323,7 +347,77 @@ function JobCard({ state }: { state: JobState }) {
           <DownloadRow key={`${item.gameId}/${item.romName}`} jobId={state.jobId} item={item} />
         ))}
       </div>
+
+      {/* CHD conversions — a whole-game step, shown separately from the
+          per-rom rows above rather than attached to any one of them. */}
+      {state.gameConversions.size > 0 && (
+        <div
+          className={css({
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: '1px solid',
+            borderColor: 'bd.subtle',
+          })}
+        >
+          {[...state.gameConversions].map(([gameId, conversion]) => (
+            <GameConversionRow
+              key={gameId}
+              label={gameLabel(state.items, gameId) ?? gameId}
+              conversion={conversion}
+            />
+          ))}
+        </div>
+      )}
     </Card>
+  );
+}
+
+// There's no game display name anywhere in this component's data — the
+// .cue's own basename (minus extension) reads as the game's name for any
+// disc game, which is the only kind CHD conversion ever applies to.
+function gameLabel(items: ItemState[], gameId: string): string | undefined {
+  const cue = items.find((i) => i.gameId === gameId && i.romName.toLowerCase().endsWith('.cue'));
+  return cue ? cue.romName.replace(/\.cue$/i, '') : items.find((i) => i.gameId === gameId)?.romName;
+}
+
+function GameConversionRow({
+  label,
+  conversion,
+}: {
+  label: string;
+  conversion: GameConversionState;
+}) {
+  const icon = { converting: '⚙', converted: '✓', failed: '✗' }[conversion.status];
+  const color = {
+    converting: 'accent.text',
+    converted: 'status.success.text',
+    failed: 'status.danger.text',
+  }[conversion.status];
+  const text = {
+    converting: 'Conversion CHD…',
+    converted: 'Converti en .chd',
+    failed: `Conversion CHD échouée${conversion.reason ? ` (${conversion.reason})` : ''}`,
+  }[conversion.status];
+
+  return (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2.5',
+        px: '4',
+        py: '2',
+        bg: 'bg.muted',
+      })}
+    >
+      <span className={css({ fontSize: 'sm', color, flexShrink: 0, w: '4', textAlign: 'center' })}>
+        {icon}
+      </span>
+      <span className={css({ fontSize: 'sm', color: 'fg.default', flex: 1, truncate: true })}>
+        {label}
+      </span>
+      <span className={css({ fontSize: 'xs', color, flexShrink: 0 })}>{text}</span>
+    </div>
   );
 }
 

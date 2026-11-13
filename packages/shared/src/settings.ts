@@ -18,6 +18,13 @@ export const settingsSchema = z.object({
   // real use case (see ResolvePanel, which reads this instead of offering
   // two buttons).
   downloadTarget: z.enum(['server', 'browser']).default('server'),
+  // Server-target only: once every rom of a disc game (anything with a
+  // .cue) finishes downloading, convert it to a single .chd and delete the
+  // original .bin/.cue — smaller, tidier library for frontends like
+  // EmuDeck that prefer one file per game. Verified round-trip (chdman
+  // extractcd + CRC32 against the DAT) before the originals are deleted;
+  // left untouched on any conversion failure.
+  autoConvertChd: z.boolean().default(false),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
@@ -35,6 +42,7 @@ export const settingsResponseSchema = z.object({
   archiveOrgKeysConfigured: z.boolean(),
   archiveOrgSessionConfigured: z.boolean(),
   downloadTarget: z.enum(['server', 'browser']),
+  autoConvertChd: z.boolean(),
   // The library root (ROMS_ROOT) the UI confines directory browsing to, or
   // null when unset (local dev, browse anywhere).
   romsRoot: z.string().nullable(),

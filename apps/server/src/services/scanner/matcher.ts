@@ -2,7 +2,7 @@ import { basename } from 'node:path';
 import type { DatFile, Game, Rom } from '@shared/dat.js';
 import type { ScanMatch, ScanResult, WrongNameEntry } from '@shared/scan.js';
 
-interface CrcEntry {
+export interface CrcEntry {
   game: Game;
   rom: Rom;
 }

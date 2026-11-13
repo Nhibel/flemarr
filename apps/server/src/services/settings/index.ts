@@ -13,13 +13,14 @@ function readScalars(db: Database): {
   archiveOrgLoggedInUser: string;
   archiveOrgLoggedInSig: string;
   downloadTarget: string;
+  autoConvertChd: boolean;
 } {
   const rows = db
     .prepare(
       `SELECT key, value FROM settings WHERE key IN
        ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key',
         'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig',
-        'download_target')`,
+        'download_target', 'auto_convert_chd')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -34,6 +35,7 @@ function readScalars(db: Database): {
     archiveOrgLoggedInUser: map['archive_org_logged_in_user'] ?? '',
     archiveOrgLoggedInSig: map['archive_org_logged_in_sig'] ?? '',
     downloadTarget: map['download_target'] ?? DEFAULTS.downloadTarget,
+    autoConvertChd: map['auto_convert_chd'] === '1',
   };
 }
 
@@ -57,6 +59,7 @@ export function getSettings(db: Database = getDb()): Settings {
     archiveOrgLoggedInUser: scalars.archiveOrgLoggedInUser,
     archiveOrgLoggedInSig: scalars.archiveOrgLoggedInSig,
     downloadTarget: scalars.downloadTarget,
+    autoConvertChd: scalars.autoConvertChd,
   });
 }
 
@@ -72,6 +75,7 @@ export function toSettingsResponse(s: Settings, romsRoot: string | null): Settin
     archiveOrgKeysConfigured: s.archiveOrgAccessKey !== '' && s.archiveOrgSecretKey !== '',
     archiveOrgSessionConfigured: s.archiveOrgLoggedInUser !== '' && s.archiveOrgLoggedInSig !== '',
     downloadTarget: s.downloadTarget,
+    autoConvertChd: s.autoConvertChd,
     romsRoot,
   };
 }
@@ -101,6 +105,9 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.downloadTarget !== undefined) {
     upsert.run('download_target', patch.downloadTarget);
+  }
+  if (patch.autoConvertChd !== undefined) {
+    upsert.run('auto_convert_chd', patch.autoConvertChd ? '1' : '0');
   }
   if (patch.systemPaths !== undefined) {
     const upsertPath = db.prepare(

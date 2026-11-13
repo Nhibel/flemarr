@@ -7,6 +7,7 @@ import { ArchiveAccountSection } from './ArchiveAccountSection.js';
 import { ConcurrencySection } from './ConcurrencySection.js';
 import { SystemPathsSection } from './SystemPathsSection.js';
 import { DownloadTargetSection } from './DownloadTargetSection.js';
+import { AutoConvertChdSection } from './AutoConvertChdSection.js';
 import { AppearanceSection } from './AppearanceSection.js';
 
 interface Props {
@@ -96,6 +97,11 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
         onSave={mutation.mutate}
       />
       <DownloadTargetSection
+        settings={settings}
+        saving={mutation.isPending}
+        onSave={mutation.mutate}
+      />
+      <AutoConvertChdSection
         settings={settings}
         saving={mutation.isPending}
         onSave={mutation.mutate}

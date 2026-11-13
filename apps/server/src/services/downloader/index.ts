@@ -8,6 +8,8 @@ import { libraryRoots } from '@/lib/library-root.js';
 import { downloadFile, extractContainerEntry } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
+import { convertGameToChd } from './chd.js';
+import { getDat } from '@/services/dat/store.js';
 import { logger } from '@/lib/logger.js';
 import type {
   DownloadRequest,
@@ -157,10 +159,23 @@ async function runQueue(
   const job = downloadJobs.get(jobId);
   if (!job) return;
 
-  const concurrency = getSettings().downloaderConcurrency;
+  const settings = getSettings();
+  const concurrency = settings.downloaderConcurrency;
   const jobSignal = job.controller.signal;
   const queue = [...job.items];
   const inFlight = new Set<Promise<void>>();
+
+  // Server-target + autoConvertChd only: counts down as each rom of a game
+  // reaches 'done'. A game's CHD conversion only ever triggers once this
+  // hits zero (every rom downloaded successfully) — a failed or cancelled
+  // sibling just means it never does, leaving the originals as plain
+  // bin/cue (safe default, never a half-converted game).
+  const remainingRomsByGame = new Map<string, number>();
+  if (target === 'server' && settings.autoConvertChd) {
+    for (const item of job.items) {
+      remainingRomsByGame.set(item.gameId, (remainingRomsByGame.get(item.gameId) ?? 0) + 1);
+    }
+  }
 
   const processItem = async (item: DownloadItemState): Promise<void> => {
     // Aborts if EITHER this item's own controller fires (cancelItem) or the
@@ -307,6 +322,14 @@ async function runQueue(
           expectedCrc: item.expectedCrc,
           status: 'done',
         });
+
+        const remaining = remainingRomsByGame.get(item.gameId);
+        if (remaining !== undefined) {
+          remainingRomsByGame.set(item.gameId, remaining - 1);
+          if (remaining - 1 === 0) {
+            await maybeConvertGame(job, datId, item.gameId, destinationDir!);
+          }
+        }
         return;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
@@ -363,6 +386,35 @@ async function runQueue(
     job.events.push({ type: 'complete' });
   }
   job.completedAt = Date.now();
+}
+
+// Called once every rom of `gameId` in this job has reached 'done' (see
+// runQueue's remainingRomsByGame). Only games with a .cue in the DAT (disc
+// systems) are eligible — everything else is a silent no-op, not an error.
+async function maybeConvertGame(
+  job: DownloadJobState,
+  datId: string,
+  gameId: string,
+  destinationDir: string,
+): Promise<void> {
+  const dat = getDat(datId);
+  const game = dat?.games.find((g) => g.id === gameId);
+  if (!game) return;
+
+  const roms = game.roms.filter((r) => r.crc !== undefined);
+  if (!roms.some((r) => r.name.toLowerCase().endsWith('.cue'))) return;
+
+  job.events.push({ type: 'game-converting', gameId });
+  const result = await convertGameToChd(destinationDir, roms);
+  if (result.ok) {
+    job.events.push({ type: 'game-converted', gameId });
+  } else {
+    job.events.push({
+      type: 'game-convert-failed',
+      gameId,
+      reason: result.reason ?? 'unknown error',
+    });
+  }
 }
 
 // A container shared by several roms (see getOrFetchContainer) is job-scoped,

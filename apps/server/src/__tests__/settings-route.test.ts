@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: Settings = {
   archiveOrgLoggedInUser: '',
   archiveOrgLoggedInSig: '',
   downloadTarget: 'server',
+  autoConvertChd: false,
 };
 
 // What the route exposes: credentials collapsed to configured/not-configured.
@@ -37,6 +38,7 @@ const DEFAULT_RESPONSE: SettingsResponse = {
   archiveOrgKeysConfigured: false,
   archiveOrgSessionConfigured: false,
   downloadTarget: 'server',
+  autoConvertChd: false,
   romsRoot: null,
 };
 

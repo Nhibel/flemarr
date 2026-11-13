@@ -92,6 +92,12 @@ export const downloadEventSchema = z.discriminatedUnion('type', [
     gameId: z.string(),
     romName: z.string(),
   }),
+  // Every rom of a disc game (anything with a .cue) finished downloading
+  // and `autoConvertChd` is on — keyed by gameId alone, not romName: this
+  // is the one event in the stream about a whole game, not one file of it.
+  z.object({ type: z.literal('game-converting'), gameId: z.string() }),
+  z.object({ type: z.literal('game-converted'), gameId: z.string() }),
+  z.object({ type: z.literal('game-convert-failed'), gameId: z.string(), reason: z.string() }),
   z.object({ type: z.literal('cancelled') }),
   z.object({ type: z.literal('complete') }),
   z.object({ type: z.literal('error'), message: z.string() }),

@@ -15,8 +15,17 @@ vi.mock('../services/downloader/worker.js', () => ({
   downloadFile: vi.fn(),
   extractContainerEntry: vi.fn(),
 }));
+vi.mock('../services/downloader/chd.js', () => ({
+  convertGameToChd: vi.fn(),
+}));
+vi.mock('../services/dat/store.js', () => ({
+  getDat: vi.fn(),
+}));
 
 import { downloadFile, extractContainerEntry } from '../services/downloader/worker.js';
+import { convertGameToChd } from '../services/downloader/chd.js';
+import { getDat } from '../services/dat/store.js';
+import type { DatFile } from '@shared/dat.js';
 
 const TMP = join(tmpdir(), 'rom-curator-queue-test');
 
@@ -32,6 +41,8 @@ beforeEach(async () => {
   updateSettings({ systemPaths: { test: TMP } });
   vi.mocked(downloadFile).mockReset();
   vi.mocked(extractContainerEntry).mockReset();
+  vi.mocked(convertGameToChd).mockReset();
+  vi.mocked(getDat).mockReset();
   downloadJobs.clear();
 });
 
@@ -532,5 +543,160 @@ describe('archive-container fast path — shared container dedup', () => {
     const job = downloadJobs.get(jobId)!;
     expect(job.events.at(-1)?.type).toBe('complete');
     expect(job.status).toBe('done');
+  });
+});
+
+describe('autoConvertChd', () => {
+  const DISC_DAT: DatFile = {
+    source: 'redump',
+    system: 'Sony - PlayStation',
+    games: [
+      {
+        id: 'g1',
+        name: 'Game (USA)',
+        region: ['USA'],
+        languages: ['En'],
+        roms: [
+          { name: 'Game (USA).bin', size: 1, crc: 'aaaaaaaa', status: 'good' },
+          { name: 'Game (USA).cue', size: 1, crc: 'bbbbbbbb', status: 'good' },
+        ],
+      },
+    ],
+  };
+  const CARTRIDGE_DAT: DatFile = {
+    source: 'no-intro',
+    system: 'Nintendo - Super Nintendo Entertainment System',
+    games: [
+      {
+        id: 'g1',
+        name: 'Game (USA)',
+        region: ['USA'],
+        languages: ['En'],
+        roms: [{ name: 'Game (USA).sfc', size: 1, crc: 'aaaaaaaa', status: 'good' }],
+      },
+    ],
+  };
+
+  const discItems = [
+    {
+      gameId: 'g1',
+      romName: 'Game (USA).bin',
+      expectedCrc: 'aaaaaaaa',
+      sources: [{ url: 'https://x/bin', extractFromZip: false }],
+    },
+    {
+      gameId: 'g1',
+      romName: 'Game (USA).cue',
+      expectedCrc: 'bbbbbbbb',
+      sources: [{ url: 'https://x/cue', extractFromZip: false }],
+    },
+  ];
+
+  it('converts only once every rom of the game has finished, never before', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+    vi.mocked(convertGameToChd).mockResolvedValue({ ok: true });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(convertGameToChd)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(convertGameToChd).mock.calls[0]?.[0]).toBe(TMP);
+    expect(vi.mocked(convertGameToChd).mock.calls[0]?.[1]?.map((r) => r.name)).toEqual([
+      'Game (USA).bin',
+      'Game (USA).cue',
+    ]);
+
+    const job = downloadJobs.get(jobId)!;
+    const types = job.events.map((e) => e.type);
+    // Both files done before conversion starts, not interleaved.
+    expect(types.indexOf('game-converting')).toBeGreaterThan(
+      types.lastIndexOf('file-done'),
+    );
+    expect(types).toContain('game-converted');
+  });
+
+  it('does not convert when autoConvertChd is off', async () => {
+    updateSettings({ autoConvertChd: false });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+
+    await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(convertGameToChd)).not.toHaveBeenCalled();
+  });
+
+  it('does not convert a cartridge game (no .cue in the DAT)', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(CARTRIDGE_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+
+    await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).sfc',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: 'https://x/sfc', extractFromZip: false }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(convertGameToChd)).not.toHaveBeenCalled();
+  });
+
+  it('emits game-convert-failed and still completes the job when conversion fails', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+    vi.mocked(convertGameToChd).mockResolvedValue({ ok: false, reason: 'createcd failed: boom' });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const job = downloadJobs.get(jobId)!;
+    const failedEvent = job.events.find((e) => e.type === 'game-convert-failed');
+    expect(failedEvent).toBeDefined();
+    if (failedEvent?.type === 'game-convert-failed') {
+      expect(failedEvent.reason).toContain('boom');
+    }
+    expect(job.events.at(-1)?.type).toBe('complete');
+    expect(job.status).toBe('done');
+  });
+
+  it('never triggers for browser-target downloads', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockResolvedValue('done');
+
+    await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'browser',
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(vi.mocked(convertGameToChd)).not.toHaveBeenCalled();
   });
 });
