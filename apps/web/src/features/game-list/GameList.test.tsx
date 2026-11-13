@@ -66,6 +66,25 @@ describe('GameList', () => {
     expect(onToggle).toHaveBeenCalledWith('b');
   });
 
+  it('clicking a row focuses that row, not row 0 (regression: clicking moved focus to the listbox container, not the row, so the next keyboard move always acted as if row 0 were focused)', async () => {
+    const onToggle = vi.fn();
+    renderList(GAMES, onToggle);
+
+    // First interaction of the page — focusedIndex starts at -1, same state
+    // as right after a page change via Suivant/Précédent.
+    await userEvent.click(screen.getByText('Gamma'));
+    expect(onToggle).toHaveBeenCalledWith('c');
+
+    onToggle.mockClear();
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard(' ');
+    // Focus should have moved from Gamma (index 2) up to Beta (index 1).
+    // Before the fix, the click left focus on index 0 (Alpha) regardless
+    // of which row was clicked, so ArrowUp (already at the floor) stayed
+    // on Alpha and this would fire with 'a' instead.
+    expect(onToggle).toHaveBeenCalledWith('b');
+  });
+
   it('ArrowDown moves focus to next row and Space toggles it', async () => {
     const onToggle = vi.fn();
     renderList(GAMES, onToggle);

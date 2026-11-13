@@ -205,7 +205,19 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               game={game}
               isSelected={selected.has(game.id)}
               isFocused={resolvedFocus === i}
-              onToggle={onToggle}
+              onToggle={(id) => {
+                // Clicking a row's own content (a plain, non-focusable
+                // div) moves the browser's focus to the nearest focusable
+                // ancestor — this listbox — not to the row itself. Without
+                // setting the real clicked index here, the listbox's own
+                // onFocus below falls back to "focus row 0" whenever
+                // nothing was focused yet (first click of a page, or right
+                // after Suivant/Précédent reset it to -1), which then
+                // scrolled row 0 into view — snapping back to the top of
+                // the list no matter which row was actually clicked.
+                setFocusedIndex(i);
+                onToggle(id);
+              }}
               mode={mode}
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
