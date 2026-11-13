@@ -21,6 +21,7 @@ import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { LexiquePage } from '@/features/lexique/LexiquePage.js';
 import { useTheme } from '@/lib/use-theme.js';
+import { useFontScale } from '@/lib/use-font-scale.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
@@ -40,6 +41,7 @@ export function App() {
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
   const [view, setView] = useState<AppView>('loader');
   const { theme, setTheme } = useTheme();
+  const { fontScale, setFontScale } = useFontScale();
 
   if (view === 'settings') {
     return (
@@ -47,6 +49,8 @@ export function App() {
         onClose={() => setView(activeDat ? 'game' : 'loader')}
         theme={theme}
         onSetTheme={setTheme}
+        fontScale={fontScale}
+        onSetFontScale={setFontScale}
       />
     );
   }
@@ -112,7 +116,7 @@ function LoaderView({
   return (
     <main
       className={css({
-        maxW: '4xl',
+        maxW: '8xl',
         mx: 'auto',
         mt: { base: '8', md: '16' },
         px: { base: '4', md: '6', lg: '8' },

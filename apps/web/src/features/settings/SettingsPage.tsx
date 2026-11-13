@@ -14,9 +14,11 @@ interface Props {
   onClose: () => void;
   theme: Theme;
   onSetTheme: (t: Theme) => void;
+  fontScale: number;
+  onSetFontScale: (px: number) => void;
 }
 
-export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
+export function SettingsPage({ onClose, theme, onSetTheme, fontScale, onSetFontScale }: Props) {
   const queryClient = useQueryClient();
   const {
     data: settings,
@@ -35,7 +37,7 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
   });
 
   const containerClass = css({
-    maxW: '4xl',
+    maxW: '8xl',
     mx: 'auto',
     mt: { base: '8', md: '16' },
     px: { base: '4', md: '6', lg: '8' },
@@ -84,7 +86,12 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
         </p>
       )}
 
-      <AppearanceSection theme={theme} onSetTheme={onSetTheme} />
+      <AppearanceSection
+        theme={theme}
+        onSetTheme={onSetTheme}
+        fontScale={fontScale}
+        onSetFontScale={onSetFontScale}
+      />
       <PresetSection settings={settings} saving={mutation.isPending} onSave={mutation.mutate} />
       <ArchiveAccountSection
         settings={settings}

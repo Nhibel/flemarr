@@ -28,12 +28,15 @@ export default defineConfig({
     // Root font-size, not 16px (browser default). Every rem-based token —
     // fontSize, spacing (padding/gap), and the maxW container widths — scales
     // proportionally from this one value, app-wide, with zero per-component
-    // changes. Bumped more than once after feedback that the first +1px
-    // nudge was too timid; this is a real, visible jump, not a rounding
-    // error — if it's too much (or still not enough) the fix is this one
-    // line, not a re-audit of every component.
+    // changes. Was bumped to 22px, then brought back down to 18px, both
+    // times by editing this literal and redeploying. Now backed by a CSS
+    // variable instead (2026-11-13) so it can be adjusted live from Réglages
+    // → Apparence (apps/web/src/lib/use-font-scale.ts) without a redeploy —
+    // the `18px` fallback here is only for the instant before that hook
+    // runs, and must stay equal to that file's DEFAULT_FONT_SCALE (two
+    // independent constants, Panda config vs TS, not wired together).
     html: {
-      fontSize: '22px',
+      fontSize: 'var(--font-scale, 18px)',
     },
     'html, body': {
       bg: 'bg.page',

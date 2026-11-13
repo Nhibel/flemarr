@@ -24,11 +24,13 @@ const SECTIONS: Section[] = [
       },
       {
         term: 'No-Intro',
-        definition: 'L’autorité de référence pour les systèmes à cartouche (NES, SNES, N64, GBA, DS…).',
+        definition:
+          'L’autorité de référence pour les systèmes à cartouche (NES, SNES, N64, GBA, DS…).',
       },
       {
         term: 'Redump',
-        definition: 'L’autorité de référence pour les systèmes à disque (PS1, PS2, GameCube, Dreamcast…).',
+        definition:
+          'L’autorité de référence pour les systèmes à disque (PS1, PS2, GameCube, Dreamcast…).',
       },
       {
         term: 'McLean',
@@ -36,11 +38,13 @@ const SECTIONS: Section[] = [
       },
       {
         term: 'PropeR',
-        definition: 'Preset 1G1R intermédiaire — toutes langues, jeux + add-ons/bonus discs/éducatif, officiel uniquement.',
+        definition:
+          'Preset 1G1R intermédiaire — toutes langues, jeux + add-ons/bonus discs/éducatif, officiel uniquement.',
       },
       {
         term: 'Hearto',
-        definition: 'Preset 1G1R le plus large — toutes langues, démos, non-licenciés, proto/bêta/alpha inclus.',
+        definition:
+          'Preset 1G1R le plus large — toutes langues, démos, non-licenciés, proto/bêta/alpha inclus.',
       },
       {
         term: 'DAT',
@@ -63,11 +67,15 @@ const SECTIONS: Section[] = [
       },
       {
         term: '(Rev X)',
-        definition: 'Révision — une réédition corrigée de la même release, sortie après la première version.',
+        definition:
+          'Révision — une réédition corrigée de la même release, sortie après la première version.',
       },
       { term: 'Game', definition: 'Jeu officiel, sans particularité.' },
       { term: 'Demo', definition: 'Version de démonstration, pas le jeu complet.' },
-      { term: 'Proto', definition: 'Prototype — une version de développement, jamais sortie telle quelle.' },
+      {
+        term: 'Proto',
+        definition: 'Prototype — une version de développement, jamais sortie telle quelle.',
+      },
       { term: 'Beta', definition: 'Version bêta — antérieure à la version finale.' },
       { term: 'Unl (Unlicensed)', definition: 'Jeu non-licencié par le fabricant de la console.' },
       {
@@ -111,7 +119,8 @@ const SECTIONS: Section[] = [
     terms: [
       {
         term: 'Identifiant (de collection)',
-        definition: 'La fin de l’URL archive.org/details/<identifiant> — l’adresse unique d’un item sur archive.org.',
+        definition:
+          'La fin de l’URL archive.org/details/<identifiant> — l’adresse unique d’un item sur archive.org.',
       },
       {
         term: 'Layout direct / zip-collection / auto',
@@ -141,7 +150,7 @@ export function LexiquePage({ onClose }: { onClose: () => void }) {
   return (
     <main
       className={css({
-        maxW: '4xl',
+        maxW: '8xl',
         mx: 'auto',
         mt: { base: '8', md: '16' },
         px: { base: '4', md: '6', lg: '8' },
@@ -189,7 +198,9 @@ export function LexiquePage({ onClose }: { onClose: () => void }) {
           <dl className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
             {section.terms.map((t) => (
               <div key={t.term}>
-                <dt className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.heading' })}>
+                <dt
+                  className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.heading' })}
+                >
                   {t.term}
                 </dt>
                 <dd className={css({ fontSize: 'sm', color: 'fg.muted' })}>{t.definition}</dd>

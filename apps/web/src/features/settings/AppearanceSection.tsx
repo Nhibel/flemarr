@@ -1,5 +1,7 @@
 import { css, cx } from '@/styled-system/css';
+import { Button } from '@/components/Button.js';
 import type { Theme } from '@/lib/use-theme.js';
+import { MIN_FONT_SCALE, MAX_FONT_SCALE, FONT_SCALE_STEP } from '@/lib/use-font-scale.js';
 import { inputClass, sectionClass } from './styles.js';
 
 const THEMES: Theme[] = [
@@ -41,9 +43,13 @@ const THEME_DESCRIPTIONS: Record<Theme, string> = {
 export function AppearanceSection({
   theme,
   onSetTheme,
+  fontScale,
+  onSetFontScale,
 }: {
   theme: Theme;
   onSetTheme: (t: Theme) => void;
+  fontScale: number;
+  onSetFontScale: (px: number) => void;
 }) {
   return (
     <section className={sectionClass}>
@@ -71,6 +77,45 @@ export function AppearanceSection({
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
         {THEME_DESCRIPTIONS[theme]}
       </p>
+
+      {/* Also client-only (localStorage), like the theme above — see
+          apps/web/src/lib/use-font-scale.ts. Drives a CSS variable that
+          every rem-based token in the app (text, padding/gap, maxW
+          widths) scales from, so this one control resizes the whole UI
+          live, no reload needed. */}
+      <div className={css({ mt: '4' })}>
+        <p className={css({ fontSize: 'sm', color: 'fg.default', mb: '2' })}>Taille du texte</p>
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '3' })}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onSetFontScale(fontScale - FONT_SCALE_STEP)}
+            disabled={fontScale <= MIN_FONT_SCALE}
+            aria-label="Réduire la taille du texte"
+          >
+            −
+          </Button>
+          <span
+            className={css({
+              fontSize: 'sm',
+              color: 'fg.default',
+              minW: '12',
+              textAlign: 'center',
+            })}
+          >
+            {fontScale}px
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onSetFontScale(fontScale + FONT_SCALE_STEP)}
+            disabled={fontScale >= MAX_FONT_SCALE}
+            aria-label="Agrandir la taille du texte"
+          >
+            +
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }
