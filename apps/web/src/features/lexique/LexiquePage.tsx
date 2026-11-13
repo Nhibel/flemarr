@@ -112,6 +112,11 @@ const SECTIONS: Section[] = [
         definition:
           'Empreinte rapide calculée sur chaque ROM pour vérifier qu’un fichier correspond bien à l’entrée du DAT.',
       },
+      {
+        term: 'DS/DSi — Decrypted / Encrypted / Download Play / DSvision / Digital',
+        definition:
+          'No-Intro scinde la DS/DSi en plusieurs sets distincts. "Decrypted" = cartouches normales, jouables directement — c’est celui qu’il faut dans la grande majorité des cas. "Encrypted" = mêmes jeux avec la zone sécurisée restée chiffrée (préservation/flashcart, pas pour émuler). "Download Play" = démos multijoueur diffusées par un cartouche hôte, pas les jeux complets. "DSvision SD cards" = matériel éducatif tiers, sans rapport avec les jeux DS classiques. "DSi (Digital)" / "(Digital) (CDN) (Decrypted/Encrypted)" = titres DSiWare (boutique numérique), les variantes CDN ne changeant que la source du dump — "Decrypted" reste le bon choix.',
+      },
     ],
   },
   {
@@ -150,7 +155,7 @@ export function LexiquePage({ onClose }: { onClose: () => void }) {
   return (
     <main
       className={css({
-        maxW: '8xl',
+        maxW: '6xl',
         mx: 'auto',
         mt: { base: '8', md: '16' },
         px: { base: '4', md: '6', lg: '8' },

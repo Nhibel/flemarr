@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
@@ -22,6 +23,7 @@ import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { LexiquePage } from '@/features/lexique/LexiquePage.js';
 import { useTheme } from '@/lib/use-theme.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
+import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
@@ -43,24 +45,19 @@ export function App() {
   const { theme, setTheme } = useTheme();
   const { fontScale, setFontScale } = useFontScale();
 
+  let content: ReactNode;
   if (view === 'settings') {
-    return (
+    content = (
       <SettingsPage
         onClose={() => setView(activeDat ? 'game' : 'loader')}
         theme={theme}
         onSetTheme={setTheme}
-        fontScale={fontScale}
-        onSetFontScale={setFontScale}
       />
     );
-  }
-
-  if (view === 'lexique') {
-    return <LexiquePage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
-  }
-
-  if (activeDat === null) {
-    return (
+  } else if (view === 'lexique') {
+    content = <LexiquePage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
+  } else if (activeDat === null) {
+    content = (
       <LoaderView
         loaderMode={loaderMode}
         onSetLoaderMode={setLoaderMode}
@@ -72,18 +69,30 @@ export function App() {
         onLexique={() => setView('lexique')}
       />
     );
+  } else {
+    content = (
+      <GameView
+        dat={activeDat}
+        onReset={() => {
+          setActiveDat(null);
+          setView('loader');
+        }}
+        onSettings={() => setView('settings')}
+        onLexique={() => setView('lexique')}
+      />
+    );
   }
 
   return (
-    <GameView
-      dat={activeDat}
-      onReset={() => {
-        setActiveDat(null);
-        setView('loader');
-      }}
-      onSettings={() => setView('settings')}
-      onLexique={() => setView('lexique')}
-    />
+    <>
+      {content}
+      {/* Fixed position, outside the normal page flow, mounted once here —
+          not inside Réglages — so changing the size doesn't move the
+          control itself (every rem-based layout value it would otherwise
+          sit among reflows when fontScale changes) and it stays reachable
+          from every screen, not just Settings. */}
+      <FontScaleControl fontScale={fontScale} onSetFontScale={setFontScale} />
+    </>
   );
 }
 
@@ -116,7 +125,7 @@ function LoaderView({
   return (
     <main
       className={css({
-        maxW: '8xl',
+        maxW: '6xl',
         mx: 'auto',
         mt: { base: '8', md: '16' },
         px: { base: '4', md: '6', lg: '8' },
@@ -342,7 +351,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   return (
     <main
       className={css({
-        maxW: '8xl',
+        maxW: '6xl',
         mx: 'auto',
         mt: { base: '6', md: '8' },
         px: { base: '4', md: '6', lg: '10' },
