@@ -509,11 +509,9 @@ async function maybeConvertGameForBrowser(
 
     const result = await convertGameToChd(scratchDir, roms);
     if (!result.ok || !result.chdPath) {
-      job.events.push({
-        type: 'game-convert-failed',
-        gameId,
-        reason: result.reason ?? 'unknown error',
-      });
+      const reason = result.reason ?? 'unknown error';
+      logger.warn({ gameId, reason }, 'browser-target CHD conversion failed, falling back');
+      job.events.push({ type: 'game-convert-failed', gameId, reason });
       fallbackToIndividualSaves();
       return;
     }
@@ -533,6 +531,10 @@ async function maybeConvertGameForBrowser(
     });
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
+    logger.warn(
+      { gameId, scratchDir, reason },
+      'browser-target CHD conversion threw, falling back',
+    );
     job.events.push({ type: 'game-convert-failed', gameId, reason });
     fallbackToIndividualSaves();
   } finally {

@@ -42,8 +42,9 @@ export function AutoConvertChdSection({
           Convertir automatiquement les jeux disque (.bin/.cue) en .chd après téléchargement
           <br />
           <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>
-            Les fichiers d'origine sont supprimés une fois le .chd vérifié bit à bit. Uniquement
-            pour les téléchargements vers le serveur — sans effet en mode navigateur.
+            Les fichiers d'origine sont supprimés une fois le .chd vérifié bit à bit. S'applique
+            aussi bien aux téléchargements vers le serveur qu'en mode navigateur (un seul fichier
+            .chd est alors proposé, au lieu du .bin et du .cue séparément).
           </span>
         </span>
       </label>
