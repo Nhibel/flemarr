@@ -175,32 +175,41 @@ async function runQueue(
   const settings = getSettings();
   const concurrency = settings.downloaderConcurrency;
   const jobSignal = job.controller.signal;
-  const queue = [...job.items];
   const inFlight = new Set<Promise<void>>();
 
-  // autoConvertChd, either target: counts down as each rom of an eligible
-  // game (one with a .cue in the DAT — see getConvertibleRoms) reaches
-  // 'done'. Only eligible games are tracked at all: for browser target,
-  // whether a gameId is a key here is also what decides file-done
-  // (withhold the individual save prompt, wait for the whole game) vs.
-  // file-ready (save this file now, as always) in processItem below — a
-  // cartridge game must never be silently gated just because the setting
-  // is on. A game's CHD conversion only ever triggers once the count hits
-  // zero (every rom downloaded successfully) — a failed or cancelled
-  // sibling just means it never does, leaving the originals as plain
-  // bin/cue (safe default, never a half-converted game).
-  const remainingRomsByGame = new Map<string, number>();
-  if (settings.autoConvertChd) {
-    for (const gameId of new Set(job.items.map((i) => i.gameId))) {
-      if (getConvertibleRoms(datId, gameId) !== undefined) remainingRomsByGame.set(gameId, 0);
+  // Grouped by game, not flattened — a concurrency slot is one GAME (all of
+  // its roms start together, uncapped), not one file. Without this, a
+  // multi-file disc game could occupy several slots by itself, starving
+  // unrelated games in the same job of concurrency they should have had.
+  // First-seen order preserved, matching job.items' own (request) order.
+  const gameIds: string[] = [];
+  const itemsByGame = new Map<string, DownloadItemState[]>();
+  for (const item of job.items) {
+    let list = itemsByGame.get(item.gameId);
+    if (!list) {
+      list = [];
+      itemsByGame.set(item.gameId, list);
+      gameIds.push(item.gameId);
     }
-    for (const item of job.items) {
-      const count = remainingRomsByGame.get(item.gameId);
-      if (count !== undefined) remainingRomsByGame.set(item.gameId, count + 1);
+    list.push(item);
+  }
+
+  // autoConvertChd, either target: which games are eligible (have a .cue in
+  // the DAT — see getConvertibleRoms), computed once up front rather than
+  // per-item. For browser target, membership here is also what decides
+  // file-done (withhold the individual save prompt, wait for the whole
+  // game) vs. file-ready (save this file now, as always) in processItem
+  // below — a cartridge game must never be gated just because the setting
+  // is on.
+  const convertEligible = new Map<string, Rom[]>();
+  if (settings.autoConvertChd) {
+    for (const gameId of gameIds) {
+      const roms = getConvertibleRoms(datId, gameId);
+      if (roms) convertEligible.set(gameId, roms);
     }
   }
 
-  const processItem = async (item: DownloadItemState): Promise<void> => {
+  const processItem = async (item: DownloadItemState, eligible: boolean): Promise<void> => {
     // Aborts if EITHER this item's own controller fires (cancelItem) or the
     // job's shared one does (cancelJob, "cancel everything") — one signal
     // for both cancellation paths, so the rest of this function doesn't
@@ -321,19 +330,13 @@ async function runQueue(
         status: 'done',
       });
 
-      const remaining = remainingRomsByGame.get(item.gameId);
-      if (remaining !== undefined) {
-        // Eligible game, still waiting on sibling roms (or this is the
-        // last one) — file-done only marks this row's progress complete;
-        // the individual browser-save prompt is withheld so the bin and
-        // cue never each trigger their own download (see
-        // maybeConvertGameForBrowser, which offers the single .chd once
-        // every rom is in).
+      if (eligible) {
+        // file-done only marks this row's progress complete; the
+        // individual browser-save prompt is withheld so the bin and cue
+        // never each trigger their own download — runGame (in runQueue)
+        // offers the single .chd, or falls back to this item's own
+        // file-ready, once every rom of the game has settled.
         job.events.push({ type: 'file-done', gameId: item.gameId, romName: item.romName });
-        remainingRomsByGame.set(item.gameId, remaining - 1);
-        if (remaining - 1 === 0) {
-          await maybeConvertGameForBrowser(job, jobId, datId, item.gameId);
-        }
         return;
       }
 
@@ -362,14 +365,6 @@ async function runQueue(
           expectedCrc: item.expectedCrc,
           status: 'done',
         });
-
-        const remaining = remainingRomsByGame.get(item.gameId);
-        if (remaining !== undefined) {
-          remainingRomsByGame.set(item.gameId, remaining - 1);
-          if (remaining - 1 === 0) {
-            await maybeConvertGame(job, datId, item.gameId, destinationDir!);
-          }
-        }
         return;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
@@ -402,16 +397,47 @@ async function runQueue(
     });
   };
 
-  for (const item of queue) {
-    // Not "if aborted, stop queuing" — every item still goes through
-    // processItem even after the whole job is cancelled, so each one still
-    // gets its own file-cancelled event (and the UI can drop it). The
-    // per-item fast path at the top of processItem makes this cheap.
+  const runGame = async (gameId: string): Promise<void> => {
+    const items = itemsByGame.get(gameId)!;
+    const roms = convertEligible.get(gameId);
+
+    await Promise.all(items.map((item) => processItem(item, roms !== undefined)));
+
+    if (!roms) return;
+
+    if (items.every((i) => i.status === 'done')) {
+      if (target === 'server') {
+        await maybeConvertGame(job, gameId, destinationDir!, roms);
+      } else {
+        await maybeConvertGameForBrowser(job, jobId, gameId, roms);
+      }
+      return;
+    }
+
+    // A sibling failed or was cancelled — conversion never runs, so every
+    // item that DID reach 'done' must still get its own file-ready;
+    // otherwise (browser target) it was already swapped for file-done
+    // above in anticipation of a conversion that's now never coming, and
+    // would be stuck with no save prompt and no fallback at all.
+    if (target === 'browser') {
+      emitIndividualFallback(
+        job,
+        jobId,
+        items.filter((i) => i.status === 'done'),
+      );
+    }
+  };
+
+  for (const gameId of gameIds) {
+    // Not "if aborted, stop queuing" — every game still goes through
+    // runGame even after the whole job is cancelled, so each of its items
+    // still gets its own file-cancelled event (and the UI can drop it).
+    // The per-item fast path at the top of processItem makes this cheap.
     if (inFlight.size >= concurrency) {
       await Promise.race(inFlight);
     }
 
-    const p: Promise<void> = processItem(item).finally(() => inFlight.delete(p));
+    const p: Promise<void> = runGame(gameId).finally(() => inFlight.delete(p));
     inFlight.add(p);
   }
 
@@ -440,17 +466,33 @@ function getConvertibleRoms(datId: string, gameId: string): Rom[] | undefined {
   return roms;
 }
 
-// Called once every rom of `gameId` in this job has reached 'done' (see
-// runQueue's remainingRomsByGame).
+// Emits the ordinary browser-save prompt individually for each given item —
+// the fallback whenever a game that was eligible for CHD conversion never
+// actually gets converted (chdman failed, or runGame skipped conversion
+// outright because a sibling rom failed/cancelled first).
+function emitIndividualFallback(
+  job: DownloadJobState,
+  jobId: string,
+  items: Pick<DownloadItemState, 'gameId' | 'romName'>[],
+): void {
+  for (const item of items) {
+    job.events.push({
+      type: 'file-ready',
+      gameId: item.gameId,
+      romName: item.romName,
+      downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
+    });
+  }
+}
+
+// Called by runGame (in runQueue) once every rom of `gameId` has reached
+// 'done' — `roms` is already known-eligible (see getConvertibleRoms).
 async function maybeConvertGame(
   job: DownloadJobState,
-  datId: string,
   gameId: string,
   destinationDir: string,
+  roms: Rom[],
 ): Promise<void> {
-  const roms = getConvertibleRoms(datId, gameId);
-  if (!roms) return;
-
   job.events.push({ type: 'game-converting', gameId });
   const result = await convertGameToChd(destinationDir, roms);
   if (result.ok) {
@@ -476,27 +518,10 @@ async function maybeConvertGame(
 async function maybeConvertGameForBrowser(
   job: DownloadJobState,
   jobId: string,
-  datId: string,
   gameId: string,
+  roms: Rom[],
 ): Promise<void> {
   const gameItems = job.items.filter((i) => i.gameId === gameId && i.status === 'done');
-
-  const fallbackToIndividualSaves = (): void => {
-    for (const item of gameItems) {
-      job.events.push({
-        type: 'file-ready',
-        gameId: item.gameId,
-        romName: item.romName,
-        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
-      });
-    }
-  };
-
-  const roms = getConvertibleRoms(datId, gameId);
-  if (!roms) {
-    fallbackToIndividualSaves();
-    return;
-  }
 
   job.events.push({ type: 'game-converting', gameId });
 
@@ -512,7 +537,7 @@ async function maybeConvertGameForBrowser(
       const reason = result.reason ?? 'unknown error';
       logger.warn({ gameId, reason }, 'browser-target CHD conversion failed, falling back');
       job.events.push({ type: 'game-convert-failed', gameId, reason });
-      fallbackToIndividualSaves();
+      emitIndividualFallback(job, jobId, gameItems);
       return;
     }
 
@@ -536,12 +561,12 @@ async function maybeConvertGameForBrowser(
       'browser-target CHD conversion threw, falling back',
     );
     job.events.push({ type: 'game-convert-failed', gameId, reason });
-    fallbackToIndividualSaves();
+    emitIndividualFallback(job, jobId, gameItems);
   } finally {
     // On success the .chd was already moved out above; this only ever
     // removes the (now-empty, or never-fully-populated on failure) scratch
     // dir itself — the originals it held were copies, never the real
-    // tempPaths, so there's nothing here that fallbackToIndividualSaves
+    // tempPaths, so there's nothing here that emitIndividualFallback
     // still needs.
     await rm(scratchDir, { recursive: true, force: true }).catch(() => undefined);
   }

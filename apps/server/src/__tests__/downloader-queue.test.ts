@@ -307,6 +307,55 @@ describe('startDownload — multiple items with concurrency', () => {
     const job = downloadJobs.get(jobId)!;
     expect(job.events.at(-1)?.type).toBe('complete');
   });
+
+  it('a multi-file game does not exhaust the concurrency pool for other queued games', async () => {
+    updateSettings({ downloaderConcurrency: 2 });
+
+    let releaseG1: (() => void) | undefined;
+    const g1Gate = new Promise<void>((resolve) => {
+      releaseG1 = resolve;
+    });
+    vi.mocked(downloadFile).mockImplementation(async ({ url }) => {
+      if (url.includes('/g1-')) await g1Gate;
+      return 'done';
+    });
+
+    await startDownload({
+      datId: 'dat-001',
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'G1 (Track 1).bin',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: 'https://x/g1-1', extractFromZip: false }],
+        },
+        {
+          gameId: 'g1',
+          romName: 'G1 (Track 2).bin',
+          expectedCrc: 'bbbbbbbb',
+          sources: [{ url: 'https://x/g1-2', extractFromZip: false }],
+        },
+        {
+          gameId: 'g2',
+          romName: 'G2.sfc',
+          expectedCrc: 'cccccccc',
+          sources: [{ url: 'https://x/g2', extractFromZip: false }],
+        },
+      ],
+      target: 'server',
+      destinationDir: TMP,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    // With concurrency=2 meaning two GAMES, both of g1's own roms (still
+    // gated on g1Gate) and g2's single rom should all have started — g1's
+    // two files must not, by themselves, consume both available slots and
+    // leave g2 waiting on them to finish first.
+    expect(vi.mocked(downloadFile)).toHaveBeenCalledTimes(3);
+
+    releaseG1!();
+    await new Promise((r) => setTimeout(r, 50));
+  });
 });
 
 describe('archive-container fast path — shared container dedup', () => {
@@ -804,5 +853,42 @@ describe('autoConvertChd', () => {
       await access(item.tempPath);
       await rm(item.tempPath, { force: true });
     }
+  });
+
+  it('still offers a successful rom individually when a sibling of the same eligible game fails (browser target)', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockImplementation(async ({ url, tempPath }) => {
+      if (url.includes('/cue')) throw new Error('network fail');
+      await mkdir(dirname(tempPath), { recursive: true });
+      await writeFile(tempPath, 'raw-bytes');
+      return 'done';
+    });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'browser',
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const job = downloadJobs.get(jobId)!;
+
+    // Conversion never even attempts — one rom of the game never finished.
+    expect(vi.mocked(convertGameToChd)).not.toHaveBeenCalled();
+
+    // Without the fix, the .bin would stay stuck at file-done forever
+    // (already withheld in anticipation of a conversion that's now never
+    // coming), with no fallback save prompt ever offered.
+    const fileReadyEvents = job.events.filter((e) => e.type === 'file-ready');
+    expect(fileReadyEvents).toHaveLength(1);
+    expect(fileReadyEvents[0]).toMatchObject({ gameId: 'g1', romName: 'Game (USA).bin' });
+
+    const cueItem = job.items.find((i) => i.romName === 'Game (USA).cue');
+    expect(cueItem?.status).toBe('failed');
+
+    const binItem = job.items.find((i) => i.romName === 'Game (USA).bin')!;
+    await access(binItem.tempPath);
+    await rm(binItem.tempPath, { force: true });
   });
 });
