@@ -347,8 +347,18 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         // instead of being squeezed into the viewport. `overflowY: auto`
         // here (not on <html>/<body>) means the *other* tabs — plain block
         // children, not flex:1 — still scroll normally once their own
-        // content exceeds 100dvh, same as before this change.
-        height: '100dvh',
+        // content exceeds 100vh, same as before this change.
+        // Plain `vh`, not `dvh`: the dynamic unit exists specifically to
+        // track a mobile browser's address bar showing/hiding, which
+        // doesn't apply to Steam Deck's embedded/overlay browser context —
+        // a likely candidate for an older engine that either doesn't
+        // support `dvh` at all or computes it unreliably there (the
+        // reported symptom, the list collapsing to a sliver instead of
+        // over-filling or under-filling, didn't match either known flex
+        // failure mode for a *missing* height — worth confirming this
+        // actually fixes it rather than treating it as proven). `vh` has
+        // been supported everywhere for well over a decade.
+        height: '100vh',
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
