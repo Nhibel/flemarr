@@ -2,7 +2,7 @@
 
 Numbered phases. **Complete a phase before starting the next.** Each phase lists explicit acceptance criteria; the phase is "done" only when every criterion is checked.
 
-**Current status: phases 0–8, 10 and 12 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) was retired on 2026-11-08 before its acceptance criteria were verified — see the note under the phase.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
+**Current status: phases 0–8, 10, 12 and 13 are done; the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient) is blocked — the service shut down on 31 March 2026, see the note under the phase. Phase 11 (display modes + ScreenScraper) was retired on 2026-11-08 before its acceptance criteria were verified — see the note under the phase.** Where the implementation deviated from the original plan, a "Shipped notes" block under the phase records what was actually built.
 
 ---
 
@@ -385,6 +385,36 @@ a single Settings-driven choice per Camille's feedback that mixing
 targets within a session has no real use case. `download_history`
 records browser-target downloads with a `'<browser>'` destination
 sentinel instead of a real path, for audit purposes only.
+
+---
+
+## Phase 13 — Auto-convert to CHD, and per-game download concurrency
+
+Let downloaded disc-based games (PS1, Saturn, Sega CD, etc. — anything with a `.cue` in the DAT) be automatically folded into a single `.chd` file instead of staying as separate `.bin`/`.cue` files, matching what EmuDeck and most emulator frontends prefer for a smaller, tidier library. Fixing this properly for browser-target downloads exposed a scheduling bug in the downloader worth fixing in the same phase: concurrency was counted per file, not per game, so a single multi-file disc game could starve other queued games of the concurrency slots they should have had.
+
+### Tasks
+
+- Settings: `autoConvertChd` boolean (default off).
+- `apps/server/src/services/downloader/chd.ts`: `convertGameToChd` runs `chdman createcd`, then verifies the round-trip bit-for-bit (`chdman extractcd` back out to a scratch dir, CRC32 each extracted file against the DAT's own expected CRCs) and only on a full match deletes the originals. Any failure (chdman error, a CRC that doesn't come back) leaves the originals untouched and cleans up only what it itself created.
+- Downloader (`services/downloader/index.ts`): once every rom of an eligible game (one whose DAT roms include a `.cue`) has downloaded, the game is handed off for conversion. Server-target converts in place in the destination folder. Browser-target copies the roms into a scratch dir under their real canonical names first (chdman needs the `.cue`'s own referenced filenames to match real files on disk — the job-prefixed staging names don't), converts there, and offers the single resulting `.chd` to the browser instead of the two raw files; any conversion failure falls back to offering the originals individually, exactly as before the setting existed.
+- Scanner (`services/scanner/chd-match.ts`): a `.chd` found during a scan is extracted (`chdman extractcd`) and each extracted file is CRC32'd and matched against the DAT like any ordinary file — a library that's already been converted still scans as fully owned, and the DAT's own `.cue` entry is inferred once every other rom of the game has matched (a `.chd`'s regenerated cue sheet is never byte-identical to the original, so it can never match by CRC on its own).
+- Downloader concurrency restructured (`runQueue`) to admit one whole **game** per concurrency slot — every one of its own roms starts together, uncapped by the setting — instead of one file per slot.
+- CHD conversion runs in its own background FIFO queue, decoupled from the download concurrency pool: a game's download slot frees the instant its files are all in, so later queued games keep downloading while an earlier one is still converting (chdman is CPU/disk-bound, not network, so it gains nothing from holding up a download slot). Conversions themselves still run one at a time.
+- Downloads tab: a "Vider les téléchargements terminés" button clears finished/cancelled/errored job cards from the list without touching anything still running or converting.
+- `Dockerfile`: both build and runtime stages switched from `node:20-alpine` to `node:20-slim` (debian, glibc) — `chdman` ships only native binaries (no WASM port exists), and glibc avoids the musl prebuilt-binary mismatch risk already hit once with `better-sqlite3`; the builder stage keeps a compiler toolchain installed as a fallback for any arch/Node-ABI combination without a prebuild.
+
+### Acceptance criteria
+
+- [x] A real multi-track PS1 game downloads, auto-converts to a single verified `.chd`, and the originals are deleted only after the round-trip CRC32 check passes.
+- [x] A deliberately-failed conversion (bad CRC, chdman error) leaves the original `.bin`/`.cue` untouched and reports the failure — never destroys a known-good download.
+- [x] Browser-target downloads of an eligible game offer one `.chd` save prompt instead of two raw files; a cartridge game (no `.cue`) is never gated behind this regardless of the setting.
+- [x] A scan of a folder containing only `.chd` files (no raw `.bin`/`.cue`) still reports those games as fully owned.
+- [x] Queuing several games at once no longer serializes behind one multi-file game's own downloads or its conversion.
+- [x] Clearing finished downloads never removes a job that's still running or converting.
+
+### Shipped notes
+
+Shipped 2026-11-13. Found and fixed along the way, both before reaching production: `convertGameToChd`'s success path never actually set the `chdPath` its own return type required, so every real browser-target conversion silently reported `game-convert-failed: unknown error` despite having fully succeeded on disk — the existing test for that path only asserted `result.ok`, never `result.chdPath`, which is exactly why it slipped through; a test asserting the field was added alongside the fix. Also fixed: a sibling rom failing while another of the same game succeeded could leave the successful one's browser-save prompt permanently withheld with no fallback, since the conversion that would have triggered it never ran — the per-game concurrency restructure fixed this as a side effect, and a regression test locks it in.
 
 ---
 

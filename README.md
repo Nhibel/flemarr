@@ -5,10 +5,13 @@ A personal ROM library curator built around 1G1R DAT files.
 ## What it does
 
 - **Load DAT files** from Redump and No-Intro collections (manual upload, or auto-fetch from [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R)).
-- **Browse and filter** games per system.
+- **Browse and filter** games per system, with box art.
 - **Scan a local directory** for ROMs you already own, match them against the DAT by CRC32, and rename to the canonical 1G1R filenames.
-- **Pick the games you want** and download them individually from archive.org sources.
+- **Pick the games you want** and download them individually from archive.org sources — either straight to the server's library, or to your own browser.
 - **Validate** every downloaded file against the DAT's CRC32 / SHA1 before keeping it.
+- **Auto-convert disc-based games** (PS1, Saturn, etc.) to a single verified `.chd` file instead of leaving separate `.bin`/`.cue` files behind — optional, off by default.
+
+New here? [docs/guide-utilisateur.md](./docs/guide-utilisateur.md) explains what the app does and how to use it, in plain French, no technical background assumed.
 
 ## Stack
 
@@ -18,7 +21,7 @@ A personal ROM library curator built around 1G1R DAT files.
 
 ## Status
 
-Phases 0–8, 10 and 12 are done and in daily use. Phase 9 (Myrient as a secondary source) is blocked — the service shut down. Phase 11 (ScreenScraper game info) was retired before completion — box art alone covers the need. See [ROADMAP.md](./ROADMAP.md).
+Phases 0–8, 10, 12 and 13 are done and in daily use. Phase 9 (Myrient as a secondary source) is blocked — the service shut down. Phase 11 (ScreenScraper game info) was retired before completion — box art alone covers the need. See [ROADMAP.md](./ROADMAP.md).
 
 ## Running with Docker
 
@@ -51,7 +54,7 @@ ROMS_HOST_DIR=/srv/roms   # the library folder itself — pointing at its parent
 | `ROMS_ROOT`            | `/roms`     | In-container library root that browsing/scan/download are confined to.   |
 | `ROM_CURATOR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file).   |
 
-This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org credentials, and whether downloads land on the server or in the browser — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
+This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org credentials, whether downloads land on the server or in the browser, and whether disc games auto-convert to `.chd` — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
 
 ### Deploying on a homelab server
 

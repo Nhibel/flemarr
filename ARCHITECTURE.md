@@ -138,10 +138,22 @@ SHA1 / MD5 from the DAT are validated only if the user explicitly requests deep 
 
 ---
 
+## CHD conversion
+
+Disc-based systems (anything with a `.cue` in the DAT) can be auto-converted from raw `.bin`/`.cue` to a single `.chd` after download (`settings.autoConvertChd`, off by default) — via the `chdman` npm package, which wraps MAME's CHD tool. `chdman` ships only native, per-platform binaries; there's no WASM build, which is why the runtime image is `node:20-slim` (glibc) rather than alpine (musl) — see the Dockerfile's comments.
+
+A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so both the conversion step and the scanner verify/match by **decompressing and re-hashing**, never by trusting a CHD-level checksum:
+
+- **Conversion** (`services/downloader/chd.ts`): `chdman createcd`, then `chdman extractcd` back out to a scratch dir and CRC32 each extracted file against the DAT's expected CRCs. Only a full match deletes the originals; any mismatch or tool error leaves them untouched.
+- **Scanning** (`services/scanner/chd-match.ts`): the same extract-then-CRC32 approach feeds a `.chd`'s contents into the ordinary CRC-matching path, so a library that's already been converted still scans as fully owned. The DAT's own `.cue` rom is inferred matched once every other rom of the game has matched by CRC — a CHD's regenerated cue sheet is never byte-identical to the original, so it can never match on its own.
+
+---
+
 ## Concurrency
 
 - **Scanner:** parallelize CRC32 computation across files. Limit to `os.cpus().length` workers (use `worker_threads` if necessary, or just `Promise.all` with a queue — start simple).
-- **Downloader:** default 2 in-flight downloads, configurable. archive.org is rate-sensitive; don't hammer it.
+- **Downloader:** `settings.downloaderConcurrency` (default 2) bounds how many **games** are in flight at once, not how many files — every rom of an admitted game starts together, uncapped by the setting. A multi-file disc game (bin + bin + cue) must not, by itself, occupy every slot and starve other queued games; see `runQueue`'s per-game grouping in `apps/server/src/services/downloader/index.ts`.
+- **CHD conversion** (see below) runs in its own background FIFO queue, entirely decoupled from the download concurrency pool — it must never hold a game's download slot for its own (CPU/disk-bound) duration.
 - **archive.org metadata:** serialize requests per identifier — a stampede on the same identifier is wasted bandwidth.
 
 ---

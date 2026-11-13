@@ -6,9 +6,9 @@ This file is the canonical context for Claude Code working on this project. Read
 
 ## Project in one paragraph
 
-`rom-curator` is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs). Access-restricted collections are supported via an archive.org account login.
+`rom-curator` is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs) either straight to the server's library or to the user's own browser. Access-restricted collections are supported via an archive.org account login. Downloaded disc-based games (PS1, Saturn, etc.) can be auto-converted to a single verified `.chd` file instead of staying as separate `.bin`/`.cue`.
 
-The user (Camille) runs a homelab. **Phases 0–8, 10 and 12 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) was retired before completion (2026-11-08) — box art alone covers the need; see ROADMAP.md.**
+The user (Camille) runs a homelab. **Phases 0–8, 10, 12 and 13 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) was retired before completion (2026-11-08) — box art alone covers the need; see ROADMAP.md.**
 
 ---
 
@@ -16,20 +16,21 @@ The user (Camille) runs a homelab. **Phases 0–8, 10 and 12 of [ROADMAP.md](./R
 
 ### Stack
 
-| Layer        | Tech                                                                        |
-| ------------ | --------------------------------------------------------------------------- |
-| Frontend     | Vite + React 18 + TypeScript                                                |
-| Styling      | Panda CSS (CSS-in-JS with build-time extraction)                            |
-| Backend      | Hono on Node 20+, TypeScript                                                |
-| Validation   | Zod for request/response schemas                                            |
-| DAT parsing  | `fast-xml-parser`                                                           |
-| Hashing      | Hand-rolled streaming CRC32 (`apps/server/src/lib/crc32.ts`)                |
-| Persistence  | SQLite via `better-sqlite3`, hand-rolled SQL migrations                     |
-| ZIP handling | `fflate` (unwrapping zip-view downloads)                                    |
-| Logging      | `pino` (backend only)                                                       |
-| HTTP client  | Native `fetch` (Node 20+ has it), wrapped in `archiveFetch` for archive.org |
-| Tests        | Vitest (frontend + backend share the same runner)                           |
-| Monorepo     | pnpm workspaces                                                             |
+| Layer          | Tech                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| Frontend       | Vite + React 18 + TypeScript                                                                  |
+| Styling        | Panda CSS (CSS-in-JS with build-time extraction)                                              |
+| Backend        | Hono on Node 20+, TypeScript                                                                  |
+| Validation     | Zod for request/response schemas                                                              |
+| DAT parsing    | `fast-xml-parser`                                                                             |
+| Hashing        | Hand-rolled streaming CRC32 (`apps/server/src/lib/crc32.ts`)                                  |
+| Persistence    | SQLite via `better-sqlite3`, hand-rolled SQL migrations                                       |
+| ZIP handling   | `fflate` (unwrapping zip-view downloads)                                                      |
+| CHD conversion | `chdman` npm package (native binaries, no WASM port — runtime image is `node:20-slim`, glibc) |
+| Logging        | `pino` (backend only)                                                                         |
+| HTTP client    | Native `fetch` (Node 20+ has it), wrapped in `archiveFetch` for archive.org                   |
+| Tests          | Vitest (frontend + backend share the same runner)                                             |
+| Monorepo       | pnpm workspaces                                                                               |
 
 ### Project layout
 
