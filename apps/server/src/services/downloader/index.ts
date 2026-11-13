@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { rename, rm } from 'node:fs/promises';
+import { rename, rm, mkdir, copyFile } from 'node:fs/promises';
 import { join, basename, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
@@ -17,6 +17,7 @@ import type {
   DownloadTarget,
   DownloadSource,
 } from '@shared/download.js';
+import type { Rom } from '@shared/dat.js';
 const TEMP_DIR_NAME = '.rom-curator-tmp';
 // Browser-target files are staged here (outside any library root — they
 // never get placed, only served once and then deleted).
@@ -71,6 +72,11 @@ export interface DownloadJobState {
       refCount: number;
     }
   >;
+  // Browser-target CHD conversions only: a game's raw .bin/.cue are never
+  // placed anywhere findBrowserFile already knows to look (see
+  // maybeConvertGameForBrowser) — the resulting .chd's own path+filename is
+  // recorded here, keyed by gameId, so findBrowserFile can serve it.
+  convertedFiles: Map<string, { path: string; filename: string }>;
 }
 
 export const downloadJobs = new Map<string, DownloadJobState>();
@@ -105,6 +111,12 @@ function evictOldJobs(): void {
         for (const item of job.items) {
           if (item.status === 'done')
             void rm(item.tempPath, { force: true }).catch(() => undefined);
+        }
+        // Same leak, different map: a converted .chd the client never
+        // picked up (tab closed before the save prompt, etc.) sits in
+        // BROWSER_STAGING_DIR under its own path, not any item's tempPath.
+        for (const converted of job.convertedFiles.values()) {
+          void rm(converted.path, { force: true }).catch(() => undefined);
         }
       }
       downloadJobs.delete(id);
@@ -142,6 +154,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
     events,
     controller,
     containerCache: new Map(),
+    convertedFiles: new Map(),
   };
   downloadJobs.set(jobId, job);
 
@@ -165,15 +178,25 @@ async function runQueue(
   const queue = [...job.items];
   const inFlight = new Set<Promise<void>>();
 
-  // Server-target + autoConvertChd only: counts down as each rom of a game
-  // reaches 'done'. A game's CHD conversion only ever triggers once this
-  // hits zero (every rom downloaded successfully) — a failed or cancelled
+  // autoConvertChd, either target: counts down as each rom of an eligible
+  // game (one with a .cue in the DAT — see getConvertibleRoms) reaches
+  // 'done'. Only eligible games are tracked at all: for browser target,
+  // whether a gameId is a key here is also what decides file-done
+  // (withhold the individual save prompt, wait for the whole game) vs.
+  // file-ready (save this file now, as always) in processItem below — a
+  // cartridge game must never be silently gated just because the setting
+  // is on. A game's CHD conversion only ever triggers once the count hits
+  // zero (every rom downloaded successfully) — a failed or cancelled
   // sibling just means it never does, leaving the originals as plain
   // bin/cue (safe default, never a half-converted game).
   const remainingRomsByGame = new Map<string, number>();
-  if (target === 'server' && settings.autoConvertChd) {
+  if (settings.autoConvertChd) {
+    for (const gameId of new Set(job.items.map((i) => i.gameId))) {
+      if (getConvertibleRoms(datId, gameId) !== undefined) remainingRomsByGame.set(gameId, 0);
+    }
     for (const item of job.items) {
-      remainingRomsByGame.set(item.gameId, (remainingRomsByGame.get(item.gameId) ?? 0) + 1);
+      const count = remainingRomsByGame.get(item.gameId);
+      if (count !== undefined) remainingRomsByGame.set(item.gameId, count + 1);
     }
   }
 
@@ -289,12 +312,6 @@ async function runQueue(
       // request, then deletes it. Never placed anywhere on this host.
       item.status = 'done';
       logger.info({ romName: item.romName }, 'download ready for browser pickup');
-      job.events.push({
-        type: 'file-ready',
-        gameId: item.gameId,
-        romName: item.romName,
-        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
-      });
       recordDownload({
         gameId: item.gameId,
         romName: item.romName,
@@ -302,6 +319,29 @@ async function runQueue(
         destination: '<browser>',
         expectedCrc: item.expectedCrc,
         status: 'done',
+      });
+
+      const remaining = remainingRomsByGame.get(item.gameId);
+      if (remaining !== undefined) {
+        // Eligible game, still waiting on sibling roms (or this is the
+        // last one) — file-done only marks this row's progress complete;
+        // the individual browser-save prompt is withheld so the bin and
+        // cue never each trigger their own download (see
+        // maybeConvertGameForBrowser, which offers the single .chd once
+        // every rom is in).
+        job.events.push({ type: 'file-done', gameId: item.gameId, romName: item.romName });
+        remainingRomsByGame.set(item.gameId, remaining - 1);
+        if (remaining - 1 === 0) {
+          await maybeConvertGameForBrowser(job, jobId, datId, item.gameId);
+        }
+        return;
+      }
+
+      job.events.push({
+        type: 'file-ready',
+        gameId: item.gameId,
+        romName: item.romName,
+        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
       });
       return;
     }
@@ -388,21 +428,28 @@ async function runQueue(
   job.completedAt = Date.now();
 }
 
+// Only games with a .cue among the DAT's own roms (disc systems) are
+// eligible for CHD conversion — everything else (cartridge systems) returns
+// undefined, a silent no-op rather than an error, for both target types.
+function getConvertibleRoms(datId: string, gameId: string): Rom[] | undefined {
+  const dat = getDat(datId);
+  const game = dat?.games.find((g) => g.id === gameId);
+  if (!game) return undefined;
+  const roms = game.roms.filter((r) => r.crc !== undefined);
+  if (!roms.some((r) => r.name.toLowerCase().endsWith('.cue'))) return undefined;
+  return roms;
+}
+
 // Called once every rom of `gameId` in this job has reached 'done' (see
-// runQueue's remainingRomsByGame). Only games with a .cue in the DAT (disc
-// systems) are eligible — everything else is a silent no-op, not an error.
+// runQueue's remainingRomsByGame).
 async function maybeConvertGame(
   job: DownloadJobState,
   datId: string,
   gameId: string,
   destinationDir: string,
 ): Promise<void> {
-  const dat = getDat(datId);
-  const game = dat?.games.find((g) => g.id === gameId);
-  if (!game) return;
-
-  const roms = game.roms.filter((r) => r.crc !== undefined);
-  if (!roms.some((r) => r.name.toLowerCase().endsWith('.cue'))) return;
+  const roms = getConvertibleRoms(datId, gameId);
+  if (!roms) return;
 
   job.events.push({ type: 'game-converting', gameId });
   const result = await convertGameToChd(destinationDir, roms);
@@ -414,6 +461,87 @@ async function maybeConvertGame(
       gameId,
       reason: result.reason ?? 'unknown error',
     });
+  }
+}
+
+// Browser-target counterpart to maybeConvertGame. Unlike server-target,
+// these roms were never renamed to canonical names in a shared folder — each
+// item sits at its own job-prefixed tempPath (see startDownload) — and
+// chdman needs the .cue's internally-referenced filenames to match real
+// files on disk. So: copy (not move, to keep the per-item fallback intact
+// on any failure) each item into a scratch dir under its real basename,
+// convert there, then move the resulting .chd into the same flat staging
+// dir every other browser item uses, so findBrowserFile/the download route
+// can serve and clean it up exactly like any other browser-target file.
+async function maybeConvertGameForBrowser(
+  job: DownloadJobState,
+  jobId: string,
+  datId: string,
+  gameId: string,
+): Promise<void> {
+  const gameItems = job.items.filter((i) => i.gameId === gameId && i.status === 'done');
+
+  const fallbackToIndividualSaves = (): void => {
+    for (const item of gameItems) {
+      job.events.push({
+        type: 'file-ready',
+        gameId: item.gameId,
+        romName: item.romName,
+        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
+      });
+    }
+  };
+
+  const roms = getConvertibleRoms(datId, gameId);
+  if (!roms) {
+    fallbackToIndividualSaves();
+    return;
+  }
+
+  job.events.push({ type: 'game-converting', gameId });
+
+  const scratchDir = join(tmpdir(), `rom-curator-chd-browser-${randomUUID()}`);
+  try {
+    await mkdir(scratchDir, { recursive: true });
+    for (const item of gameItems) {
+      await copyFile(item.tempPath, join(scratchDir, basename(item.romName)));
+    }
+
+    const result = await convertGameToChd(scratchDir, roms);
+    if (!result.ok || !result.chdPath) {
+      job.events.push({
+        type: 'game-convert-failed',
+        gameId,
+        reason: result.reason ?? 'unknown error',
+      });
+      fallbackToIndividualSaves();
+      return;
+    }
+
+    const filename = basename(result.chdPath);
+    const finalPath = join(BROWSER_STAGING_DIR, `${jobId}-${filename}`);
+    await mkdir(BROWSER_STAGING_DIR, { recursive: true });
+    await rename(result.chdPath, finalPath);
+
+    job.convertedFiles.set(gameId, { path: finalPath, filename });
+    job.events.push({ type: 'game-converted', gameId });
+    job.events.push({
+      type: 'file-ready',
+      gameId,
+      romName: filename,
+      downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(gameId)}/${encodeURIComponent(filename)}`,
+    });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    job.events.push({ type: 'game-convert-failed', gameId, reason });
+    fallbackToIndividualSaves();
+  } finally {
+    // On success the .chd was already moved out above; this only ever
+    // removes the (now-empty, or never-fully-populated on failure) scratch
+    // dir itself — the originals it held were copies, never the real
+    // tempPaths, so there's nothing here that fallbackToIndividualSaves
+    // still needs.
+    await rm(scratchDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
 
@@ -516,6 +644,12 @@ export function findBrowserFile(
 ): { path: string; filename: string } | null {
   const job = downloadJobs.get(jobId);
   if (!job || job.target !== 'browser') return null;
+
+  // A converted .chd's filename never matches any one of its game's own
+  // roms — checked first, by gameId, rather than against job.items.
+  const converted = job.convertedFiles.get(gameId);
+  if (converted && converted.filename === romName) return converted;
+
   const item = job.items.find((i) => i.gameId === gameId && i.romName === romName);
   if (!item || item.status !== 'done') return null;
   return { path: item.tempPath, filename: item.romName };

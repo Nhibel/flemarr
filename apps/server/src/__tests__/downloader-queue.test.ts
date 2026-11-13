@@ -7,6 +7,7 @@ import {
   cancelJob,
   cancelItem,
   downloadJobs,
+  findBrowserFile,
 } from '../services/downloader/index.js';
 import { updateSettings } from '../services/settings/index.js';
 import type { DownloadRequest } from '@shared/download.js';
@@ -356,7 +357,7 @@ describe('archive-container fast path — shared container dedup', () => {
     await expect(access(containerArgs.tempPath)).rejects.toThrow();
   });
 
-  it('fans the shared container\'s progress out to every rom waiting on it', async () => {
+  it("fans the shared container's progress out to every rom waiting on it", async () => {
     // A per-game archive is itself hundreds of MB — without fanning the one
     // real download's progress out to every item sharing it, nothing at all
     // showed in the UI until the whole container finished, which looked
@@ -391,8 +392,12 @@ describe('archive-container fast path — shared container dedup', () => {
     await new Promise((r) => setTimeout(r, 150));
 
     const job = downloadJobs.get(jobId)!;
-    const binProgress = job.events.find((e) => e.type === 'progress' && e.romName === 'Game (USA).bin');
-    const cueProgress = job.events.find((e) => e.type === 'progress' && e.romName === 'Game (USA).cue');
+    const binProgress = job.events.find(
+      (e) => e.type === 'progress' && e.romName === 'Game (USA).bin',
+    );
+    const cueProgress = job.events.find(
+      (e) => e.type === 'progress' && e.romName === 'Game (USA).cue',
+    );
     expect(binProgress).toBeDefined();
     expect(cueProgress).toBeDefined();
   });
@@ -616,9 +621,7 @@ describe('autoConvertChd', () => {
     const job = downloadJobs.get(jobId)!;
     const types = job.events.map((e) => e.type);
     // Both files done before conversion starts, not interleaved.
-    expect(types.indexOf('game-converting')).toBeGreaterThan(
-      types.lastIndexOf('file-done'),
-    );
+    expect(types.indexOf('game-converting')).toBeGreaterThan(types.lastIndexOf('file-done'));
     expect(types).toContain('game-converted');
   });
 
@@ -685,18 +688,121 @@ describe('autoConvertChd', () => {
     expect(job.status).toBe('done');
   });
 
-  it('never triggers for browser-target downloads', async () => {
+  it('does not gate a cartridge game behind conversion in browser target either', async () => {
     updateSettings({ autoConvertChd: true });
-    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(getDat).mockReturnValue(CARTRIDGE_DAT);
     vi.mocked(downloadFile).mockResolvedValue('done');
 
-    await startDownload({
+    const jobId = await startDownload({
       datId: 'dat-001',
-      items: discItems,
+      items: [
+        {
+          gameId: 'g1',
+          romName: 'Game (USA).sfc',
+          expectedCrc: 'aaaaaaaa',
+          sources: [{ url: 'https://x/sfc', extractFromZip: false }],
+        },
+      ],
       target: 'browser',
     });
     await new Promise((r) => setTimeout(r, 100));
 
     expect(vi.mocked(convertGameToChd)).not.toHaveBeenCalled();
+    const job = downloadJobs.get(jobId)!;
+    expect(job.events.some((e) => e.type === 'file-ready')).toBe(true);
+    expect(job.events.some((e) => e.type === 'file-done')).toBe(false);
+  });
+
+  it('converts browser-target disc downloads into a single .chd save instead of two individual ones', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockImplementation(async ({ tempPath }) => {
+      await mkdir(dirname(tempPath), { recursive: true });
+      await writeFile(tempPath, 'raw-bytes');
+      return 'done';
+    });
+    vi.mocked(convertGameToChd).mockImplementation(async (destinationDir) => {
+      const chdPath = join(destinationDir, 'Game (USA).chd');
+      await writeFile(chdPath, 'fake-chd-bytes');
+      return { ok: true, chdPath };
+    });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'browser',
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const job = downloadJobs.get(jobId)!;
+
+    const fileDoneRoms = job.events
+      .filter((e) => e.type === 'file-done')
+      .map((e) => (e.type === 'file-done' ? e.romName : undefined))
+      .sort();
+    expect(fileDoneRoms).toEqual(['Game (USA).bin', 'Game (USA).cue']);
+
+    const fileReadyEvents = job.events.filter((e) => e.type === 'file-ready');
+    expect(fileReadyEvents).toHaveLength(1);
+    expect(fileReadyEvents[0]).toMatchObject({ gameId: 'g1', romName: 'Game (USA).chd' });
+
+    expect(job.events.some((e) => e.type === 'game-converted')).toBe(true);
+    // bin/cue copied into the scratch dir under their real names, not the
+    // job-prefixed tempPath names chdman would otherwise choke on.
+    expect(vi.mocked(convertGameToChd).mock.calls[0]?.[1]?.map((r) => r.name)).toEqual([
+      'Game (USA).bin',
+      'Game (USA).cue',
+    ]);
+
+    // node:fs/promises#rename is globally mocked to a no-op elsewhere in
+    // this file (vi.mock hoists to module scope regardless of where it's
+    // written) — so the move itself isn't exercised here, only that
+    // findBrowserFile resolves the converted .chd by gameId+filename once
+    // convertGameToChd reports success.
+    const found = findBrowserFile(jobId, 'g1', 'Game (USA).chd');
+    expect(found).toEqual({
+      path: join(tmpdir(), 'rom-curator-browser-dl', `${jobId}-Game (USA).chd`),
+      filename: 'Game (USA).chd',
+    });
+  });
+
+  it('falls back to offering the original files individually when browser-target conversion fails', async () => {
+    updateSettings({ autoConvertChd: true });
+    vi.mocked(getDat).mockReturnValue(DISC_DAT);
+    vi.mocked(downloadFile).mockImplementation(async ({ tempPath }) => {
+      await mkdir(dirname(tempPath), { recursive: true });
+      await writeFile(tempPath, 'raw-bytes');
+      return 'done';
+    });
+    vi.mocked(convertGameToChd).mockResolvedValue({ ok: false, reason: 'createcd failed: boom' });
+
+    const jobId = await startDownload({
+      datId: 'dat-001',
+      items: discItems,
+      target: 'browser',
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    const job = downloadJobs.get(jobId)!;
+
+    const fileReadyRoms = job.events
+      .filter((e) => e.type === 'file-ready')
+      .map((e) => (e.type === 'file-ready' ? e.romName : undefined))
+      .sort();
+    expect(fileReadyRoms).toEqual(['Game (USA).bin', 'Game (USA).cue']);
+
+    const failedEvent = job.events.find((e) => e.type === 'game-convert-failed');
+    expect(failedEvent).toBeDefined();
+    if (failedEvent?.type === 'game-convert-failed') {
+      expect(failedEvent.reason).toContain('boom');
+    }
+
+    // Originals are still at their tempPaths — never touched by the
+    // (mocked) conversion attempt — so the fallback save prompts can
+    // actually serve them.
+    for (const item of job.items) {
+      await access(item.tempPath);
+      await rm(item.tempPath, { force: true });
+    }
   });
 });

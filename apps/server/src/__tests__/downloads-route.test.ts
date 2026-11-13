@@ -120,6 +120,7 @@ describe('GET /api/downloads/:jobId/events', () => {
       events: [{ type: 'complete' }],
       controller: new AbortController(),
       containerCache: new Map(),
+      convertedFiles: new Map(),
     });
 
     const res = await app.request('/api/downloads/job-456/events');

@@ -10,6 +10,10 @@ import type { Rom } from '@shared/dat.js';
 export interface ConvertGameResult {
   ok: boolean;
   reason?: string;
+  // Set on success — the caller needs this to know exactly what was
+  // produced (e.g. to serve it to a browser-target download), since the
+  // filename is derived from the .cue's own name, not passed in.
+  chdPath?: string;
 }
 
 /**
