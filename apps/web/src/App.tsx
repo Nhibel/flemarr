@@ -281,6 +281,10 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
     setTab('downloads');
   };
 
+  const handleClearCompletedDownloads = (jobIds: string[]) => {
+    setDownloadJobs((prev) => prev.filter((j) => !jobIds.includes(j.jobId)));
+  };
+
   const {
     data: games = [],
     isLoading,
@@ -549,7 +553,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
       <div className={css({ display: tab === 'downloads' ? 'block' : 'none' })}>
         {/* Games that downloaded cleanly leave the selection, so a retry (or a
             re-resolve) only ever covers what's left to fix. */}
-        <DownloadManager jobs={downloadJobs} onGamesDownloaded={deselect} />
+        <DownloadManager
+          jobs={downloadJobs}
+          onGamesDownloaded={deselect}
+          onClearCompleted={handleClearCompletedDownloads}
+        />
       </div>
     </main>
   );

@@ -76,9 +76,15 @@ interface Props {
    * checked is exactly what failed or never ran.
    */
   onGamesDownloaded?: (gameIds: string[]) => void;
+  /**
+   * Reports which jobIds the "clear finished" button wants removed — only
+   * ever jobs whose status isn't 'running'. The parent owns `jobs`, so it's
+   * the one that actually drops them.
+   */
+  onClearCompleted?: (jobIds: string[]) => void;
 }
 
-export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
+export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCompleted }: Props) {
   const [jobStates, setJobStates] = useState<Map<string, JobState>>(new Map());
 
   const initJob = useCallback((queued: QueuedDownload) => {
@@ -254,8 +260,39 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded }: Props) {
     );
   }
 
+  // Anything not 'running' is finished one way or another (done, cancelled,
+  // or an SSE stream that errored out) — purgeable without touching jobs
+  // still actively downloading or converting.
+  const completedJobIds = jobs
+    .filter((j) => jobStates.get(j.jobId)?.status !== 'running')
+    .map((j) => j.jobId);
+
+  const handleClearCompleted = (): void => {
+    if (completedJobIds.length === 0) return;
+    onClearCompleted?.(completedJobIds);
+    setJobStates((prev) => {
+      const next = new Map(prev);
+      for (const id of completedJobIds) next.delete(id);
+      return next;
+    });
+    for (const id of completedJobIds) {
+      esRefs.current.get(id)?.close();
+      esRefs.current.delete(id);
+    }
+  };
+
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
+      <div className={css({ display: 'flex', justifyContent: 'flex-end' })}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleClearCompleted}
+          disabled={completedJobIds.length === 0}
+        >
+          Vider les téléchargements terminés
+        </Button>
+      </div>
       {jobs.map((queued) => {
         const state = jobStates.get(queued.jobId);
         if (!state) return null;
