@@ -9,6 +9,16 @@
 # glibc, better-sqlite3 also gets a prebuilt binary instead of compiling.
 FROM node:20-slim AS builder
 
+# debian-slim ships no compiler toolchain at all (same reason alpine
+# needed its own python3/make/g++ below, before the glibc switch) — kept
+# as a fallback here even though glibc prebuilds are expected to cover
+# better-sqlite3/chdman, since a missing prebuild for some arch/Node ABI
+# combination would otherwise fail `pnpm install` outright with no way to
+# compile from source instead.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable
 WORKDIR /app
 
