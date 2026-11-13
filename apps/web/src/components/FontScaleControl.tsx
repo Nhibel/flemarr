@@ -16,12 +16,12 @@ const btnStyle = css({
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '28px',
-  height: '28px',
-  fontSize: '16px',
+  width: '20px',
+  height: '20px',
+  fontSize: '12px',
   lineHeight: '1',
   fontWeight: 'medium',
-  borderRadius: '6px',
+  borderRadius: '5px',
   border: '1px solid',
   borderColor: 'bd.strong',
   bg: 'bg.surface',
@@ -50,8 +50,8 @@ export function FontScaleControl({ fontScale, onSetFontScale }: Props) {
         zIndex: '50',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
-        padding: '4px 8px',
+        gap: '6px',
+        padding: '3px 6px',
         borderRadius: '9999px',
         border: '1px solid',
         borderColor: 'bd.default',
@@ -70,9 +70,9 @@ export function FontScaleControl({ fontScale, onSetFontScale }: Props) {
       </button>
       <span
         className={css({
-          fontSize: '13px',
+          fontSize: '11px',
           color: 'fg.default',
-          minWidth: '32px',
+          minWidth: '26px',
           textAlign: 'center',
         })}
       >
