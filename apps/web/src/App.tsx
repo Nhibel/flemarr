@@ -86,11 +86,10 @@ export function App() {
   return (
     <>
       {content}
-      {/* Fixed position, outside the normal page flow, mounted once here —
-          not inside Réglages — so changing the size doesn't move the
-          control itself (every rem-based layout value it would otherwise
-          sit among reflows when fontScale changes) and it stays reachable
-          from every screen, not just Settings. */}
+      {/* Fixed position, outside the normal page flow, mounted once here
+          (not per-view, not inline next to Lexique/Réglages) — see
+          FontScaleControl's own comment for why it can't sit inline with
+          those icons and still stay put as fontScale changes. */}
       <FontScaleControl fontScale={fontScale} onSetFontScale={setFontScale} />
     </>
   );
