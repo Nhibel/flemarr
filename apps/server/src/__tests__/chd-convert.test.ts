@@ -77,6 +77,7 @@ describe('convertGameToChd', () => {
     const result = await convertGameToChd(dir, roms);
 
     expect(result.ok).toBe(true);
+    expect(result.chdPath).toBe(join(dir, 'Game (USA).chd'));
     await expect(access(join(dir, 'Game (USA).chd'))).resolves.toBeUndefined();
     await expect(access(join(dir, 'Game (USA) (Track 1).bin'))).rejects.toThrow();
     await expect(access(join(dir, 'Game (USA) (Track 2).bin'))).rejects.toThrow();
@@ -102,9 +103,7 @@ describe('convertGameToChd', () => {
   });
 
   it('returns ok: false without touching anything when the game has no .cue', async () => {
-    const roms: Rom[] = [
-      { name: 'Game (USA).sfc', size: 4, crc: '00000000', status: 'good' },
-    ];
+    const roms: Rom[] = [{ name: 'Game (USA).sfc', size: 4, crc: '00000000', status: 'good' }];
 
     const result = await convertGameToChd(dir, roms);
 

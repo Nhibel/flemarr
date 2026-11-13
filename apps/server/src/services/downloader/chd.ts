@@ -95,5 +95,5 @@ export async function convertGameToChd(
   }
 
   logger.info({ chdPath }, 'converted disc game to CHD');
-  return { ok: true };
+  return { ok: true, chdPath };
 }
