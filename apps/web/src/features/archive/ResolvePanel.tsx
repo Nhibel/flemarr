@@ -48,7 +48,8 @@ export function ResolvePanel({
   });
 
   // Picked once in Settings for the whole session — no reason to mix
-  // server and browser destinations across downloads (see DownloadTargetSection).
+  // server and browser destinations across downloads (the choice lives in
+  // Réglages' topology section, which writes downloadTarget).
   const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
   const downloadTarget = settingsData?.downloadTarget ?? 'server';
 

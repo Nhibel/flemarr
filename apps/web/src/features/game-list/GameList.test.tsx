@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GameList } from './GameList.js';
 import { fetchGameDetails } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
+import type { Ownership } from '@/lib/missing-games.js';
 
 vi.mock('@/lib/api.js', () => ({
   fetchGameDetails: vi.fn(),
@@ -40,7 +41,15 @@ function renderList(games: Game[], onToggle = vi.fn(), selected = new Set<string
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <GameList datId="dat-1" games={games} selected={selected} onToggle={onToggle} />
+      <GameList
+        datId="dat-1"
+        games={games}
+        selected={selected}
+        onToggle={onToggle}
+        search=""
+        onSearch={vi.fn()}
+        totalGames={games.length}
+      />
     </QueryClientProvider>,
   );
 }
@@ -199,5 +208,101 @@ describe('GameList', () => {
     // one img for the found boxart only; the others show placeholders
     expect(container.querySelectorAll('img')).toHaveLength(1);
     expect(fetchGameDetailsMock).toHaveBeenCalledWith('dat-1', ['a', 'b', 'c']);
+  });
+});
+
+describe('GameList — ownership tags', () => {
+  function renderWithOwnership(ownership?: Map<string, Ownership>) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <GameList
+          datId="dat-1"
+          games={GAMES}
+          selected={new Set<string>()}
+          onToggle={vi.fn()}
+          ownership={ownership}
+          search=""
+          onSearch={vi.fn()}
+          totalGames={GAMES.length}
+        />
+      </QueryClientProvider>,
+    );
+  }
+
+  it('gives each row the tag for its own state', () => {
+    renderWithOwnership(
+      new Map<string, Ownership>([
+        ['a', 'owned'],
+        ['b', 'wrongName'],
+        ['c', 'missing'],
+      ]),
+    );
+
+    expect(screen.getByText('Sur ton disque')).toBeInTheDocument();
+    expect(screen.getByText('Mal nommé')).toBeInTheDocument();
+    expect(screen.getByText('Manquant')).toBeInTheDocument();
+  });
+
+  // Browser mode and the state before any scan: the app knows nothing about
+  // what is on disk, so it must say nothing rather than tag every row
+  // "missing" on no evidence.
+  it('shows no tag at all when ownership is unknown', () => {
+    renderWithOwnership(undefined);
+    expect(screen.queryByText('Manquant')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sur ton disque')).not.toBeInTheDocument();
+  });
+
+  it('shows no tag on a game the ownership map does not cover', () => {
+    renderWithOwnership(new Map<string, Ownership>([['a', 'owned']]));
+    expect(screen.getByText('Sur ton disque')).toBeInTheDocument();
+    expect(screen.queryByText('Manquant')).not.toBeInTheDocument();
+  });
+});
+
+describe('GameList — search toolbar', () => {
+  it('reports what the user types', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <GameList
+          datId="dat-1"
+          games={GAMES}
+          selected={new Set<string>()}
+          onToggle={vi.fn()}
+          search=""
+          onSearch={onSearch}
+          totalGames={3}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.type(screen.getByRole('searchbox'), 'z');
+    expect(onSearch).toHaveBeenCalledWith('z');
+  });
+
+  // The search box lives on this component's own toolbar, so the empty
+  // state must keep the toolbar: a search that filters everything out
+  // would otherwise remove the only way to clear it.
+  it('keeps the search box when nothing matches', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <GameList
+          datId="dat-1"
+          games={[]}
+          selected={new Set<string>()}
+          onToggle={vi.fn()}
+          search="zzzz"
+          onSearch={vi.fn()}
+          totalGames={3}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText('Aucun jeu ne correspond aux filtres actuels.')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox')).toHaveValue('zzzz');
   });
 });

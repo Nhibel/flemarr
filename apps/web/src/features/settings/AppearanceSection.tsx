@@ -2,15 +2,17 @@ import { css, cx } from '@/styled-system/css';
 import type { Theme } from '@/lib/use-theme.js';
 import { inputClass, sectionClass } from './styles.js';
 
+// Display order, not the same as the Theme union's order: the two neutral
+// themes first (what most people want), then the three stylized ones, then
+// Contraste last as the high-legibility option.
 const THEMES: Theme[] = [
   'light',
   'dark',
   'catppuccin',
   'cyberpunk',
   'matrix',
-  'nintendo',
-  'megadrive',
   'sonicmania',
+  'contraste',
 ];
 const THEME_LABELS: Record<Theme, string> = {
   light: 'Clair',
@@ -18,19 +20,17 @@ const THEME_LABELS: Record<Theme, string> = {
   catppuccin: 'Catppuccin',
   cyberpunk: 'Cyberpunk',
   matrix: 'Matrix',
-  nintendo: 'Nintendo',
-  megadrive: 'Megadrive',
   sonicmania: 'Sonic Mania',
+  contraste: 'Contraste',
 };
 const THEME_DESCRIPTIONS: Record<Theme, string> = {
-  light: 'Fond blanc, texte sombre.',
-  dark: 'Fond sombre neutre, texte clair.',
+  light: 'Fond papier chaud, cartes blanches, accent bleu.',
+  dark: 'Encre bleutée, texte clair, accent bleu vif.',
   catppuccin: 'Mocha — pastel sur fond bleu-nuit.',
-  cyberpunk: 'Noir, jaune néon et cyan électrique.',
-  matrix: 'Néon vert/jaune sur fond quasi noir.',
-  nintendo: 'Fond bleu, cartes rouge Mario, accents et sélection or.',
-  megadrive: 'Fond et cartes bleu Sonic vif, accents et sélection rouge.',
-  sonicmania: 'Fond jaune, cartes cyan, accent or et sélection rose-rouge.',
+  cyberpunk: 'Noir, titre jaune néon, cyan électrique et rose.',
+  matrix: 'Néon vert sur fond quasi noir.',
+  sonicmania: 'Fond jaune vif, cartes cyan, accent magenta et or.',
+  contraste: 'Noir franc, accent lime, ambre en avertissement — le plus lisible à distance.',
 };
 
 // Unlike the other sections here, this isn't a server-persisted setting —

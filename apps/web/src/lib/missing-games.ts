@@ -29,3 +29,47 @@ export function computeMissingGameIds(
   }
   return missing;
 }
+
+/**
+ * What the library shows per row: owned, owned but misnamed, or missing.
+ *
+ * Same CRC-based notion of ownership as computeMissingGameIds above — a
+ * game is owned only when every one of its ROMs was found, so a two-disc
+ * game with one disc on disk is still missing — but reported per game
+ * rather than filtered down to a selection, and with the misnamed case
+ * kept separate instead of folded into "owned".
+ *
+ * `wrongName` means the bytes are on disk under the wrong filename. That
+ * is a distinct state because it is the one the scanner can fix in place:
+ * nothing needs downloading, only renaming.
+ *
+ * ROMs with no CRC (nodump entries, see docs/dat-format.md) are skipped
+ * rather than counted as absent — there is nothing to compare them
+ * against, and treating them as missing marked whole games unownable.
+ */
+export type Ownership = 'owned' | 'wrongName' | 'missing';
+
+export function computeOwnership(games: Game[], scan: ScanResult): Map<string, Ownership> {
+  const matchedCrcs = new Set(scan.matched.map((m) => m.crc));
+  const wrongNameCrcs = new Set(scan.wrongName.map((w) => w.crc));
+
+  const out = new Map<string, Ownership>();
+  for (const game of games) {
+    const crcs = game.roms.map((rom) => rom.crc).filter((crc): crc is string => crc !== undefined);
+
+    // Nothing comparable at all (every ROM is a nodump entry): leave the
+    // game out of the map entirely rather than guess. An absent entry
+    // renders no tag, which is the honest answer — claiming "owned" here
+    // would be asserting something the scan cannot know.
+    if (crcs.length === 0) continue;
+
+    if (crcs.some((crc) => !matchedCrcs.has(crc) && !wrongNameCrcs.has(crc))) {
+      out.set(game.id, 'missing');
+      continue;
+    }
+    // Every comparable ROM is on disk. One misnamed file is enough to make
+    // the game need a rename, so wrongName wins over owned here.
+    out.set(game.id, crcs.some((crc) => wrongNameCrcs.has(crc)) ? 'wrongName' : 'owned');
+  }
+  return out;
+}

@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: Settings = {
   archiveOrgLoggedInUser: '',
   archiveOrgLoggedInSig: '',
   downloadTarget: 'server',
+  topology: null,
   autoConvertChd: false,
 };
 
@@ -38,6 +39,7 @@ const DEFAULT_RESPONSE: SettingsResponse = {
   archiveOrgKeysConfigured: false,
   archiveOrgSessionConfigured: false,
   downloadTarget: 'server',
+  topology: null,
   autoConvertChd: false,
   romsRoot: null,
 };

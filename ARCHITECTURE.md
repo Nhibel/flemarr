@@ -158,6 +158,47 @@ A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so both the conversi
 
 ---
 
+## Theming and visual rules
+
+All of this lives in `apps/web/panda.config.ts`. It is written down here
+because several of the rules look like oversights from inside a single
+component, and undoing one of them re-breaks something that was fixed.
+
+- **Seven themes, one `data-theme` attribute** on `<html>`, not a theme ×
+  light/dark matrix. `base` in the semantic tokens _is_ the light theme, so
+  there is no `light` condition. Adding a theme means a condition in
+  `conditions.extend`, a value under **every** token leaf, and an entry in
+  both `use-theme.ts` and the Apparence section. A leaf missing a theme's
+  value silently falls back to `base` — i.e. to the light theme — with no
+  error, so the value count must match the leaf count.
+- **Depth comes from shadows and surface tone, never from a 1px line.**
+  The built CSS contains no `border:1px solid`. The one exception is a
+  divider _inside_ a card (`border-top` on a panel footer). Fields are a
+  filled recess (`bg.inset`), panels a filled surface with a shadow, active
+  controls a tinted fill.
+- **Radii are px, not rem.** Panda's defaults are rem, which made every
+  corner grow with the live font-size control (`src/lib/use-font-scale.ts`)
+  — at 24px a card rounded into a lozenge. The whole `radii` scale is
+  overridden in px, including unused steps. Use the tokens; do not
+  reintroduce literal px in components.
+- **Touch targets are px too**, for the same reason: they must not shrink
+  when the text is made larger to help.
+- **Three type roles.** Space Grotesk for titles (one global `h1-h4`
+  rule), Inter for body, IBM Plex Mono applied **per value** for technical
+  data — sizes, CRCs, counts, pagination — never globally. Self-hosted via
+  `@fontsource*`, never a Google Fonts `<link>`: this runs on a homelab
+  that may have no outbound internet.
+- **Contrast is a test**, not a promise: `theme-contrast.test.ts` measures
+  14 pairs across the 7 themes, compositing translucent washes over their
+  surface first. One documented exception. Anything not on that list has to
+  clear 4.5:1.
+
+The design canvases these came from are private Artifacts; their working
+files are gitignored under `.rom-curator-data/`. ROADMAP.md's Phase 14
+records the decisions and the deliberate departures from the comps.
+
+---
+
 ## Logging
 
 - Backend: structured logs via `pino` (`apps/server/src/lib/logger.ts`). Log every API request with method, path, status, duration. Log every external HTTP call (archive.org, GitHub) with target, status, duration. Never log credentials or cookies — paths and identifiers only.

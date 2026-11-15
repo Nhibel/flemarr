@@ -120,10 +120,9 @@ export function SourcesManager({
           ) : (
             <div
               className={css({
-                border: '1px solid',
-                borderColor: 'accent2.subtleBorder',
-                borderRadius: 'xl',
-                shadow: 'sm',
+                bg: 'bg.surface',
+                borderRadius: '16px',
+                shadow: 'md',
                 overflow: 'hidden',
               })}
             >

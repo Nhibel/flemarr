@@ -64,6 +64,7 @@ beforeEach(() => {
     // Browser target: no library folder needed, so the panel never gates the
     // download button on a missing destination.
     downloadTarget: 'browser',
+    topology: 'remote',
     autoConvertChd: false,
     archiveOrgKeysConfigured: false,
     archiveOrgSessionConfigured: false,

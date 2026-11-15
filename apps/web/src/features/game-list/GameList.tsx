@@ -4,8 +4,11 @@ import { css } from '@/styled-system/css';
 import { GameRow } from './GameRow.js';
 import { usePagination } from './use-pagination.js';
 import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
+import { usePageSize, PAGE_SIZES, resolvePageSize } from './use-page-size.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
+import { SearchIcon } from '@/components/icons.js';
 import type { Game } from '@shared/dat.js';
+import type { Ownership } from '@/lib/missing-games.js';
 
 const MODE_LABELS = { compact: 'Compact', normal: 'Normal' } as const;
 
@@ -14,26 +17,58 @@ interface Props {
   games: Game[];
   selected: Set<string>;
   onToggle: (id: string) => void;
+  /**
+   * Per-game ownership from the last scan, keyed by game id. Omitted (or a
+   * game absent from it) renders no status tag on that row — which is the
+   * state in browser mode and before any scan has run.
+   */
+  ownership?: Map<string, Ownership>;
+  /**
+   * The library search. It lives on this component's own toolbar rather
+   * than in the page header, where its width (and therefore everything
+   * after it) moved with the length of the system name. Here it sits
+   * directly above the list it filters, on a row that was otherwise half
+   * empty, and `total` is the unfiltered count for the placeholder — this
+   * component only ever receives the already-filtered games.
+   */
+  search: string;
+  onSearch: (v: string) => void;
+  totalGames: number;
 }
 
 const pageBtnClass = css({
   px: '3',
   py: '1',
+  minH: '32px',
   fontSize: 'sm',
-  border: '1px solid',
-  borderColor: 'bd.default',
-  borderRadius: 'lg',
+  borderRadius: '11px',
   cursor: 'pointer',
   bg: 'bg.surface',
+  border: 'none',
+  color: 'fg.default',
+  shadow: 'sm',
   _hover: { bg: 'bg.muted' },
-  _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.surface' } },
+  _disabled: { opacity: 0.4, cursor: 'default', shadow: 'none', _hover: { bg: 'bg.surface' } },
 });
 
-export function GameList({ datId, games, selected, onToggle }: Props) {
+export function GameList({
+  datId,
+  games,
+  selected,
+  onToggle,
+  ownership,
+  search,
+  onSearch,
+  totalGames,
+}: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [mode, setMode] = useDisplayMode();
-  const { pageItems, page, pageCount, start, total, next, prev } = usePagination(games);
+  const [pageSize, setPageSize] = usePageSize();
+  const { pageItems, page, pageCount, start, total, next, prev } = usePagination(
+    games,
+    resolvePageSize(pageSize, games.length),
+  );
 
   // Details for the displayed page only. The backend caches per game in
   // SQLite, so a page is cheap after its first visit; staleTime Infinity
@@ -101,23 +136,101 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
     listRef.current?.parentElement?.scrollTo?.({ top: 0 });
   }
 
-  if (games.length === 0) {
-    return (
-      <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
-        Aucun jeu ne correspond aux filtres actuels.
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div
+  // The toolbar renders in both the empty and non-empty cases on purpose:
+  // it holds the search field, and a search that filters everything out
+  // must still leave the user a box to clear.
+  const toolbar = (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2',
+        justifyContent: 'space-between',
+        mb: '2',
+        flexShrink: '0',
+      })}
+    >
+      <label
         className={css({
           display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '1',
-          mb: '2',
+          alignItems: 'center',
+          gap: '2',
+          flex: '1',
+          minWidth: '0',
+          px: '3',
+          bg: 'bg.inset',
+          borderRadius: '12px',
+          color: 'fg.subtle',
+          _focusWithin: {
+            _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
+          },
+        })}
+      >
+        <SearchIcon />
+        <span className={css({ srOnly: true })}>Rechercher un jeu</span>
+        <input
+          type="search"
+          placeholder={`Rechercher parmi ${totalGames} jeux…`}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          className={css({
+            flex: '1',
+            minWidth: '0',
+            py: '2',
+            bg: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: 'fg.default',
+            fontSize: 'sm',
+          })}
+        />
+      </label>
+
+      {/* How many games per page. "Tout" renders every filtered game at
+          once with no virtualisation — fine on a desktop, heavy on the
+          Deck past a thousand rows, which is why 50 stays the default. */}
+      <label
+        className={css({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '1.5',
           flexShrink: '0',
+          fontSize: 'xs',
+          color: 'fg.subtle',
+        })}
+      >
+        Par page
+        <select
+          value={String(pageSize)}
+          onChange={(e) => setPageSize(e.target.value === 'all' ? 'all' : (Number(e.target.value) as 20 | 50 | 100))}
+          className={css({
+            px: '2',
+            minH: '28px',
+            fontSize: 'xs',
+            fontFamily: 'mono',
+            cursor: 'pointer',
+            borderRadius: '9px',
+          })}
+        >
+          {PAGE_SIZES.map((s) => (
+            <option key={String(s)} value={String(s)}>
+              {s === 'all' ? 'Tout' : s}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {/* A segmented control, not two separate outlined buttons: the two
+          modes are mutually exclusive, and one track with a sliding filled
+          thumb says that where two bordered pills did not. */}
+      <div
+        className={css({
+          display: 'inline-flex',
+          gap: '0.5',
+          flexShrink: '0',
+          p: '0.5',
+          bg: 'bg.muted',
+          borderRadius: '12px',
         })}
       >
         {DISPLAY_MODES.map((m) => (
@@ -127,22 +240,40 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
             aria-pressed={mode === m}
             onClick={() => setMode(m)}
             className={css({
-              px: '2',
-              py: '0.5',
+              px: '2.5',
+              py: '1',
+              minH: '28px',
               fontSize: 'xs',
-              border: '1px solid',
-              borderRadius: 'lg',
+              fontWeight: mode === m ? 'bold' : 'medium',
+              border: 'none',
+              borderRadius: '9px',
               cursor: 'pointer',
-              bg: mode === m ? 'accent.solid' : 'bg.surface',
-              color: mode === m ? 'accent.fg' : 'fg.muted',
-              borderColor: mode === m ? 'accent.solid' : 'bd.strong',
-              _hover: { borderColor: 'accent.hover' },
+              bg: mode === m ? 'accent.solid' : 'transparent',
+              color: mode === m ? 'accent.fg' : 'fg.subtle',
+              _hover: { color: mode === m ? 'accent.fg' : 'fg.default' },
             })}
           >
             {MODE_LABELS[m]}
           </button>
         ))}
       </div>
+    </div>
+  );
+
+  if (games.length === 0) {
+    return (
+      <>
+        {toolbar}
+        <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
+          Aucun jeu ne correspond aux filtres actuels.
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {toolbar}
 
       <div
         role="listbox"
@@ -186,9 +317,14 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           minHeight: '180px',
           overflowY: 'auto',
           bg: 'bg.surface',
-          border: '1px solid',
-          borderColor: 'bd.default',
-          borderRadius: 'xl',
+          // A floating surface: shadow and tone for depth, no 1px outline,
+          // and literal-px radii so they don't scale with the live
+          // font-size control. The small padding is what lets each row's
+          // inset selection highlight (GameRow) stay clear of these
+          // rounded corners.
+          borderRadius: '18px',
+          shadow: 'md',
+          p: '1',
           outline: 'none',
           _focusVisible: {
             ring: '2px',
@@ -222,6 +358,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
               }
+              ownership={ownership?.get(game.id)}
             />
           ))}
         </div>
@@ -248,7 +385,10 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           >
             ‹ Précédent
           </button>
-          <span>
+          {/* Counts in mono — they are technical data, and the fixed
+              advance stops the whole row from shifting as the numbers
+              change width between pages. */}
+          <span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>
             {start + 1}–{Math.min(start + pageItems.length, total)} sur {total}
             {' · '}page {page + 1} / {pageCount}
           </span>

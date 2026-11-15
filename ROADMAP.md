@@ -418,6 +418,109 @@ Shipped 2026-11-13. Found and fixed along the way, both before reaching producti
 
 ---
 
+## Phase 14 — Visual redesign: palettes, type, shell, and the install question
+
+Rebuild the look from two validated design canvases (one on the visual
+direction and the seven themes, one on the install flow), instead of the
+accumulated styling the app had grown. Behaviour is deliberately almost
+untouched: this is a restyle plus one new question, not a rewrite of what
+the app does.
+
+All of it lives on the `feat/ui-refresh` branch, which is **not merged
+until the acceptance criteria below have actually been looked at in a
+browser** — no session doing this work had one, so typecheck, tests and
+built-CSS greps are the only things verified so far. They say nothing about
+whether it looks right.
+
+### Tasks
+
+- **Palettes.** Eight themes become seven: Nintendo and Megadrive dropped
+  (navy plus a saturated red read poorly down a long list, and the two were
+  hard to tell apart), Contraste added. Every value is taken verbatim from
+  the comps in `.rom-curator-data/design-directions/project/*.dc.html`,
+  read per role out of each artboard. Roles no comp covers (all borders,
+  danger, info, the second accent) are marked `derived` in the config and
+  built only from hues that same artboard already uses. Two comp
+  contradictions are documented inline where they were resolved.
+- **Type.** Three roles: Space Grotesk for titles (one global `h1-h4`
+  rule), Inter for body, IBM Plex Mono reserved for technical values —
+  applied per value, never globally, so metadata gets its own voice without
+  the app becoming a terminal. Self-hosted through `@fontsource*`, not a
+  Google Fonts `<link>`: this runs on a homelab that may have no outbound
+  internet. Plex Mono is latin-subset only (it renders nothing but digits
+  and hex).
+- **Shell.** Depth from shadows and from the surface being a different tone
+  than the page, never from a 1px line — the built CSS now contains no
+  `border:1px solid` at all, down from 39 sites. Fields are a filled recess
+  (`bg.inset`), panels a filled surface with a shadow, active controls a
+  tinted fill. Rows are 56px with a 44px boxart and an inset rounded
+  selection. Mutually exclusive choices are segmented controls (tabs,
+  display mode, loader mode, missing/all). The selection summary is a
+  floating dock. Checkboxes are the native control tinted with the theme's
+  accent.
+- **Ownership in the library.** Each row carries its state from the last
+  scan — on disk, misnamed, missing — with a header counter. `computeOwnership`
+  generalises the CRC logic `computeMissingGameIds` already had. With no
+  scan, or in browser mode where a server-side scan sees nothing, **no row
+  carries a tag at all**: tagging 1500 rows "missing" on no evidence is
+  worse than silence.
+- **The install question.** One new setting, `topology`
+  (`local | mounted | remote | null`), asked once before anything else
+  because its answer decides both where downloads land and whether a scan
+  can see anything. `local` and `mounted` produce identical settings; they
+  are separate answers because "on this machine or a network share?" is
+  answerable without knowing how the app works and "should downloads go to
+  the server?" is not. It always writes `downloadTarget` with itself, from
+  one mapping, which is why the old "Destination des téléchargements"
+  settings section is gone — that was two controls for one decision.
+- **Rules made unviolable rather than applied by hand.** Panda's `radii`
+  scale is overridden in px, because the rem defaults meant every corner
+  grew with the live font-size control. Contrast is a test
+  (`theme-contrast.test.ts`) measuring 14 pairs across 7 themes with rgba
+  washes composited over their surface, with one documented exception.
+
+### Not done, deliberately
+
+- **Dissolving the tabs** — the canvas would route the download action
+  through the dock, making source resolution automatic. Dropped on
+  Camille's instruction (2026-11-15): resolution stays something she
+  triggers from the Sources tab.
+- **A year on each row** — the canvas shows one; `gameSchema` has no such
+  field and the DATs do not expose it, so it would mean ScreenScraper,
+  which is out of scope.
+- **A relative "checked 2 days ago"** — the scan result lives in React
+  state and is lost on reload, so the header shows a clock time instead of
+  implying a persistence that does not exist.
+- **Sonic Mania's dark dock** — its artboard makes the dock a dark teal
+  card while every other surface in it is light. There is no
+  inverse-surface token, so the dock renders on `bg.surface` like
+  everywhere else.
+
+### Acceptance criteria
+
+These are visual and cannot be automated. They are the checklist for
+`pnpm dev` before this branch merges.
+
+- [ ] All seven themes are legible end to end in Réglages → Apparence:
+      muted metadata text, the three status tags side by side (Scanner
+      after a scan), and the light theme over a long list.
+- [ ] Nothing shifts position between consoles: the system name truncates
+      and Lexique/Réglages stay put whatever its length.
+- [ ] The filter row holds one line at 1280×800 (Steam Deck), and its
+      menus open without pushing the list down.
+- [ ] A search matching nothing still leaves a box to clear it.
+- [ ] Rows are scannable down 1500 games with no dividers between them —
+      the one rule here taken on faith, since the comps only ever showed
+      four rows at a time.
+- [ ] An existing install never sees the install question, and no frame of
+      it flashes on a cold load.
+- [ ] Réglages shows the current topology as the selected option, and
+      changing it moves where the next download goes.
+- [ ] Checkboxes are tinted with each theme's accent, at a comfortable
+      size on the Deck's touchscreen.
+
+---
+
 ## Beyond the numbered phases — Authentication (only if exposing beyond the LAN)
 
 Not planned as committed work, but tracked so it isn't forgotten. The app currently has **no authentication**; it is safe only on localhost or a trusted LAN. Making it reachable from the internet requires adding a gate first. The concrete risks, the options (VPN, authenticated reverse proxy, or a ~100-line single-password gate in the app), and the trade-offs are written up in [docs/security.md](./docs/security.md). Pick this up if and when internet exposure actually happens.

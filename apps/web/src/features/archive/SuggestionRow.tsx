@@ -46,8 +46,6 @@ export function SuggestionRow({
         gap: '3',
         px: '3',
         py: '2.5',
-        borderBottom: '1px solid',
-        borderColor: 'bd.subtle',
         bg: 'bg.page',
         _last: { borderBottom: 'none' },
       })}

@@ -23,11 +23,22 @@ describe('useTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('cyberpunk');
   });
 
-  it('honors the new nintendo/megadrive/matrix themes', () => {
+  it('honors the matrix and contraste themes', () => {
+    localStorage.setItem(STORAGE_KEY, 'contraste');
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe('contraste');
+    expect(document.documentElement.dataset.theme).toBe('contraste');
+  });
+
+  // The migration path for anyone who had `nintendo` or `megadrive`
+  // selected before those two themes were dropped (2026-11-15). A retired
+  // theme must behave exactly like a value that was never valid: fall back,
+  // never apply a data-theme no stylesheet defines any more.
+  it('falls back to the default when the stored theme has been retired', () => {
     localStorage.setItem(STORAGE_KEY, 'megadrive');
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('megadrive');
-    expect(document.documentElement.dataset.theme).toBe('megadrive');
+    expect(result.current.theme).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('honors the sonicmania theme', () => {

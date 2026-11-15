@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { css } from '@/styled-system/css';
 import type { FilterState, SortBy } from './use-game-filters.js';
+import { useExclusiveDetails } from '@/lib/use-exclusive-details.js';
 
 const REGIONS = ['Europe', 'USA', 'Japan', 'World'];
 const CATEGORIES = ['Game', 'Demo', 'Proto', 'Beta', 'Unl', 'Aftermarket'];
@@ -16,7 +18,6 @@ interface Props {
   selectedOnly: boolean;
   selectedCount: number;
   onToggleSelectedOnly: () => void;
-  onSearch: (v: string) => void;
   onToggleRegion: (r: string) => void;
   onToggleCategory: (c: string) => void;
   onSetSortBy: (s: SortBy) => void;
@@ -26,16 +27,104 @@ interface Props {
   isAllSelected: boolean;
 }
 
-const chipBase = css.raw({
-  px: '2',
-  py: '1',
-  borderRadius: 'full',
+// One trigger button shape for every control in the row, so the row reads
+// as a single band of equal-weight controls rather than a mix of pills,
+// selects and chips. Filled, not outlined — same reason the card lost its
+// border. Literal px for the radius and the height: both are rescaled by
+// the live font-size control if expressed in rem, which would round these
+// into pills and shrink the tap targets exactly when the text was made
+// bigger to help (this app is used on a Steam Deck).
+const triggerClass = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '1.5',
+  px: '3',
+  minH: '34px',
+  bg: 'bg.muted',
+  color: 'fg.default',
+  border: 'none',
+  borderRadius: '11px',
   fontSize: 'xs',
   fontWeight: 'medium',
-  border: '1px solid',
   cursor: 'pointer',
-  transition: 'all 0.1s',
+  whiteSpace: 'nowrap',
+  listStyle: 'none',
+  _hover: { bg: 'bg.surface' },
+  // <summary> renders a disclosure triangle by default in every engine.
+  '&::marker, &::-webkit-details-marker': { display: 'none', content: '""' },
 });
+
+// The panel each menu opens. Absolutely positioned so opening one never
+// reflows the row — a <details> that pushed the list down every time it
+// was opened was the reason the filters used to be three permanently
+// expanded rows in the first place.
+const panelRaw = css.raw({
+  position: 'absolute',
+  zIndex: '10',
+  top: 'calc(100% + 4px)',
+  left: '0',
+  minW: '44',
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '1.5',
+  p: '2',
+  bg: 'bg.surface',
+  borderRadius: '14px',
+  shadow: 'lg',
+});
+
+const chipBase = css.raw({
+  px: '2.5',
+  minH: '30px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  borderRadius: '9px',
+  fontSize: 'xs',
+  fontWeight: 'medium',
+  border: 'none',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  transition: 'background-color 0.1s, color 0.1s, box-shadow 0.1s',
+});
+
+/** Count of active values, shown on a closed menu so nothing hides. */
+function ActiveCount({ n }: { n: number }) {
+  if (n === 0) return null;
+  return (
+    <span
+      className={css({
+        fontFamily: 'mono',
+        fontSize: '2xs',
+        px: '1',
+        minW: '4',
+        textAlign: 'center',
+        borderRadius: '5px',
+        bg: 'accent.solid',
+        color: 'accent.fg',
+      })}
+    >
+      {n}
+    </span>
+  );
+}
+
+function Caret() {
+  return (
+    <svg
+      width="9"
+      height="9"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 9l7 7 7-7" />
+    </svg>
+  );
+}
 
 export function GameFilters({
   filterState,
@@ -44,7 +133,6 @@ export function GameFilters({
   selectedOnly,
   selectedCount,
   onToggleSelectedOnly,
-  onSearch,
   onToggleRegion,
   onToggleCategory,
   onSetSortBy,
@@ -53,165 +141,209 @@ export function GameFilters({
   onClearAll,
   isAllSelected,
 }: Props) {
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === filterState.sortBy)?.label ?? '';
+  // Native <details> is a disclosure widget, not a menu: without this,
+  // opening one leaves the others open and none closes on an outside
+  // click.
+  const rowRef = useRef<HTMLDivElement>(null);
+  useExclusiveDetails(rowRef);
+
   return (
-    <div className={css({ display: 'flex', flexDirection: 'column', gap: '3', pb: '3' })}>
-      {/* Region chips */}
-      <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', alignItems: 'center' })}>
-        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
-          Région
-        </span>
-        {REGIONS.map((r) => {
-          const active = filterState.regions.includes(r);
-          return (
-            <button
-              key={r}
-              onClick={() => onToggleRegion(r)}
-              className={css(chipBase, {
-                bg: active ? 'accent.solid' : 'bg.surface',
-                color: active ? 'accent.fg' : 'fg.muted',
-                borderColor: active ? 'accent.solid' : 'bd.strong',
-                _hover: { borderColor: 'accent.hover' },
-                _cyberpunk: { boxShadow: active ? '0 0 8px #FDF500' : 'none' },
-              })}
-            >
-              {r}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Category chips */}
-      <div className={css({ display: 'flex', gap: '2', flexWrap: 'wrap', alignItems: 'center' })}>
-        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
-          Catégorie
-        </span>
-        {CATEGORIES.map((c) => {
-          const active = filterState.categories.includes(c);
-          return (
-            <button
-              key={c}
-              onClick={() => onToggleCategory(c)}
-              className={css(chipBase, {
-                bg: active ? 'accent2.solid' : 'bg.surface',
-                color: active ? 'accent2.fg' : 'fg.muted',
-                borderColor: active ? 'accent2.solid' : 'bd.strong',
-                _hover: { borderColor: 'accent2.hover' },
-                _cyberpunk: { boxShadow: active ? '0 0 8px #CB1DCD' : 'none' },
-              })}
-            >
-              {c}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Sort + selection actions */}
-      <div className={css({ display: 'flex', gap: '3', alignItems: 'center', flexWrap: 'wrap' })}>
-        <span className={css({ fontSize: 'xs', color: 'fg.subtle', fontWeight: 'medium' })}>
-          Trier par
-        </span>
-        <select
-          value={filterState.sortBy}
-          onChange={(e) => onSetSortBy(e.target.value as SortBy)}
-          className={css({
-            px: '2',
-            py: '1',
-            border: '1px solid',
-            borderColor: 'bd.strong',
-            borderRadius: 'lg',
-            fontSize: 'sm',
-            cursor: 'pointer',
-            bg: 'bg.surface',
-            color: 'fg.default',
-          })}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={onToggleSortDir}
-          aria-label={filterState.sortDir === 'asc' ? 'Tri décroissant' : 'Tri croissant'}
-          className={css(chipBase, {
-            bg: 'bg.surface',
-            color: 'fg.muted',
-            borderColor: 'bd.strong',
-            _hover: { borderColor: 'accent.hover' },
-          })}
-        >
-          {filterState.sortDir === 'asc' ? '↑ Asc' : '↓ Desc'}
-        </button>
-
-        <button
-          onClick={onToggleSelectedOnly}
-          aria-pressed={selectedOnly}
-          className={css(chipBase, {
-            bg: selectedOnly ? 'accent.solid' : 'bg.surface',
-            color: selectedOnly ? 'accent.fg' : 'fg.muted',
-            borderColor: selectedOnly ? 'accent.solid' : 'bd.strong',
-            _hover: { borderColor: 'accent.hover' },
-            _cyberpunk: { boxShadow: selectedOnly ? '0 0 8px #FDF500' : 'none' },
-          })}
-        >
-          Sélection uniquement ({selectedCount})
-        </button>
-
-        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'fg.faint' })}>
-          {filteredCount} / {totalCount}
-        </span>
-
-        <button
-          onClick={onSelectAll}
-          disabled={isAllSelected}
-          className={css(chipBase, {
-            bg: 'bg.surface',
-            color: 'fg.muted',
-            borderColor: 'bd.strong',
-            _hover: { borderColor: 'accent.hover' },
-            _disabled: { opacity: 0.4, cursor: 'not-allowed' },
-          })}
-        >
-          Tout sélectionner (filtré)
-        </button>
-        <button
-          onClick={onClearAll}
-          className={css(chipBase, {
-            bg: 'bg.surface',
-            color: 'fg.muted',
-            borderColor: 'bd.strong',
-            _hover: { borderColor: 'status.danger.subtleBorder' },
-          })}
-        >
-          Désélectionner tout
-        </button>
-      </div>
-
-      {/* Search — below the filter criteria, right above the list it filters */}
-      <input
-        type="search"
-        placeholder={`Rechercher parmi ${totalCount} jeux…`}
-        value={filterState.search}
-        onChange={(e) => onSearch(e.target.value)}
+    // One row instead of the three stacked ones this used to be (region
+    // chips, category chips, then sort plus the selection actions), as the
+    // design comps show it. Every chip is still a multi-select toggle with
+    // the same behaviour — they moved inside menus rather than being
+    // replaced by single-choice dropdowns, and a closed menu shows how
+    // many of its values are active so nothing is hidden.
+    //
+    // flexWrap, because at Steam Deck width (1280px) with a long sort
+    // label this row still has to degrade to two lines rather than
+    // overflow.
+    <div
+      ref={rowRef}
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2',
+        flexWrap: 'wrap',
+        pb: '3',
+      })}
+    >
+      {/* Mutually exclusive, so a segmented control with one filled thumb
+          rather than a toggle button that only looks pressed. */}
+      <div
         className={css({
-          w: 'full',
-          px: '3',
-          py: '2',
-          border: '1px solid',
-          borderColor: 'bd.strong',
-          borderRadius: 'lg',
-          fontSize: 'sm',
-          outline: 'none',
-          bg: 'bg.surface',
-          _focusVisible: {
-            borderColor: 'accent.hover',
-            ring: '2px',
-            ringColor: 'accent.subtleBorder',
-            _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
-          },
+          display: 'inline-flex',
+          gap: '0.5',
+          p: '0.5',
+          bg: 'bg.muted',
+          borderRadius: '12px',
         })}
-      />
+      >
+        <button
+          type="button"
+          aria-pressed={selectedOnly}
+          onClick={() => {
+            if (!selectedOnly) onToggleSelectedOnly();
+          }}
+          className={css(chipBase, {
+            bg: selectedOnly ? 'accent.solid' : 'transparent',
+            color: selectedOnly ? 'accent.fg' : 'fg.subtle',
+            fontWeight: selectedOnly ? 'bold' : 'medium',
+            _hover: { color: selectedOnly ? 'accent.fg' : 'fg.default' },
+          })}
+        >
+          Ma sélection&nbsp;
+          <span className={css({ fontFamily: 'mono' })}>({selectedCount})</span>
+        </button>
+        <button
+          type="button"
+          aria-pressed={!selectedOnly}
+          onClick={() => {
+            if (selectedOnly) onToggleSelectedOnly();
+          }}
+          className={css(chipBase, {
+            bg: !selectedOnly ? 'accent.solid' : 'transparent',
+            color: !selectedOnly ? 'accent.fg' : 'fg.subtle',
+            fontWeight: !selectedOnly ? 'bold' : 'medium',
+            _hover: { color: !selectedOnly ? 'accent.fg' : 'fg.default' },
+          })}
+        >
+          Tout
+        </button>
+      </div>
+
+      <details className={css({ position: 'relative' })}>
+        <summary className={triggerClass}>
+          Région
+          <ActiveCount n={filterState.regions.length} />
+          <Caret />
+        </summary>
+        <div className={css(panelRaw)}>
+          {REGIONS.map((r) => {
+            const active = filterState.regions.includes(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onToggleRegion(r)}
+                className={css(chipBase, {
+                  bg: active ? 'accent.solid' : 'bg.muted',
+                  color: active ? 'accent.fg' : 'fg.muted',
+                  _hover: { color: active ? 'accent.fg' : 'fg.default' },
+                })}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+      </details>
+
+      <details className={css({ position: 'relative' })}>
+        <summary className={triggerClass}>
+          Catégorie
+          <ActiveCount n={filterState.categories.length} />
+          <Caret />
+        </summary>
+        <div className={css(panelRaw)}>
+          {CATEGORIES.map((c) => {
+            const active = filterState.categories.includes(c);
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onToggleCategory(c)}
+                className={css(chipBase, {
+                  bg: active ? 'accent2.solid' : 'bg.muted',
+                  color: active ? 'accent2.fg' : 'fg.muted',
+                  _hover: { color: active ? 'accent2.fg' : 'fg.default' },
+                })}
+              >
+                {c}
+              </button>
+            );
+          })}
+        </div>
+      </details>
+
+      <details className={css({ position: 'relative' })}>
+        <summary className={triggerClass}>
+          Tri&nbsp;: {sortLabel} {filterState.sortDir === 'asc' ? '↑' : '↓'}
+          <Caret />
+        </summary>
+        <div className={css(panelRaw, { flexDirection: 'column', flexWrap: 'nowrap' })}>
+          {SORT_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={filterState.sortBy === o.value}
+              onClick={() => onSetSortBy(o.value)}
+              className={css(chipBase, {
+                justifyContent: 'flex-start',
+                bg: filterState.sortBy === o.value ? 'accent.solid' : 'bg.muted',
+                color: filterState.sortBy === o.value ? 'accent.fg' : 'fg.muted',
+              })}
+            >
+              {o.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onToggleSortDir}
+            aria-label={filterState.sortDir === 'asc' ? 'Tri décroissant' : 'Tri croissant'}
+            className={css(chipBase, {
+              justifyContent: 'flex-start',
+              bg: 'bg.muted',
+              color: 'fg.muted',
+              _hover: { color: 'fg.default' },
+            })}
+          >
+            {filterState.sortDir === 'asc' ? '↑ Croissant' : '↓ Décroissant'}
+          </button>
+        </div>
+      </details>
+
+      {/* Mono: the two counts are technical data, and a proportional face
+          made the row jitter as they changed width. ml:auto pushes them
+          and the bulk actions to the right edge, as in the comps. */}
+      <span
+        className={css({
+          ml: 'auto',
+          fontFamily: 'mono',
+          fontSize: 'xs',
+          color: 'fg.subtle',
+        })}
+      >
+        {filteredCount} / {totalCount}
+      </span>
+
+      <button
+        type="button"
+        onClick={onSelectAll}
+        disabled={isAllSelected}
+        className={css(chipBase, {
+          bg: 'transparent',
+          color: 'fg.subtle',
+          _hover: { bg: 'bg.muted', color: 'fg.default' },
+          _disabled: { opacity: 0.4, cursor: 'not-allowed', _hover: { bg: 'transparent' } },
+        })}
+      >
+        Tout sélectionner
+      </button>
+      <button
+        type="button"
+        onClick={onClearAll}
+        className={css(chipBase, {
+          bg: 'transparent',
+          color: 'fg.subtle',
+          _hover: { bg: 'status.danger.subtle', color: 'status.danger.text' },
+        })}
+      >
+        Désélectionner
+      </button>
     </div>
   );
 }

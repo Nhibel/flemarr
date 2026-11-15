@@ -42,10 +42,9 @@ export function SystemFolderBar({ system }: { system: string }) {
     px: '3',
     py: '2',
     mb: '4',
-    border: '1px solid',
-    borderColor: 'bd.default',
-    borderRadius: 'md',
+    borderRadius: '14px',
     bg: 'bg.surface',
+    shadow: 'md',
     fontSize: 'sm',
   });
 
@@ -113,15 +112,11 @@ export function SystemFolderBar({ system }: { system: string }) {
           py: '1',
           fontSize: 'sm',
           fontFamily: 'mono',
-          border: '1px solid',
-          borderColor: 'bd.strong',
           borderRadius: 'md',
           bg: 'bg.surface',
           outline: 'none',
           _focusVisible: {
-            borderColor: 'accent.hover',
             _cyberpunk: {
-              borderColor: '#37EBF3',
               boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
             },
           },

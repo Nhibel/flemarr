@@ -1,27 +1,37 @@
 import { css } from '@/styled-system/css';
 
+/**
+ * A text field. No border: the global `input, textarea, select` rule in
+ * panda.config.ts already draws fields as a filled recess (bg.inset,
+ * radius 12px), which is how the comps draw them. This class only adds the
+ * padding and the focus ring on top.
+ */
 export const inputClass = css({
   px: '3',
-  py: '1.5',
+  py: '2',
   fontSize: 'sm',
-  border: '1px solid',
-  borderColor: 'bd.strong',
-  borderRadius: 'lg',
   outline: 'none',
-  bg: 'bg.surface',
-  color: 'fg.default',
   _focusVisible: {
-    borderColor: 'accent.hover',
     ring: '2px',
     ringColor: 'accent.subtleBorder',
-    _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
+    _cyberpunk: { ringColor: '#37EBF3' },
   },
 });
 
+/**
+ * One settings section as a floating card, not a block of page separated
+ * from the next by a hairline. Same rule as everywhere else since the
+ * redesign: depth from a shadow and from the surface being a different
+ * tone than the page, never from a 1px line. A column of hairline-divided
+ * blocks also read as one undifferentiated wall of page, which is the
+ * opposite of what a settings screen needs.
+ */
 export const sectionClass = css({
-  pb: '6',
-  mb: '6',
-  borderBottom: '1px solid',
-  borderColor: 'bd.subtle',
-  _last: { borderBottom: 'none', mb: '0', pb: '0' },
+  px: '4',
+  py: '4',
+  mb: '3',
+  bg: 'bg.surface',
+  borderRadius: '16px',
+  shadow: 'md',
+  _last: { mb: '0' },
 });

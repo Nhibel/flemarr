@@ -34,8 +34,6 @@ export function SearchResultRow({
         gap: '3',
         px: '3',
         py: '2',
-        borderBottom: '1px solid',
-        borderColor: 'bd.subtle',
         bg: 'transparent',
         _hover: { bg: 'bg.muted' },
         _last: { borderBottom: 'none' },

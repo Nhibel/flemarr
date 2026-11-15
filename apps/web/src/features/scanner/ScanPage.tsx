@@ -223,8 +223,6 @@ function ScanResults({
           </div>
           <div
             className={css({
-              border: '1px solid',
-              borderColor: 'bd.default',
               borderRadius: 'xl',
               overflow: 'hidden',
             })}
@@ -329,8 +327,6 @@ function RenameRow({
         gap: '3',
         px: '3',
         py: '2',
-        borderBottom: '1px solid',
-        borderColor: 'bd.subtle',
         cursor: 'pointer',
         bg: checked ? 'status.warning.subtle' : 'bg.page',
         _hover: { bg: checked ? 'status.warning.subtle' : 'bg.surface' },
