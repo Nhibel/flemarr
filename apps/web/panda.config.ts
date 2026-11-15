@@ -274,6 +274,27 @@ export default defineConfig({
                 _contraste: '#0E0E10',
               },
             },
+            // The action dock's surface. Identical to bg.surface in six of
+            // the seven themes — it exists for Sonic Mania, whose artboard
+            // makes the dock a dark teal card while every other surface in
+            // it is light, so the primary action reads as the one heavy
+            // thing on a very bright page.
+            //
+            // A token rather than a `_sonicmania` override in App.tsx
+            // because the text on it has to flip with it: see
+            // fg.onInverse below. One theme needing an inverse surface is
+            // still a role, not a special case.
+            inverse: {
+              value: {
+                base: '#FFFFFF',
+                _dark: '#1B1F28',
+                _catppuccin: '#1E1E2E',
+                _cyberpunk: '#11141A',
+                _matrix: '#0B170F',
+                _sonicmania: '#052A33',
+                _contraste: '#141417',
+              },
+            },
             // The boxart placeholder slot. Mostly a step lighter than
             // bg.muted, but Sonic Mania's comp fills it with the page's
             // own gold and Contraste's with a lighter grey than its muted
@@ -386,6 +407,33 @@ export default defineConfig({
                 _contraste: '#6B6B74',
               },
             },
+            // Text on bg.inverse. Same as fg.default wherever bg.inverse is
+            // just bg.surface; Sonic Mania is the one theme where the two
+            // diverge, and it has to, because its dock is dark while its
+            // body text is near-black.
+            onInverse: {
+              value: {
+                base: '#17171A',
+                _dark: '#ECEEF4',
+                _catppuccin: '#CDD6F4',
+                _cyberpunk: '#EDF2F4',
+                _matrix: '#D7F5E0',
+                _sonicmania: '#E6FAFF',
+                _contraste: '#F5F5F6',
+              },
+            },
+            // The quieter half of the dock's text — the size, in mono.
+            onInverseMuted: {
+              value: {
+                base: '#5E5C55',
+                _dark: '#99A1B3',
+                _catppuccin: '#A6ADC8',
+                _cyberpunk: '#93A4AD',
+                _matrix: '#7FAE8E',
+                _sonicmania: '#8FD3E0',
+                _contraste: '#8E8E96',
+              },
+            },
           },
           // The primary action colour: the comps' download button, their
           // active segmented tab and their row selection all read from
@@ -399,7 +447,7 @@ export default defineConfig({
                 _catppuccin: '#CBA6F7',
                 _cyberpunk: '#FDF500',
                 _matrix: '#43F57B',
-                _sonicmania: '#E8215C',
+                _sonicmania: '#E01B55',
                 _contraste: '#C4F000',
               },
             },

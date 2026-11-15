@@ -125,6 +125,16 @@ const PAIRS: Pair[] = [
   // fg.faint is decorative (placeholder initials, timestamps), so it is
   // held to the 3:1 that applies to non-text and large text, not to 4.5.
   { label: 'fg.faint on bg.surface', fg: 'fg.faint', bg: 'bg.surface', min: 3 },
+  // The action dock. Six themes make bg.inverse the same value as
+  // bg.surface; Sonic Mania does not, which is exactly why its text needs
+  // measuring separately rather than being assumed to match fg.default.
+  { label: 'fg.onInverse on bg.inverse', fg: 'fg.onInverse', bg: 'bg.inverse', min: 4.5 },
+  {
+    label: 'fg.onInverseMuted on bg.inverse',
+    fg: 'fg.onInverseMuted',
+    bg: 'bg.inverse',
+    min: 4.5,
+  },
   { label: 'accent.fg on accent.solid', fg: 'accent.fg', bg: 'accent.solid', min: 4.5 },
   { label: 'accent2.fg on accent2.solid', fg: 'accent2.fg', bg: 'accent2.solid', min: 4.5 },
   {
@@ -171,16 +181,14 @@ const PAIRS: Pair[] = [
 ];
 
 /**
- * Pairs that fall short and are kept anyway, with the reason. The only
- * entry is a value taken verbatim from a validated design comp: Sonic
- * Mania's artboard puts white on its magenta accent, which measures
- * 4.37:1. Changing it would mean overriding the comp, which is Camille's
- * call and not mine — darkening the magenta to #E01B55 reaches 4.71 if she
- * wants it fixed. Anything NOT listed here must pass.
+ * Pairs that fall short and are kept anyway, with the reason.
+ *
+ * Empty, and meant to stay that way. It held one entry — Sonic Mania's
+ * white on the #E8215C its artboard specified, measuring 4.37:1 — until
+ * Camille chose the rule over the comp and the magenta was darkened to
+ * #E01B55. Every pair now clears its threshold in all seven themes.
  */
-const ACCEPTED: Record<string, string[]> = {
-  _sonicmania: ['accent.fg on accent.solid'],
-};
+const ACCEPTED: Record<string, string[]> = {};
 
 const tokens = readTokens(CONFIG);
 

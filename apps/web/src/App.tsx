@@ -717,7 +717,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 alignItems: 'center',
                 gap: '3',
                 px: '4',
-                bg: 'bg.surface',
+                // bg.inverse, not bg.surface: in six themes they are the
+                // same value, and in Sonic Mania the dock is the dark card
+                // its artboard makes it. SelectionSummary reads
+                // fg.onInverse for the same reason.
+                bg: 'bg.inverse',
                 borderRadius: '16px',
                 shadow: 'lg',
               })}

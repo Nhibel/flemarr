@@ -26,19 +26,21 @@ export function SelectionSummary({ games, selected, target }: Props) {
   // as a box in a box, and the old bordered chip was also why the empty and
   // non-empty states had different heights.
   if (selected.size === 0) {
-    return <p className={css({ fontSize: 'sm', color: 'fg.subtle' })}>Aucun jeu sélectionné.</p>;
+    return (
+      <p className={css({ fontSize: 'sm', color: 'fg.onInverseMuted' })}>Aucun jeu sélectionné.</p>
+    );
   }
 
   return (
     <p className={css({ display: 'flex', alignItems: 'baseline', gap: '2', fontSize: 'sm' })}>
-      <span className={css({ fontWeight: 'bold', color: 'fg.heading' })}>
+      <span className={css({ fontWeight: 'bold', color: 'fg.onInverse' })}>
         {selected.size} jeu{selected.size !== 1 ? 'x' : ''} sélectionné
         {selected.size !== 1 ? 's' : ''}
       </span>
       {/* The total is technical data, hence the mono face — and it is the
           number that decides whether a download is worth starting, so it
           gets its own voice rather than blending into the sentence. */}
-      <span className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.subtle' })}>
+      <span className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.onInverseMuted' })}>
         · {formatSize(totalBytes)} au total
         {target === 'browser' ? ' · vers mon navigateur' : ''}
       </span>
