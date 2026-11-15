@@ -49,6 +49,15 @@ export default defineConfig({
       bg: 'bg.page',
       color: 'fg.default',
     },
+    // Every heading in the app picks up the display face from here rather
+    // than from ~20 individual component styles. Headings are the only
+    // place this face is used; the mono face is the opposite — it is
+    // applied per value, never globally, because it is meant for technical
+    // data only (see the `fonts` tokens).
+    'h1, h2, h3, h4': {
+      fontFamily: 'display',
+      letterSpacing: '-0.02em',
+    },
     'input, textarea, select': {
       bg: 'bg.page',
       color: 'fg.default',
@@ -57,10 +66,31 @@ export default defineConfig({
   theme: {
     extend: {
       tokens: {
+        // Three roles, decided on the design canvas: Space Grotesk for
+        // titles, Inter for body text, IBM Plex Mono reserved for technical
+        // data (sizes, CRCs, counts, pagination). The point of the mono is
+        // that metadata gets its own voice without the rest of the app
+        // turning into a terminal — so it belongs on values, never on
+        // labels or prose.
+        //
+        // All three are self-hosted through @fontsource* packages imported
+        // in src/main.tsx, NOT a fonts.googleapis.com <link>: this app runs
+        // on a homelab that may have no outbound internet, and a webfont
+        // that fails to load would silently fall back to the system stack.
+        // Each family's fallback chain still ends in a generic, so a
+        // missing package degrades rather than breaks.
         fonts: {
           sans: {
             value:
               "'Inter Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
+          },
+          display: {
+            value:
+              "'Space Grotesk Variable', 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          },
+          mono: {
+            value:
+              "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
           },
         },
       },
