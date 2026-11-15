@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/api.js';
 import type { ResolveResponse } from '@/lib/api.js';
-import type { DownloadSource } from '@shared/download.js';
-import type { ResolvedSource } from '@shared/archive.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { buildDownloadItems } from './build-items.js';

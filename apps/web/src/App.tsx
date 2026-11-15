@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
+import { Dialog } from '@/components/Dialog.js';
 import { DatUpload } from '@/features/dat-loader/DatUpload.js';
 import { Fresh1g1rBrowser } from '@/features/dat-loader/Fresh1g1rBrowser.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
@@ -140,6 +141,7 @@ function LoaderView({
 }: LoaderViewProps) {
   // DATs persisted server-side (SQLite) — lets the user resume without re-parsing
   const queryClient = useQueryClient();
+  const [adding, setAdding] = useState(false);
   const { data: existingDats = [] } = useQuery({
     queryKey: ['dats'],
     queryFn: listDats,
@@ -192,7 +194,8 @@ function LoaderView({
         </button>
       </div>
 
-      {/* Resume a previously loaded DAT */}
+      {/* The systems already registered, as cards. One per system, click to
+          open it. The ✕ removes the DAT, not the files. */}
       {existingDats.length > 0 && (
         <section className={css({ mb: '6' })}>
           <h2
@@ -200,78 +203,166 @@ function LoaderView({
               fontSize: 'sm',
               fontWeight: 'semibold',
               color: 'fg.default',
-              mb: '2',
+              mb: '3',
             })}
           >
-            Reprendre un DAT chargé
+            Mes systèmes
           </h2>
-          <Card className={css({ overflow: 'hidden' })}>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: {
+                base: '1fr',
+                md: 'repeat(2, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+              },
+              gap: '3',
+            })}
+          >
+            {/* The card recipe, not a hand-rolled surface: it carries the
+                per-theme shadows, Sonic Mania's and Cyberpunk's included. */}
             {existingDats.map((dat) => (
-              <div
+              <Card
                 key={dat.id}
                 className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  bg: 'transparent',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition: 'background-color 0.15s',
                   _hover: { bg: 'bg.muted' },
-                  _last: { borderBottom: 'none' },
                 })}
               >
                 <button
                   onClick={() => onLoaded(dat)}
                   className={css({
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: '2',
-                    flex: 1,
-                    minW: 0,
-                    px: '3',
-                    py: '2',
-                    fontSize: 'sm',
+                    display: 'block',
+                    width: '100%',
                     textAlign: 'left',
+                    px: '4',
+                    py: '4',
+                    pr: '10',
+                    bg: 'transparent',
+                    border: 'none',
                     cursor: 'pointer',
                   })}
                 >
-                  <span className={css({ color: 'fg.default', flex: 1, truncate: true })}>
+                  <span
+                    title={dat.system}
+                    className={css({
+                      display: 'block',
+                      fontFamily: 'display',
+                      fontSize: 'base',
+                      fontWeight: 'bold',
+                      color: 'fg.heading',
+                      truncate: true,
+                    })}
+                  >
                     {dat.system}
                   </span>
-                  <span className={css({ fontSize: 'xs', color: 'fg.faint', flexShrink: 0 })}>
+                  <span
+                    className={css({
+                      display: 'block',
+                      mt: '1',
+                      fontFamily: 'mono',
+                      fontSize: '2xs',
+                      color: 'fg.faint',
+                    })}
+                  >
                     {dat.source} · {dat.gameCount} jeux
                   </span>
                 </button>
+                {/* Absolutely positioned, so it stays out of the card's own
+                    click target — the card is the common action and must not
+                    need aiming around a second button. */}
                 <button
                   onClick={() => removeDat.mutate(dat.id)}
                   disabled={removeDat.isPending}
-                  title="Supprimer ce DAT"
-                  aria-label="Supprimer ce DAT"
+                  title="Retirer ce système"
+                  aria-label={`Retirer ${dat.system}`}
                   className={css({
-                    px: '3',
-                    py: '2',
+                    position: 'absolute',
+                    top: '2',
+                    right: '2',
+                    w: '28px',
+                    h: '28px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bg: 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
                     fontSize: 'sm',
                     color: 'fg.faint',
                     cursor: 'pointer',
-                    flexShrink: 0,
-                    _hover: { color: 'status.danger.text' },
+                    _hover: { color: 'status.danger.text', bg: 'status.danger.subtle' },
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
                   ✕
                 </button>
-              </div>
+              </Card>
             ))}
-          </Card>
+          </div>
         </section>
       )}
 
-      {/* Mode toggle — a segmented control on a track, like the tab row and
-          the display-mode switch. Two mutually exclusive choices, so the
-          same shape everywhere they appear. */}
+      {/* Adding a system. Behind a button once there is at least one system
+          — the console catalogue is long, and it is not what you came for
+          when you already have systems to open. Inline when there are none:
+          a first run would otherwise be an empty screen whose only content
+          is a button, and the thing you have to do is the only thing on
+          screen anyway. */}
+      {existingDats.length > 0 ? (
+        <>
+          <Button variant="primary" onClick={() => setAdding(true)}>
+            + Ajouter un système
+          </Button>
+          <Dialog open={adding} onClose={() => setAdding(false)} title="Ajouter un système">
+            <AddSystem
+              loaderMode={loaderMode}
+              onSetLoaderMode={onSetLoaderMode}
+              onAdded={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
+              onUploaded={onLoaded}
+            />
+          </Dialog>
+        </>
+      ) : (
+        <AddSystem
+          loaderMode={loaderMode}
+          onSetLoaderMode={onSetLoaderMode}
+          onAdded={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
+          onUploaded={onLoaded}
+        />
+      )}
+    </main>
+  );
+}
+
+/**
+ * The two ways to add a system: pick one from Fresh1G1R, or import a .dat.
+ *
+ * Extracted because it renders in two places — inside the dialog, and
+ * inline on a first run where hiding it behind a button would leave an
+ * empty screen.
+ */
+function AddSystem({
+  loaderMode,
+  onSetLoaderMode,
+  onAdded,
+  onUploaded,
+}: {
+  loaderMode: LoaderMode;
+  onSetLoaderMode: (m: LoaderMode) => void;
+  onAdded: () => void;
+  onUploaded: (dat: DatUploadResponse) => void;
+}) {
+  return (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
       <div
         className={css({
           display: 'inline-flex',
+          alignSelf: 'flex-start',
           gap: '0.5',
           p: '0.5',
-          mb: '6',
           bg: 'bg.muted',
           borderRadius: '13px',
         })}
@@ -294,22 +385,20 @@ function LoaderView({
               _hover: { color: loaderMode === m ? 'accent.fg' : 'fg.default' },
             })}
           >
-            {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}
+            {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Importer un .dat'}
           </button>
         ))}
       </div>
 
       {loaderMode === 'fresh1g1r' ? (
-        // Loading a preset just adds it to "Reprendre un DAT chargé" above —
-        // no auto-navigation, so browsing/loading several systems in a row
-        // doesn't bounce to the game view each time.
-        <Fresh1g1rBrowser
-          onSuccess={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
-        />
+        // Loading a preset just adds it to the cards above — no
+        // auto-navigation, so loading several systems in a row doesn't
+        // bounce to the game view each time.
+        <Fresh1g1rBrowser onSuccess={onAdded} />
       ) : (
-        <DatUpload onSuccess={onLoaded} />
+        <DatUpload onSuccess={onUploaded} />
       )}
-    </main>
+    </div>
   );
 }
 
