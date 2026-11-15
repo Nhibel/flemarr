@@ -21,7 +21,8 @@ import { computeMissingGameIds, computeOwnership } from '@/lib/missing-games.js'
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { LexiquePage } from '@/features/lexique/LexiquePage.js';
-import { TopologyStep } from '@/features/onboarding/TopologyStep.js';
+import { InstallFlow } from '@/features/onboarding/InstallFlow.js';
+import type { StepId } from '@/features/onboarding/install-steps.js';
 import { useTheme } from '@/lib/use-theme.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
@@ -68,6 +69,14 @@ export function App() {
     rootSettings.topology === null &&
     Object.keys(rootSettings.systemPaths).length === 0 &&
     knownDats.length === 0;
+
+  // Which step the install flow is on, or null when it isn't running.
+  // Driven by the guards above on a fresh install, and set explicitly to
+  // 'console' when the user asks to add another console.
+  const [installStep, setInstallStep] = useState<StepId | null>(null);
+  const installAt: StepId | null =
+    installStep ?? (needsTopology && activeDat === null ? 'topology' : null);
+  const setInstallAt = setInstallStep;
   const { fontScale, setFontScale } = useFontScale();
 
   let content: ReactNode;
@@ -81,8 +90,29 @@ export function App() {
     );
   } else if (view === 'lexique') {
     content = <LexiquePage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
-  } else if (needsTopology && activeDat === null) {
-    content = <TopologyStep saving={chooseTopology.isPending} onChoose={chooseTopology.mutate} />;
+  } else if (installAt !== null) {
+    // The install flow, chained. Entered automatically at the topology
+    // question on a never-used install, and at the console step whenever
+    // the user asks to load another DAT — adding a console is the same
+    // three remaining steps.
+    content = (
+      <InstallFlow
+        startAt={installAt}
+        onDone={(dat) => {
+          setActiveDat(dat);
+          setInstallAt(null);
+          setView('game');
+        }}
+        onCancel={
+          activeDat === null
+            ? undefined
+            : () => {
+                setInstallAt(null);
+                setView('game');
+              }
+        }
+      />
+    );
   } else if (activeDat === null) {
     content = (
       <LoaderView
@@ -100,10 +130,11 @@ export function App() {
     content = (
       <GameView
         dat={activeDat}
-        onReset={() => {
-          setActiveDat(null);
-          setView('loader');
-        }}
+        // Adding a console goes through the install flow from its console
+        // step, so the folder and the sources are asked for in the same
+        // chain rather than left to be found afterwards. activeDat is kept,
+        // so Annuler can return to the library it came from.
+        onReset={() => setInstallAt('console')}
         onSettings={() => setView('settings')}
         onLexique={() => setView('lexique')}
       />

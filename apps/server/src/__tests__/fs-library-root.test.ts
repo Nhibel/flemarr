@@ -27,11 +27,20 @@ afterEach(() => {
 });
 
 describe('GET /api/fs/list-dirs confined to ROMS_ROOT', () => {
+  // The route reads with `withFileTypes`, so the kind comes from the entry
+  // itself rather than a stat per name. Two directories and two files, so
+  // the counts below are not trivially zero.
+  const dirent = (name: string, isDir: boolean) =>
+    ({ name, isDirectory: () => isDir }) as unknown as Awaited<ReturnType<typeof readdir>>[number];
+
   beforeEach(() => {
     vi.mocked(stat).mockResolvedValue(asDir);
-    vi.mocked(readdir).mockResolvedValue(['snes', 'psx'] as unknown as Awaited<
-      ReturnType<typeof readdir>
-    >);
+    vi.mocked(readdir).mockResolvedValue([
+      dirent('snes', true),
+      dirent('psx', true),
+      dirent('a.sfc', false),
+      dirent('b.sfc', false),
+    ] as unknown as Awaited<ReturnType<typeof readdir>>);
   });
 
   it('starts at the root and hides the parent when no path is given', async () => {
@@ -54,6 +63,36 @@ describe('GET /api/fs/list-dirs confined to ROMS_ROOT', () => {
     const body = (await res.json()) as { listedPath: string; parent: string | null };
     expect(body.listedPath).toBe(sub);
     expect(body.parent).toBe(ROOT);
+  });
+
+  // The install flow shows this so a folder holding a collection can be
+  // recognised without running a scan.
+  it('counts the files of the listing and of each child, sub-directories excluded', async () => {
+    const res = await app.request('/api/fs/list-dirs');
+    const body = (await res.json()) as {
+      dirs: { path: string; fileCount: number }[];
+      fileCount: number;
+    };
+
+    expect(body.fileCount).toBe(2);
+    expect(body.dirs.map((d) => d.path)).toEqual([join(ROOT, 'psx'), join(ROOT, 'snes')]);
+    // Each child is counted by its own readdir, against the same mock.
+    for (const d of body.dirs) expect(d.fileCount).toBe(2);
+  });
+
+  it('counts zero for a directory it cannot read, without failing the listing', async () => {
+    vi.mocked(readdir)
+      .mockResolvedValueOnce([dirent('snes', true)] as unknown as Awaited<
+        ReturnType<typeof readdir>
+      >)
+      .mockRejectedValueOnce(new Error('EACCES'));
+
+    const res = await app.request('/api/fs/list-dirs');
+    const body = (await res.json()) as { dirs: { fileCount: number }[]; fileCount: number };
+
+    expect(res.status).toBe(200);
+    expect(body.dirs).toHaveLength(1);
+    expect(body.dirs[0]?.fileCount).toBe(0);
   });
 });
 
