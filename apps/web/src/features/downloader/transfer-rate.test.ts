@@ -99,10 +99,13 @@ describe('formatting', () => {
     expect(formatRate(300)).toBe('300 o/s');
   });
 
-  it('words the estimate as vaguely as it deserves', () => {
-    expect(formatEta(30)).toBe('moins d’une minute');
-    expect(formatEta(420)).toBe('environ 7 minutes');
-    expect(formatEta(70)).toBe('environ 1 minute');
-    expect(formatEta(7200)).toBe('environ 2 heures');
+  // Vague on purpose: "environ 7 minutes" is honest about its precision in
+  // a way "7:03" is not. The agreement is part of the string because the
+  // caller cannot know whether it is one minute or several.
+  it('words the estimate as vaguely as it deserves, and agrees with itself', () => {
+    expect(formatEta(30)).toBe('moins d’une minute restante');
+    expect(formatEta(70)).toBe('environ 1 minute restante');
+    expect(formatEta(420)).toBe('environ 7 minutes restantes');
+    expect(formatEta(7200)).toBe('environ 2 heures restantes');
   });
 });

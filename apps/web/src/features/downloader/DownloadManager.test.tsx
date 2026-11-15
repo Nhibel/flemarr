@@ -257,3 +257,56 @@ describe('DownloadManager — one row per game', () => {
     expect(screen.queryByRole('button', { name: 'Réessayer' })).not.toBeInTheDocument();
   });
 });
+
+describe('DownloadManager — the card counts one unit throughout', () => {
+  let sources: Map<string, FakeEventSource>;
+
+  beforeEach(() => {
+    sources = new Map();
+    vi.mocked(openDownloadEvents).mockImplementation((jobId: string) => {
+      const es = new FakeEventSource();
+      sources.set(jobId, es);
+      return es as unknown as EventSource;
+    });
+  });
+
+  // Camille caught this in the browser: the header counted files while the
+  // summary line and the rows counted games, so two two-disc games read as
+  // "0 / 4 téléchargés" above "2 en cours" above two rows.
+  it('reports games in the header, not files', () => {
+    const twoDiscGames: QueuedDownload = {
+      jobId: 'j1',
+      datId: 'dat-1',
+      target: 'browser',
+      items: [
+        ['g1', 'a-d1.bin'],
+        ['g1', 'a-d2.bin'],
+        ['g2', 'b-d1.bin'],
+        ['g2', 'b-d2.bin'],
+      ].map(([gameId, romName]) => ({
+        gameId: gameId!,
+        romName: romName!,
+        expectedCrc: 'aabbccdd',
+        sources: [{ url: 'https://example.invalid/a.zip', extractFromZip: false }],
+      })),
+    };
+
+    renderManager({ jobs: [twoDiscGames] });
+    act(() =>
+      sources.get('j1')?.onmessage?.({
+        data: JSON.stringify({
+          type: 'progress',
+          gameId: 'g1',
+          romName: 'a-d1.bin',
+          bytesDownloaded: 100,
+          totalBytes: 1000,
+        }),
+      }),
+    );
+
+    expect(screen.getByText('0 / 2 jeux téléchargés')).toBeInTheDocument();
+    expect(screen.queryByText(/\/ 4/)).not.toBeInTheDocument();
+    // Four files, two rows.
+    expect(screen.getAllByText(/2 fichiers/)).toHaveLength(2);
+  });
+});

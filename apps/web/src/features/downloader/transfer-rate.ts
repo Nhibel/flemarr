@@ -77,9 +77,13 @@ export function formatRate(bytesPerSecond: number): string {
  * it that way too.
  */
 export function formatEta(seconds: number): string {
-  if (seconds < 45) return 'moins d’une minute';
+  // The whole phrase, agreement included — the caller used to append a
+  // fixed " restantes", which read "moins d’une minute restantes".
+  if (seconds < 45) return 'moins d’une minute restante';
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `environ ${minutes} minute${minutes > 1 ? 's' : ''}`;
+  if (minutes < 60) {
+    return `environ ${minutes} minute${minutes > 1 ? 's' : ''} restante${minutes > 1 ? 's' : ''}`;
+  }
   const hours = Math.round(seconds / 3600);
-  return `environ ${hours} heure${hours > 1 ? 's' : ''}`;
+  return `environ ${hours} heure${hours > 1 ? 's' : ''} restante${hours > 1 ? 's' : ''}`;
 }

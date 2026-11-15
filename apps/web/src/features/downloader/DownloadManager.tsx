@@ -415,10 +415,9 @@ function JobCard({
     }
   };
 
-  const done = state.items.filter((i) => i.status === 'done').length;
-  const failed = state.items.filter((i) => i.status === 'failed').length;
-  const total = state.items.length;
-
+  // Counted in games, like the summary line and the rows below. These three
+  // used to disagree: the header counted files, so two two-disc games read
+  // as "0 / 4 téléchargés" above "2 en cours" above two rows.
   const statusColor = {
     running: 'accent.text',
     done: 'status.success.text',
@@ -427,8 +426,12 @@ function JobCard({
   }[state.status];
 
   const statusLabel = {
-    running: `${done} / ${total} téléchargés`,
-    done: `Terminé — ${done} réussis${failed > 0 ? `, ${failed} échoués` : ''}`,
+    running: `${summary.done} / ${summary.total} jeu${summary.total > 1 ? 'x' : ''} téléchargé${
+      summary.total > 1 ? 's' : ''
+    }`,
+    done: `Terminé — ${summary.done} réussi${summary.done > 1 ? 's' : ''}${
+      summary.failed > 0 ? `, ${summary.failed} échoué${summary.failed > 1 ? 's' : ''}` : ''
+    }`,
     cancelled: 'Annulé',
     error: 'Erreur',
   }[state.status];
@@ -486,7 +489,7 @@ function JobCard({
           `${summary.queued} en attente`,
           ...(summary.failed > 0 ? [`${summary.failed} en échec`] : []),
         ].join(' · ')}
-        {eta !== undefined && ` — ${formatEta(eta)} restantes`}
+        {eta !== undefined && ` — ${formatEta(eta)}`}
       </p>
 
       {/* One row per game. The conversion step used to be a separate list
