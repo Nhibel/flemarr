@@ -25,6 +25,8 @@ const downloadItemSchema = z.object({
   // HTTP/network failure (never on CRC mismatch: bad source, user decides).
   sources: z.array(downloadSourceSchema).min(1),
 });
+/** One rom to fetch, with its ordered candidate sources. */
+export type DownloadItem = z.infer<typeof downloadItemSchema>;
 export const downloadRequestSchema = z
   .object({
     datId: z.string().min(1),
