@@ -115,6 +115,30 @@ export default defineConfig({
         // that fails to load would silently fall back to the system stack.
         // Each family's fallback chain still ends in a generic, so a
         // missing package degrades rather than breaks.
+        // Panda's defaults are rem, which means every corner in the app
+        // grew and shrank with the live font-size control
+        // (src/lib/use-font-scale.ts) — at 24px a card rounded into a
+        // lozenge, at 14px it squared off. A corner radius is not type.
+        //
+        // Overriding the scale in px fixes every existing
+        // `borderRadius: 'lg'` at once and makes the rule impossible to
+        // violate later, which is why this is here rather than as literal
+        // px spread through the components. The values are the comps' own
+        // ladder: 6/8/10 for controls, 14/16/18 for panels.
+        // The whole ladder is overridden, including the steps nothing uses
+        // yet: leaving any of them in rem is leaving a trap for whoever
+        // reaches for it next. `full` is already 9999px and needs nothing.
+        radii: {
+          '2xs': { value: '3px' },
+          xs: { value: '4px' },
+          sm: { value: '6px' },
+          md: { value: '8px' },
+          lg: { value: '10px' },
+          xl: { value: '14px' },
+          '2xl': { value: '18px' },
+          '3xl': { value: '24px' },
+          '4xl': { value: '32px' },
+        },
         fonts: {
           sans: {
             value:

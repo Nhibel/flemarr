@@ -3,13 +3,7 @@ import type { Game } from '@shared/dat.js';
 import type { DisplayMode } from './use-display-mode.js';
 import { StatusTag } from '@/components/StatusTag.js';
 import type { Ownership } from '@/lib/missing-games.js';
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(0)} KB`;
-  return `${bytes} B`;
-}
+import { formatSize } from '@/lib/format.js';
 
 function totalSize(game: Game): number {
   return game.roms.reduce((s, r) => s + r.size, 0);

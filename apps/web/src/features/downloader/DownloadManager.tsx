@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
+import { formatSize } from '@/lib/format.js';
 import { Card } from '@/components/Card.js';
 import {
   openDownloadEvents,
@@ -32,13 +33,6 @@ interface ItemState {
   progress: number; // 0-100, or -1
   bytesDownloaded: number;
   failReason?: string;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(0)} KB`;
-  return `${bytes} B`;
 }
 
 interface GameConversionState {
