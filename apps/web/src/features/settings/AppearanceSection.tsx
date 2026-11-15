@@ -27,9 +27,9 @@ const THEME_DESCRIPTIONS: Record<Theme, string> = {
   light: 'Fond papier chaud, cartes blanches, accent bleu.',
   dark: 'Encre bleutée, texte clair, accent bleu vif.',
   catppuccin: 'Mocha — pastel sur fond bleu-nuit.',
-  cyberpunk: 'Violet-magenta profond, jaune néon et cyan électrique.',
+  cyberpunk: 'Noir, titre jaune néon, cyan électrique et rose.',
   matrix: 'Néon vert sur fond quasi noir.',
-  sonicmania: 'Fond jaune, cartes cyan, accent or et sélection rose-rouge.',
+  sonicmania: 'Fond jaune vif, cartes cyan, accent magenta et or.',
   contraste: 'Noir franc, accent lime, ambre en avertissement — le plus lisible à distance.',
 };
 
