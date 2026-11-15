@@ -464,68 +464,76 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           flexShrink: '0',
         })}
       >
-        <h1
-          title={dat.system}
-          className={css({
-            fontSize: 'xl',
-            fontWeight: 'bold',
-            color: 'fg.heading',
-            flex: '1',
-            minWidth: '0',
-            truncate: true,
-            _cyberpunk: {
-              textShadow: '0 0 12px rgba(253, 245, 0, 0.3)',
-            },
-            _matrix: {
-              textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
-            },
-          })}
-        >
-          {dat.system}
-        </h1>
-        {/* Ownership counter, as in the comps: how much of the catalogue is
-            already on disk, and how much is not. Two wordings, because the
-            honest answer differs — with no scan the app does not know what
-            is owned, and the comps' "catalogue, possession inconnue" state
-            says exactly that instead of showing a count of zero. */}
-        {ownedCount !== null ? (
-          <span
+        {/* Title and its counter stack, and the stack is the row's one
+            flexible child. They used to sit side by side, which made the
+            counter — "no-intro · 1401 jeux · possession inconnue" is wide —
+            eat the width the title needed, truncating a name that had room
+            to show. Stacked, the title gets the full width of the block and
+            the counter reads as what it is: a subtitle about that console,
+            not a separate control. */}
+        <div className={css({ flex: '1', minWidth: '0' })}>
+          <h1
+            title={dat.system}
             className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2',
-              flexShrink: '0',
-              fontFamily: 'mono',
-              fontSize: '2xs',
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'fg.heading',
+              minWidth: '0',
+              truncate: true,
+              _cyberpunk: {
+                textShadow: '0 0 12px rgba(253, 245, 0, 0.3)',
+              },
+              _matrix: {
+                textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
+              },
             })}
           >
-            <span className={css({ color: 'status.success.text' })}>
-              {ownedCount} sur ton disque
-            </span>
-            <span className={css({ color: 'fg.faint' })}>
-              {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
-            </span>
-            {/* Dropped below lg: this row has to stay on one line at the
-                Steam Deck's 1280px, and the time is the least load-bearing
-                thing in it. */}
-            {lastScanAt && (
-              <span className={css({ color: 'fg.faint', display: { base: 'none', lg: 'inline' } })}>
-                vérifié à {lastScanAt.toLocaleTimeString()}
+            {dat.system}
+          </h1>
+          {/* Ownership counter, as in the comps: how much of the catalogue
+              is already on disk, and how much is not. Two wordings, because
+              the honest answer differs — with no scan the app does not know
+              what is owned, and the comps' "catalogue, possession inconnue"
+              state says exactly that instead of showing a count of zero. */}
+          {ownedCount !== null ? (
+            <span
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2',
+                flexWrap: 'wrap',
+                mt: '0.5',
+                fontFamily: 'mono',
+                fontSize: '2xs',
+              })}
+            >
+              <span className={css({ color: 'status.success.text' })}>
+                {ownedCount} sur ton disque
               </span>
-            )}
-          </span>
-        ) : (
-          <span
-            className={css({
-              flexShrink: '0',
-              fontFamily: 'mono',
-              fontSize: '2xs',
-              color: 'fg.faint',
-            })}
-          >
-            {dat.source} · {dat.gameCount} jeux · possession inconnue
-          </span>
-        )}
+              <span className={css({ color: 'fg.faint' })}>
+                {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
+              </span>
+              {lastScanAt && (
+                <span className={css({ color: 'fg.faint' })}>
+                  vérifié à {lastScanAt.toLocaleTimeString()}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span
+              className={css({
+                display: 'block',
+                mt: '0.5',
+                fontFamily: 'mono',
+                fontSize: '2xs',
+                color: 'fg.faint',
+                truncate: true,
+              })}
+            >
+              {dat.source} · {dat.gameCount} jeux · possession inconnue
+            </span>
+          )}
+        </div>
 
         {/* The comps' "Revérifier mon dossier". It navigates to the scanner
             rather than starting a scan from here: the scan trigger lives in
