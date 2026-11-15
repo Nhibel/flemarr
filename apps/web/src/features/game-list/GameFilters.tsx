@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { css } from '@/styled-system/css';
 import type { FilterState, SortBy } from './use-game-filters.js';
+import { useExclusiveDetails } from '@/lib/use-exclusive-details.js';
 
 const REGIONS = ['Europe', 'USA', 'Japan', 'World'];
 const CATEGORIES = ['Game', 'Demo', 'Proto', 'Beta', 'Unl', 'Aftermarket'];
@@ -140,6 +142,11 @@ export function GameFilters({
   isAllSelected,
 }: Props) {
   const sortLabel = SORT_OPTIONS.find((o) => o.value === filterState.sortBy)?.label ?? '';
+  // Native <details> is a disclosure widget, not a menu: without this,
+  // opening one leaves the others open and none closes on an outside
+  // click.
+  const rowRef = useRef<HTMLDivElement>(null);
+  useExclusiveDetails(rowRef);
 
   return (
     // One row instead of the three stacked ones this used to be (region
@@ -153,6 +160,7 @@ export function GameFilters({
     // label this row still has to degrade to two lines rather than
     // overflow.
     <div
+      ref={rowRef}
       className={css({
         display: 'flex',
         alignItems: 'center',

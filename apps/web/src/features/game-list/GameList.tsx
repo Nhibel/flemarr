@@ -4,6 +4,7 @@ import { css } from '@/styled-system/css';
 import { GameRow } from './GameRow.js';
 import { usePagination } from './use-pagination.js';
 import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
+import { usePageSize, PAGE_SIZES, resolvePageSize } from './use-page-size.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
 import { SearchIcon } from '@/components/icons.js';
 import type { Game } from '@shared/dat.js';
@@ -63,7 +64,11 @@ export function GameList({
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [mode, setMode] = useDisplayMode();
-  const { pageItems, page, pageCount, start, total, next, prev } = usePagination(games);
+  const [pageSize, setPageSize] = usePageSize();
+  const { pageItems, page, pageCount, start, total, next, prev } = usePagination(
+    games,
+    resolvePageSize(pageSize, games.length),
+  );
 
   // Details for the displayed page only. The backend caches per game in
   // SQLite, so a page is cheap after its first visit; staleTime Infinity
@@ -179,6 +184,40 @@ export function GameList({
             fontSize: 'sm',
           })}
         />
+      </label>
+
+      {/* How many games per page. "Tout" renders every filtered game at
+          once with no virtualisation — fine on a desktop, heavy on the
+          Deck past a thousand rows, which is why 50 stays the default. */}
+      <label
+        className={css({
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '1.5',
+          flexShrink: '0',
+          fontSize: 'xs',
+          color: 'fg.subtle',
+        })}
+      >
+        Par page
+        <select
+          value={String(pageSize)}
+          onChange={(e) => setPageSize(e.target.value === 'all' ? 'all' : (Number(e.target.value) as 20 | 50 | 100))}
+          className={css({
+            px: '2',
+            minH: '28px',
+            fontSize: 'xs',
+            fontFamily: 'mono',
+            cursor: 'pointer',
+            borderRadius: '9px',
+          })}
+        >
+          {PAGE_SIZES.map((s) => (
+            <option key={String(s)} value={String(s)}>
+              {s === 'all' ? 'Tout' : s}
+            </option>
+          ))}
+        </select>
       </label>
 
       {/* A segmented control, not two separate outlined buttons: the two

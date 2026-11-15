@@ -53,32 +53,44 @@ Le **.chd** est un format de fichier qui compresse un jeu disque (plusieurs fich
 
 ## Comment ça marche, étape par étape
 
-### 1. Choisir une console et charger sa liste de jeux
+### 1. Dire où vivent les jeux
 
-Dans l'application, on choisit une console. L'appli propose de récupérer automatiquement la liste officielle et triée (1G1R) des jeux pour cette console — ou on peut importer son propre fichier DAT si on préfère.
+À la toute première utilisation, l'application pose une seule question : est-ce qu'elle tourne là où la collection est stockée ? Trois réponses — sur cette machine, sur un disque réseau qu'elle voit, ou ailleurs (un serveur ou un NAS qui ne peut pas lire votre disque).
 
-### 2. Parcourir et sélectionner
+C'est la première question parce que sa réponse décide de deux choses d'un coup : où arrivent les fichiers téléchargés, et si l'application peut reconnaître ce qu'on possède déjà. Dans le troisième cas elle ne peut pas aller voir votre disque, donc elle affiche le catalogue complet en disant franchement qu'elle ne sait pas ce que vous avez, au lieu d'afficher un compteur faux.
 
-La liste des jeux s'affiche, avec jaquette, nom, région. On peut chercher, filtrer, et cocher les jeux qu'on veut avoir dans sa collection.
+Ce choix ne touche jamais aux fichiers, et il se change plus tard dans les réglages.
 
-### 3. Scanner ce qu'on a déjà (optionnel, mais recommandé)
+### 2. Choisir une console et charger sa liste de jeux
 
-Si on a déjà des ROMs sur son disque (dans un dossier existant, même mal rangé ou mal nommé), l'appli peut scanner ce dossier : elle calcule l'empreinte de chaque fichier et la compare au DAT. Les fichiers reconnus sont marqués comme possédés et renommés proprement ; ceux qui ne correspondent à rien restent inchangés. On voit alors d'un coup d'œil ce qui manque dans sa sélection.
+On choisit une console. L'appli propose de récupérer automatiquement la liste officielle et triée (1G1R) des jeux pour cette console — ou on peut importer son propre fichier DAT si on préfère.
 
-### 4. Télécharger ce qui manque
+### 3. Parcourir et sélectionner
 
-Pour chaque jeu sélectionné qu'on ne possède pas encore, l'appli va chercher une source sur archive.org (un site d'archivage public) et propose de le télécharger. Deux façons de récupérer le fichier :
+La liste des jeux s'affiche, avec jaquette, nom, région et taille. On peut chercher, filtrer, et cocher les jeux qu'on veut avoir dans sa collection.
 
-- **Vers le serveur** : le fichier est rangé directement dans le dossier de la console, prêt à l'emploi.
-- **Vers mon navigateur** : le fichier est validé par le serveur puis envoyé comme un téléchargement classique de navigateur, à ranger où l'on veut soi-même.
+### 4. Scanner ce qu'on a déjà (optionnel, mais recommandé)
+
+Si on a déjà des ROMs sur son disque (dans un dossier existant, même mal rangé ou mal nommé), l'appli peut scanner ce dossier : elle calcule l'empreinte de chaque fichier et la compare au DAT. Les fichiers reconnus sont marqués comme possédés et renommés proprement ; ceux qui ne correspondent à rien restent inchangés.
+
+Après un scan, chaque ligne de la liste porte son état : **sur ton disque**, **mal nommé** (le fichier est là, seul son nom est à corriger) ou **manquant**. Tant qu'aucun scan n'a tourné, aucune ligne n'affiche d'état — l'application préfère ne rien dire que de prétendre savoir.
+
+### 5. Télécharger ce qui manque
+
+Pour chaque jeu sélectionné qu'on ne possède pas encore, l'appli va chercher une source sur archive.org (un site d'archivage public) et propose de le télécharger. Où le fichier atterrit découle de la réponse donnée à l'installation (« où vivent tes jeux ? »), pas d'un choix à refaire à chaque téléchargement :
+
+- **Si l'appli tourne là où est la collection** (sur cette machine, ou sur un disque réseau qu'elle voit) : le fichier est rangé directement dans le dossier de la console, renommé au nom officiel, prêt à l'emploi.
+- **Si elle tourne ailleurs** (serveur, NAS, homelab distant) : le fichier est validé par le serveur puis envoyé comme un téléchargement classique de navigateur, à ranger où l'on veut soi-même.
+
+Dans les deux cas la vérification d'intégrité (CRC32) se fait côté serveur **avant** que le fichier soit remis, donc un téléchargement corrompu n'arrive jamais jusqu'au bout.
 
 Pendant le téléchargement, une barre de progression s'affiche pour chaque fichier. On peut annuler un téléchargement en cours, ou toute la file d'attente.
 
-### 5. (Optionnel) Conversion automatique en `.chd`
+### 6. (Optionnel) Conversion automatique en `.chd`
 
 Si l'option est activée dans les réglages, chaque jeu disque téléchargé (ceux qui ont plusieurs fichiers `.bin`/`.cue`) est automatiquement regroupé en un seul fichier `.chd` une fois le téléchargement terminé — l'appli vérifie que la conversion est parfaite avant de supprimer les fichiers d'origine. Si la vérification échoue pour une raison quelconque, les fichiers d'origine restent intacts et rien n'est perdu.
 
-### 6. Après coup
+### 7. Après coup
 
 Une fois les téléchargements terminés, un bouton permet de vider la liste des téléchargements terminés de l'écran — sans toucher à ceux encore en cours.
 
@@ -101,4 +113,6 @@ Certaines collections sur archive.org demandent un compte pour y accéder. L'app
 
 ## Où régler tout ça
 
-La page **Réglages** (icône en forme d'engrenage) permet de configurer : le préréglage 1G1R à utiliser, le dossier de destination de chaque console, le nombre de téléchargements simultanés, le mode de téléchargement (serveur ou navigateur), la conversion automatique en `.chd`, et les identifiants archive.org si besoin.
+La page **Réglages** (icône en forme d'engrenage) permet de configurer : l'apparence (sept thèmes de couleurs), où vivent les jeux — la même question qu'à l'installation, c'est là qu'on change d'avis —, le préréglage 1G1R à utiliser, le dossier de chaque console, le nombre de téléchargements simultanés, la conversion automatique en `.chd`, et les identifiants archive.org si besoin.
+
+Il n'y a **pas** de réglage séparé « serveur ou navigateur » : c'est la conséquence de la question sur l'emplacement des jeux, pas une décision à part.
