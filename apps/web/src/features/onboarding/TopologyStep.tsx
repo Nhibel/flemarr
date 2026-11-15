@@ -9,12 +9,20 @@ export function TopologyStep({
   saving: boolean;
   onChoose: (patch: UpdateSettings) => void;
 }) {
-  // No page shell and no heading of its own: InstallFlow provides both, and
-  // this step is only ever rendered inside it. It used to be a standalone
-  // screen, which is why the shell was here.
   return (
-    <div>
-      <p className={css({ fontSize: 'sm', color: 'fg.muted', mb: '6', lineHeight: '1.6' })}>
+    <main
+      className={css({
+        maxW: '3xl',
+        mx: 'auto',
+        mt: { base: '8', md: '16' },
+        px: { base: '4', md: '6' },
+        pb: '12',
+      })}
+    >
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', mb: '2' })}>
+        Où vivent tes jeux ?
+      </h1>
+      <p className={css({ fontSize: 'sm', color: 'fg.muted', mb: '6' })}>
         Une seule question, posée une fois pour toute l&apos;application. C&apos;est elle qui
         détermine où arrivent les téléchargements et si rom-curator peut reconnaître ce que tu
         possèdes déjà.
@@ -84,6 +92,6 @@ export function TopologyStep({
         Tu pourras changer d&apos;avis dans les réglages. Ce choix ne touche jamais à tes fichiers :
         il décide seulement de ce que rom-curator a le droit de lire et d&apos;écrire.
       </p>
-    </div>
+    </main>
   );
 }
