@@ -85,11 +85,9 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 fontWeight: 'medium',
                 borderRadius: 'lg',
                 cursor: 'pointer',
-                border: '1px solid',
-                borderColor: resolvedPreset === p ? 'accent.subtleBorder' : 'bd.strong',
-                bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface',
+                bg: resolvedPreset === p ? 'accent.subtle' : 'bg.muted',
                 color: resolvedPreset === p ? 'accent.text' : 'fg.muted',
-                _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.muted' },
+                _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface' },
               })}
             >
               {p}
@@ -125,13 +123,10 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           px: '3',
           py: '2',
           fontSize: 'sm',
-          border: '1px solid',
-          borderColor: 'bd.strong',
           borderRadius: 'lg',
           outline: 'none',
           bg: 'bg.surface',
           _focusVisible: {
-            borderColor: 'accent.hover',
             ring: '2px',
             ringColor: 'accent.subtleBorder',
             _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
@@ -169,9 +164,8 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
         <div
           className={css({
             bg: 'bg.surface',
-            border: '1px solid',
-            borderColor: 'bd.default',
-            borderRadius: 'xl',
+            borderRadius: '16px',
+            shadow: 'md',
             overflow: 'hidden',
             maxH: '72',
             overflowY: 'auto',
@@ -189,8 +183,6 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                   gap: '3',
                   px: '3',
                   py: '2.5',
-                  borderBottom: '1px solid',
-                  borderColor: 'bd.subtle',
                   _last: { borderBottom: 'none' },
                   _hover: { bg: 'bg.muted' },
                 })}
@@ -208,9 +200,8 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                     fontWeight: 'medium',
                     bg: isLoaded ? 'status.success.subtle' : 'accent.solid',
                     color: isLoaded ? 'status.success.text' : 'accent.fg',
-                    border: isLoaded ? '1px solid' : 'none',
-                    borderColor: 'status.success.subtleBorder',
-                    borderRadius: 'lg',
+                    border: 'none',
+                    borderRadius: '10px',
                     cursor: 'pointer',
                     flexShrink: 0,
                     transition: 'background-color 0.15s',

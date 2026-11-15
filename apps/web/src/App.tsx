@@ -211,8 +211,6 @@ function LoaderView({
                 className={css({
                   display: 'flex',
                   alignItems: 'center',
-                  borderBottom: '1px solid',
-                  borderColor: 'bd.subtle',
                   bg: 'transparent',
                   _hover: { bg: 'bg.muted' },
                   _last: { borderBottom: 'none' },
@@ -264,15 +262,17 @@ function LoaderView({
         </section>
       )}
 
-      {/* Mode toggle */}
+      {/* Mode toggle — a segmented control on a track, like the tab row and
+          the display-mode switch. Two mutually exclusive choices, so the
+          same shape everywhere they appear. */}
       <div
         className={css({
           display: 'inline-flex',
+          gap: '0.5',
+          p: '0.5',
           mb: '6',
-          border: '1px solid',
-          borderColor: 'bd.default',
-          borderRadius: 'xl',
-          overflow: 'hidden',
+          bg: 'bg.muted',
+          borderRadius: '13px',
         })}
       >
         {(['fresh1g1r', 'manual'] as LoaderMode[]).map((m) => (
@@ -281,14 +281,16 @@ function LoaderView({
             onClick={() => onSetLoaderMode(m)}
             className={css({
               px: '4',
-              py: '2',
+              minH: '34px',
               fontSize: 'sm',
-              fontWeight: 'medium',
+              fontWeight: loaderMode === m ? 'bold' : 'medium',
               cursor: 'pointer',
+              border: 'none',
+              borderRadius: '10px',
               transition: 'background-color 0.15s, color 0.15s',
-              bg: loaderMode === m ? 'accent.solid' : 'bg.surface',
+              bg: loaderMode === m ? 'accent.solid' : 'transparent',
               color: loaderMode === m ? 'accent.fg' : 'fg.subtle',
-              _hover: { bg: loaderMode === m ? 'accent.solid' : 'bg.muted' },
+              _hover: { color: loaderMode === m ? 'accent.fg' : 'fg.default' },
             })}
           >
             {m === 'fresh1g1r' ? 'Fresh1G1R' : 'Manuel'}

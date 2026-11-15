@@ -55,11 +55,9 @@ export function PresetSection({
                 textAlign: 'left',
                 borderRadius: 'lg',
                 cursor: 'pointer',
-                border: '1px solid',
-                borderColor: active ? 'accent.subtleBorder' : 'bd.default',
-                bg: active ? 'accent.subtle' : 'bg.surface',
-                transition: 'background-color 0.15s, border-color 0.15s',
-                _hover: { bg: active ? 'accent.subtle' : 'bg.muted' },
+                bg: active ? 'accent.subtle' : 'bg.muted',
+                transition: 'background-color 0.15s',
+                _hover: { bg: active ? 'accent.subtle' : 'bg.surface' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed' },
               })}
             >

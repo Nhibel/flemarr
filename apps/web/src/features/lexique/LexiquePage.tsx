@@ -185,8 +185,6 @@ export function LexiquePage({ onClose }: { onClose: () => void }) {
           className={css({
             pb: '6',
             mb: '6',
-            borderBottom: '1px solid',
-            borderColor: 'bd.subtle',
             _last: { borderBottom: 'none', mb: '0', pb: '0' },
           })}
         >

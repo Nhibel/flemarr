@@ -14,16 +14,19 @@ export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: P
   const allFound = game.roms.length > 0 && foundCount === game.roms.length;
   const noneFound = foundCount === 0;
 
+  // The state is carried by the tinted fill alone, as everywhere else since
+  // the redesign — the 1px outline that used to repeat each of these hues
+  // added nothing the fill did not already say.
   const containerStyle = css.raw(
     allFound
-      ? { borderColor: 'status.success.subtleBorder', bg: 'status.success.subtle' }
+      ? { bg: 'status.success.subtle', color: 'status.success.text' }
       : noneFound
-        ? { borderColor: 'bd.default', bg: 'bg.page' }
-        : { borderColor: 'status.warning.subtleBorder', bg: 'status.warning.subtle' },
+        ? { bg: 'bg.muted' }
+        : { bg: 'status.warning.subtle', color: 'status.warning.text' },
   );
 
   return (
-    <div className={css({ p: '3', border: '1px solid', borderRadius: 'xl' }, containerStyle)}>
+    <div className={css({ p: '3', borderRadius: '14px' }, containerStyle)}>
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
         <span
           className={css({
@@ -103,13 +106,11 @@ export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: P
                               py: '0.5',
                               fontSize: 'xs',
                               fontFamily: 'mono',
-                              borderRadius: 'md',
-                              border: '1px solid',
+                              borderRadius: '8px',
                               cursor: 'pointer',
-                              borderColor: i === chosenIndex ? 'accent.solid' : 'bd.strong',
-                              bg: i === chosenIndex ? 'accent.subtle' : 'bg.surface',
-                              color: i === chosenIndex ? 'accent.text' : 'fg.muted',
-                              _hover: { borderColor: 'accent.hover' },
+                              bg: i === chosenIndex ? 'accent.solid' : 'bg.muted',
+                              color: i === chosenIndex ? 'accent.fg' : 'fg.muted',
+                              _hover: { color: i === chosenIndex ? 'accent.fg' : 'fg.default' },
                             })}
                           >
                             {s.identifier}

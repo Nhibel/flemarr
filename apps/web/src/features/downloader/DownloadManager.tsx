@@ -344,8 +344,6 @@ function JobCard({ state }: { state: JobState }) {
           px: '4',
           py: '3',
           bg: 'bg.muted',
-          borderBottom: '1px solid',
-          borderColor: 'bd.default',
         })}
       >
         <div className={css({ flex: 1, minW: 0 })}>
@@ -494,8 +492,6 @@ function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
       className={css({
         px: '4',
         py: '2.5',
-        borderBottom: '1px solid',
-        borderColor: 'bd.subtle',
         _last: { borderBottom: 'none' },
       })}
     >

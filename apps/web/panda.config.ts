@@ -61,9 +61,42 @@ export default defineConfig({
     // bg.inset, not bg.page: a field is a recess inside whatever surface
     // holds it, and on bg.page it was the page tone drawn on top of the
     // page — invisible as a field.
+    //
+    // No border either, and a literal-px radius: the comps draw a field as
+    // a filled recess, exactly like every other surface in this design.
+    // Done globally because there were a dozen fields across the app each
+    // carrying their own `1px solid bd.strong`.
+    //
+    // The focus ring is here too, for the same reason. These fields used to
+    // show focus by recolouring their border; with no border left, several
+    // of them were down to a Cyberpunk-only glow and had no visible focus
+    // at all in the other six themes. One global rule cannot be forgotten
+    // on the next field someone adds.
     'input, textarea, select': {
       bg: 'bg.inset',
       color: 'fg.default',
+      border: 'none',
+      borderRadius: '12px',
+      _focusVisible: {
+        outline: 'none',
+        ring: '2px',
+        ringColor: 'accent.subtleBorder',
+      },
+    },
+    // The comps tint the native control rather than replacing it: 17px,
+    // the theme's accent. accentColor is one property and the browser does
+    // the rest, which keeps the checkbox a real checkbox — focusable,
+    // announced, and keyboard-operable — instead of a styled div.
+    //
+    // A literal px size, like every other target in this redesign: a rem
+    // value would be rescaled by the live font-size control.
+    'input[type="checkbox"], input[type="radio"]': {
+      accentColor: 'token(colors.accent.solid)',
+      w: '17px',
+      h: '17px',
+      flexShrink: 0,
+      cursor: 'pointer',
+      borderRadius: '5px',
     },
   },
   theme: {

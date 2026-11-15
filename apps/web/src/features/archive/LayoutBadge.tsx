@@ -12,8 +12,6 @@ export function LayoutBadge({ layout }: { layout: ArchiveLayout }) {
         borderRadius: 'md',
         bg: isDirect ? 'status.success.subtle' : 'status.info.subtle',
         color: isDirect ? 'status.success.text' : 'status.info.text',
-        border: '1px solid',
-        borderColor: isDirect ? 'status.success.subtleBorder' : 'status.info.subtleBorder',
       })}
     >
       {isDirect ? 'direct' : 'zip'}

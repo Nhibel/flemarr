@@ -57,8 +57,6 @@ export function SystemPathsSection({
                 gap: '3',
                 px: '3',
                 py: '2',
-                borderBottom: '1px solid',
-                borderColor: 'bd.subtle',
                 _last: { borderBottom: 'none' },
               })}
             >

@@ -122,8 +122,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
             right: 0,
             zIndex: 50,
             bg: 'bg.surface',
-            border: '1px solid',
-            borderColor: 'bd.default',
             borderRadius: 'md',
             boxShadow: 'lg',
             maxH: '60',
@@ -137,8 +135,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 py: '1',
                 fontSize: 'xs',
                 color: 'fg.faint',
-                borderBottom: '1px solid',
-                borderColor: 'bd.subtle',
                 fontFamily: 'mono',
               })}
             >
@@ -162,8 +158,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 color: 'fg.muted',
                 textAlign: 'left',
                 cursor: 'pointer',
-                borderBottom: '1px solid',
-                borderColor: 'bd.subtle',
                 _hover: { bg: 'bg.muted' },
               })}
             >
@@ -189,8 +183,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 color: 'fg.default',
                 textAlign: 'left',
                 cursor: 'pointer',
-                borderBottom: '1px solid',
-                borderColor: 'bd.subtle',
                 _hover: { bg: 'bg.muted' },
               })}
             >
@@ -233,8 +225,6 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                     px: '2',
                     py: '1',
                     fontSize: 'sm',
-                    border: '1px solid',
-                    borderColor: 'bd.strong',
                     borderRadius: 'sm',
                     bg: 'bg.surface',
                     outline: 'none',

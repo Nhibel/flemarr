@@ -22,8 +22,6 @@ const btnStyle = css({
   lineHeight: '1',
   fontWeight: 'medium',
   borderRadius: '5px',
-  border: '1px solid',
-  borderColor: 'bd.strong',
   bg: 'bg.surface',
   color: 'fg.default',
   cursor: 'pointer',
@@ -53,8 +51,6 @@ export function FontScaleControl({ fontScale, onSetFontScale }: Props) {
         gap: '6px',
         padding: '3px 6px',
         borderRadius: '9999px',
-        border: '1px solid',
-        borderColor: 'bd.default',
         bg: 'bg.surface',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
       })}
