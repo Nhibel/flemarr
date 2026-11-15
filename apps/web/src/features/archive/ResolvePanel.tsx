@@ -7,6 +7,7 @@ import type { DownloadSource } from '@shared/download.js';
 import type { ResolvedSource } from '@shared/archive.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
+import { buildDownloadItems } from './build-items.js';
 import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
@@ -96,57 +97,12 @@ export function ResolvePanel({
     }
   }, [datId, effectiveGameIds, sourceKey]);
 
-  // A ResolvedSource flattens straight into one ordered candidate — see
-  // downloadSourceSchema. innerPath/archiveFormat are only ever set on the
-  // archive-container kind; omitted otherwise.
-  const toDownloadSource = (s: {
-    downloadUrl: string;
-    extractFromZip: boolean;
-    innerPath?: string;
-    archiveFormat?: 'zip' | '7z' | 'rar';
-  }): DownloadSource => ({
-    url: s.downloadUrl,
-    extractFromZip: s.extractFromZip,
-    innerPath: s.innerPath,
-    archiveFormat: s.archiveFormat,
-  });
-
-  // One download item per resolved ROM — multi-disc games queue every disc.
-  // The preferred source (the user's pick, via the per-rom picker below, or
-  // the first match by default) is tried first, then its own fallback (the
-  // archive-container fast path's slower-but-already-working alternative,
-  // if it has one), then other configured sources of the same container
-  // kind as further network-failure fallbacks.
-  const buildItems = useCallback(() => {
-    if (!result) return [];
-    return result.results.flatMap((r) =>
-      r.roms
-        .filter((rom) => rom.sources.length > 0)
-        .map((rom) => {
-          const chosenIndex = selectedSourceIndex.get(`${r.gameId}/${rom.romName}`) ?? 0;
-          const chosen: ResolvedSource = rom.sources[chosenIndex] ?? rom.sources[0]!;
-
-          const sources: DownloadSource[] = [toDownloadSource(chosen)];
-          if (chosen.fallback) {
-            sources.push({
-              url: chosen.fallback.downloadUrl,
-              extractFromZip: chosen.fallback.extractFromZip,
-            });
-          }
-          for (const s of rom.sources) {
-            if (s === chosen || s.container !== chosen.container) continue;
-            sources.push(toDownloadSource(s));
-          }
-
-          return {
-            gameId: r.gameId,
-            romName: rom.romName,
-            expectedCrc: rom.expectedCrc,
-            sources,
-          };
-        }),
-    );
-  }, [result, selectedSourceIndex]);
+  // Item building lives in build-items.ts so the retry path in
+  // DownloadManager produces identical items, fallbacks included.
+  const buildItems = useCallback(
+    () => (result ? buildDownloadItems(result, selectedSourceIndex) : []),
+    [result, selectedSourceIndex],
+  );
 
   const handleDownload = useCallback(async () => {
     if (stale) return;
@@ -161,8 +117,8 @@ export function ResolvePanel({
           : await startDownload({ datId, items, target: 'browser' });
       onQueueDownload(
         downloadTarget === 'server'
-          ? { jobId, items, target: 'server', destinationDir }
-          : { jobId, items, target: 'browser' },
+          ? { jobId, datId, items, target: 'server', destinationDir }
+          : { jobId, datId, items, target: 'browser' },
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur au lancement');

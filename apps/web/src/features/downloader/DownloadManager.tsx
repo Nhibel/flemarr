@@ -13,10 +13,31 @@ import type { DownloadEvent } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 import { fullyDownloadedGameIds } from './completed-games.js';
+import { groupByGame, summarizeJob } from './game-status.js';
+import type { GameStatus, GameStatusKind, ItemStatus } from './game-status.js';
+import { computeEta, formatEta, formatRate } from './transfer-rate.js';
+import { useTransferRates } from './use-transfer-rates.js';
+import { resolveGames, startDownload } from '@/lib/api.js';
+import { buildDownloadItems } from '@/features/archive/build-items.js';
+import type { DownloadItem } from '@shared/download.js';
+
+/**
+ * 'same' retries the sources the game already had — the usual case, since
+ * most failures are a collection being briefly unreachable. 'elsewhere'
+ * re-resolves against every configured source, for when that collection is
+ * actually gone.
+ */
+export type RetryMode = 'same' | 'elsewhere';
 
 export interface QueuedDownload {
   jobId: string;
-  items: { gameId: string; romName: string }[];
+  datId: string;
+  /**
+   * The full items, sources included — which is what ResolvePanel already
+   * passed; only this type was narrower. Keeping them is what lets a failed
+   * game be retried against the same source without resolving again.
+   */
+  items: DownloadItem[];
   target: 'server' | 'browser';
   destinationDir?: string;
 }
@@ -24,7 +45,7 @@ export interface QueuedDownload {
 interface ItemState {
   gameId: string;
   romName: string;
-  status: 'queued' | 'downloading' | 'extracting' | 'done' | 'failed';
+  status: ItemStatus;
   // -1 means "unknown total" (archive.org's zip-view extraction streams
   // chunked, with no Content-Length — every restricted zip-collection
   // source hits this, not just an occasional one) — rendered as bytes
@@ -32,6 +53,8 @@ interface ItemState {
   // otherwise read as permanently stuck at 0.
   progress: number; // 0-100, or -1
   bytesDownloaded: number;
+  /** -1 when unknown, 0 before the first progress event. */
+  totalBytes: number;
   failReason?: string;
 }
 
@@ -76,10 +99,23 @@ interface Props {
    * the one that actually drops them.
    */
   onClearCompleted?: (jobIds: string[]) => void;
+  /**
+   * A retry is a new job, so it has to reach the same place a fresh
+   * download does: the parent owns `jobs`, and a job it never heard about
+   * would never be rendered.
+   */
+  onQueueRetry?: (job: QueuedDownload) => void;
 }
 
-export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCompleted }: Props) {
+export function DownloadManager({
+  jobs,
+  onAllDone,
+  onGamesDownloaded,
+  onClearCompleted,
+  onQueueRetry,
+}: Props) {
   const [jobStates, setJobStates] = useState<Map<string, JobState>>(new Map());
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   const initJob = useCallback((queued: QueuedDownload) => {
     setJobStates((prev) => {
@@ -95,6 +131,7 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCom
           status: 'queued',
           progress: 0,
           bytesDownloaded: 0,
+          totalBytes: 0,
         })),
         gameConversions: new Map(),
       });
@@ -130,6 +167,11 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCom
                 ? Math.round((event.bytesDownloaded / event.totalBytes) * 100)
                 : -1,
             bytesDownloaded: event.bytesDownloaded,
+            // Kept so the job can say what is left to transfer. -1 when the
+            // source streams without a Content-Length, which is every
+            // restricted re-zipped collection — summarizeJob then withholds
+            // the estimate instead of inventing one.
+            totalBytes: event.totalBytes > 0 ? event.totalBytes : -1,
           };
         }
       } else if (event.type === 'file-extracting') {
@@ -261,6 +303,47 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCom
     .filter((j) => jobStates.get(j.jobId)?.status !== 'running')
     .map((j) => j.jobId);
 
+  /**
+   * Relaunches one game as a new job, and hands it to the parent exactly
+   * like a fresh download — a retry is a download, so it goes through the
+   * same path rather than mutating the failed job in place. The failed row
+   * stays visible in its original card, which is where the user clicked;
+   * the new card shows what is happening now.
+   */
+  const handleRetry = async (
+    queued: QueuedDownload,
+    gameId: string,
+    mode: RetryMode,
+  ): Promise<void> => {
+    setRetryError(null);
+    try {
+      let items = queued.items.filter((i) => i.gameId === gameId);
+      if (mode === 'elsewhere') {
+        // Same builder as the normal download path: a simplified copy here
+        // would drop the fallback sources, making a retry *less* likely to
+        // work than the attempt that just failed.
+        items = buildDownloadItems(await resolveGames(queued.datId, [gameId]));
+        if (items.length === 0) {
+          setRetryError('Aucune autre source ne propose ce jeu.');
+          return;
+        }
+      }
+      const request =
+        queued.target === 'server'
+          ? ({
+              datId: queued.datId,
+              items,
+              target: 'server',
+              destinationDir: queued.destinationDir,
+            } as const)
+          : ({ datId: queued.datId, items, target: 'browser' } as const);
+      const jobId = await startDownload(request);
+      onQueueRetry?.({ ...request, jobId, destinationDir: queued.destinationDir });
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : 'La relance a échoué');
+    }
+  };
+
   const handleClearCompleted = (): void => {
     if (completedJobIds.length === 0) return;
     onClearCompleted?.(completedJobIds);
@@ -287,18 +370,41 @@ export function DownloadManager({ jobs, onAllDone, onGamesDownloaded, onClearCom
           Vider les téléchargements terminés
         </Button>
       </div>
+      {retryError !== null && (
+        <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text' })}>
+          {retryError}
+        </p>
+      )}
       {jobs.map((queued) => {
         const state = jobStates.get(queued.jobId);
         if (!state) return null;
-        return <JobCard key={queued.jobId} state={state} />;
+        return (
+          <JobCard
+            key={queued.jobId}
+            state={state}
+            onRetry={(gameId, mode) => void handleRetry(queued, gameId, mode)}
+          />
+        );
       })}
     </div>
   );
 }
 
-function JobCard({ state }: { state: JobState }) {
+function JobCard({
+  state,
+  onRetry,
+}: {
+  state: JobState;
+  onRetry: (gameId: string, mode: RetryMode) => void;
+}) {
   const romsRoot = useRomsRoot();
   const [cancelling, setCancelling] = useState(false);
+
+  const games = groupByGame(state.items, state.gameConversions);
+  const summary = summarizeJob(games);
+  const hasConversion = state.gameConversions.size > 0;
+  const { rate: jobRate, rates } = useTransferRates(state.jobId, state.items);
+  const eta = computeEta(summary.remainingBytes, jobRate);
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -309,10 +415,9 @@ function JobCard({ state }: { state: JobState }) {
     }
   };
 
-  const done = state.items.filter((i) => i.status === 'done').length;
-  const failed = state.items.filter((i) => i.status === 'failed').length;
-  const total = state.items.length;
-
+  // Counted in games, like the summary line and the rows below. These three
+  // used to disagree: the header counted files, so two two-disc games read
+  // as "0 / 4 téléchargés" above "2 en cours" above two rows.
   const statusColor = {
     running: 'accent.text',
     done: 'status.success.text',
@@ -321,8 +426,12 @@ function JobCard({ state }: { state: JobState }) {
   }[state.status];
 
   const statusLabel = {
-    running: `${done} / ${total} téléchargés`,
-    done: `Terminé — ${done} réussis${failed > 0 ? `, ${failed} échoués` : ''}`,
+    running: `${summary.done} / ${summary.total} jeu${summary.total > 1 ? 'x' : ''} téléchargé${
+      summary.total > 1 ? 's' : ''
+    }`,
+    done: `Terminé — ${summary.done} réussi${summary.done > 1 ? 's' : ''}${
+      summary.failed > 0 ? `, ${summary.failed} échoué${summary.failed > 1 ? 's' : ''}` : ''
+    }`,
     cancelled: 'Annulé',
     error: 'Erreur',
   }[state.status];
@@ -370,221 +479,222 @@ function JobCard({ state }: { state: JobState }) {
         )}
       </div>
 
-      {/* Items */}
+      {/* What the job is doing, in one line, as the comps show it. Counted
+          per game rather than per file: a three-disc game is one thing the
+          user asked for, not three. */}
+      <p className={css({ fontSize: 'xs', color: 'fg.subtle', fontFamily: 'mono' })}>
+        {[
+          `${summary.done} terminé${summary.done > 1 ? 's' : ''}`,
+          `${summary.running} en cours`,
+          `${summary.queued} en attente`,
+          ...(summary.failed > 0 ? [`${summary.failed} en échec`] : []),
+        ].join(' · ')}
+        {eta !== undefined && ` — ${formatEta(eta)}`}
+      </p>
+
+      {/* One row per game. The conversion step used to be a separate list
+          below, which split a single game across two places on screen. */}
       <div className={css({ display: 'flex', flexDirection: 'column' })}>
-        {state.items.map((item) => (
-          <DownloadRow key={`${item.gameId}/${item.romName}`} jobId={state.jobId} item={item} />
+        {games.map((game) => (
+          <GameRow
+            key={game.gameId}
+            jobId={state.jobId}
+            game={game}
+            target={state.target}
+            rate={rates.get(game.gameId)}
+            running={state.status === 'running'}
+            onRetry={onRetry}
+          />
         ))}
       </div>
 
-      {/* CHD conversions — a whole-game step, shown separately from the
-          per-rom rows above rather than attached to any one of them. */}
-      {state.gameConversions.size > 0 && (
-        <div
-          className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            borderTop: '1px solid',
-            borderColor: 'bd.subtle',
-          })}
-        >
-          {[...state.gameConversions].map(([gameId, conversion]) => (
-            <GameConversionRow
-              key={gameId}
-              label={gameLabel(state.items, gameId) ?? gameId}
-              conversion={conversion}
-            />
-          ))}
-        </div>
+      {/* The two explanations the comps attach to the list. The browser one
+          is a warning, not a note: once the bytes are in the browser's
+          downloads, the app cannot reach them again. */}
+      {state.target === 'browser' ? (
+        <p className={css({ fontSize: 'xs', color: 'status.info.text', lineHeight: '1.5' })}>
+          Chaque jeu est téléchargé et vérifié côté serveur <strong>avant</strong> de t&apos;être
+          envoyé — une fois les octets partis vers ton navigateur, impossible de les rappeler.
+          Retrouve-les dans la liste de téléchargements de ton navigateur, puis range-les où tu veux
+          ; rom-curator ne les touche plus après l&apos;envoi.
+        </p>
+      ) : (
+        hasConversion && (
+          <p className={css({ fontSize: 'xs', color: 'fg.subtle', lineHeight: '1.5' })}>
+            Les jeux sur disque sont regroupés en un seul fichier <code>.chd</code>, plus compact et
+            lu par la plupart des émulateurs. Les fichiers d&apos;origine ne sont supprimés
+            qu&apos;une fois la copie vérifiée.
+          </p>
+        )
       )}
     </Card>
   );
 }
 
-// There's no game display name anywhere in this component's data — the
-// .cue's own basename (minus extension) reads as the game's name for any
-// disc game, which is the only kind CHD conversion ever applies to.
-function gameLabel(items: ItemState[], gameId: string): string | undefined {
-  const cue = items.find((i) => i.gameId === gameId && i.romName.toLowerCase().endsWith('.cue'));
-  return cue ? cue.romName.replace(/\.cue$/i, '') : items.find((i) => i.gameId === gameId)?.romName;
-}
+const KIND_LABELS: Record<GameStatusKind, string> = {
+  queued: 'En attente',
+  downloading: 'Téléchargement',
+  extracting: 'Extraction…',
+  converting: 'Compression en .chd…',
+  done: 'Vérifié et rangé',
+  failed: 'Échec',
+};
 
-function GameConversionRow({
-  label,
-  conversion,
+/**
+ * One game, one row, one state — the shape the design comps use. The files
+ * behind it are summarised as a count rather than listed: a three-disc game
+ * used to take three rows, and its conversion a fourth somewhere else.
+ */
+function GameRow({
+  jobId,
+  game,
+  target,
+  rate,
+  running,
+  onRetry,
 }: {
-  label: string;
-  conversion: GameConversionState;
+  jobId: string;
+  game: GameStatus;
+  target: 'server' | 'browser';
+  rate: number | undefined;
+  running: boolean;
+  onRetry: (gameId: string, mode: RetryMode) => void;
 }) {
-  const icon = { converting: '⚙', converted: '✓', failed: '✗' }[conversion.status];
-  const color = {
-    converting: 'accent.text',
-    converted: 'status.success.text',
-    failed: 'status.danger.text',
-  }[conversion.status];
-  const text = {
-    converting: 'Conversion CHD…',
-    converted: 'Converti en .chd',
-    failed: `Conversion CHD échouée${conversion.reason ? ` (${conversion.reason})` : ''}`,
-  }[conversion.status];
-
-  return (
-    <div
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '2.5',
-        px: '4',
-        py: '2',
-        bg: 'bg.muted',
-      })}
-    >
-      <span className={css({ fontSize: 'sm', color, flexShrink: 0, w: '4', textAlign: 'center' })}>
-        {icon}
-      </span>
-      <span className={css({ fontSize: 'sm', color: 'fg.default', flex: 1, truncate: true })}>
-        {label}
-      </span>
-      <span className={css({ fontSize: 'xs', color, flexShrink: 0 })}>{text}</span>
-    </div>
-  );
-}
-
-function DownloadRow({ jobId, item }: { jobId: string; item: ItemState }) {
   const [cancelling, setCancelling] = useState(false);
-  const cancellable = item.status === 'queued' || item.status === 'downloading';
 
-  const handleCancelItem = async () => {
+  const label =
+    game.kind === 'done' && target === 'browser'
+      ? 'Envoyé à ton navigateur'
+      : KIND_LABELS[game.kind];
+
+  const color =
+    game.kind === 'failed'
+      ? 'status.danger.text'
+      : game.kind === 'done'
+        ? 'status.success.text'
+        : game.kind === 'converting'
+          ? 'status.warning.text'
+          : 'fg.subtle';
+
+  const handleCancel = async () => {
     setCancelling(true);
     try {
-      await cancelDownloadItem(jobId, item.gameId, item.romName);
+      // Cancels every file of the game — the user asked for the game, so
+      // that is the thing they can take back.
+      await Promise.all(
+        game.files.map((romName) => cancelDownloadItem(jobId, game.gameId, romName)),
+      );
     } finally {
-      // No need to reset on success: the file-cancelled event removes this
-      // row entirely. Only matters if the request itself failed/404'd.
       setCancelling(false);
     }
   };
 
-  const icon = {
-    queued: '○',
-    downloading: '↓',
-    extracting: '⚙',
-    done: '✓',
-    failed: '✗',
-  }[item.status];
-
-  const iconColor = {
-    queued: 'fg.faint',
-    downloading: 'accent.text',
-    extracting: 'accent.text',
-    done: 'status.success.text',
-    failed: 'status.danger.text',
-  }[item.status];
-
   return (
-    <div
-      className={css({
-        px: '4',
-        py: '2.5',
-        _last: { borderBottom: 'none' },
-      })}
-    >
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2.5',
-          mb: item.status === 'downloading' || item.status === 'extracting' ? '1.5' : '0',
-        })}
-      >
-        <span
-          className={css({
-            fontSize: 'sm',
-            color: iconColor,
-            flexShrink: 0,
-            w: '4',
-            textAlign: 'center',
-          })}
-        >
-          {icon}
+    <div className={css({ py: '2.5', px: '1' })}>
+      <div className={css({ display: 'flex', alignItems: 'baseline', gap: '3' })}>
+        <span className={css({ flex: '1', minW: '0', fontSize: 'sm', truncate: true })}>
+          {game.label}
+          {game.fileCount > 1 && (
+            <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
+              {' '}
+              · {game.fileCount} fichiers
+            </span>
+          )}
         </span>
-        <span className={css({ fontSize: 'sm', color: 'fg.default', flex: 1, truncate: true })}>
-          {item.romName}
+
+        <span className={css({ fontSize: 'xs', color, flexShrink: '0', fontWeight: 'medium' })}>
+          {label}
+          {game.kind === 'downloading' && game.progress >= 0 && (
+            <span className={css({ fontFamily: 'mono' })}> {game.progress} %</span>
+          )}
+          {game.kind === 'downloading' && game.progress < 0 && (
+            <span className={css({ fontFamily: 'mono' })}> {formatSize(game.bytesDownloaded)}</span>
+          )}
+          {game.kind === 'downloading' && rate !== undefined && (
+            <span className={css({ fontFamily: 'mono', color: 'fg.faint' })}>
+              {' '}
+              · {formatRate(rate)}
+            </span>
+          )}
         </span>
-        {item.status === 'downloading' && (
-          <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
-            {item.progress >= 0 ? `${item.progress}%` : `${formatSize(item.bytesDownloaded)}…`}
-          </span>
-        )}
-        {item.status === 'extracting' && (
-          <span className={css({ fontSize: 'xs', color: 'accent.text', flexShrink: 0 })}>
-            Décompression…
-          </span>
-        )}
-        {item.status === 'failed' && item.failReason && (
-          <span className={css({ fontSize: 'xs', color: 'status.danger.text', flexShrink: 0 })}>
-            {item.failReason}
-          </span>
-        )}
-        {cancellable && (
+
+        {running && game.kind !== 'done' && game.kind !== 'failed' && (
           <button
             type="button"
-            onClick={() => void handleCancelItem()}
+            onClick={() => void handleCancel()}
             disabled={cancelling}
-            aria-label="Annuler ce téléchargement"
-            title="Annuler ce téléchargement"
             className={css({
-              fontSize: 'lg',
-              lineHeight: '1',
+              flexShrink: '0',
+              fontSize: 'xs',
               color: 'fg.faint',
               cursor: 'pointer',
-              flexShrink: 0,
+              bg: 'transparent',
+              border: 'none',
               _hover: { color: 'status.danger.text' },
               _disabled: { opacity: 0.5, cursor: 'not-allowed' },
             })}
           >
-            ×
+            {cancelling ? 'Annulation…' : 'Annuler'}
           </button>
         )}
       </div>
-      {(item.status === 'downloading' || item.status === 'extracting') && (
+
+      {game.kind === 'failed' && (
         <div
           className={css({
-            ml: '6.5',
-            h: '1',
+            mt: '1.5',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            flexWrap: 'wrap',
+          })}
+        >
+          <span className={css({ flex: '1', minW: '0', fontSize: 'xs', color: 'fg.muted' })}>
+            {game.reason ?? 'Raison inconnue'}
+          </span>
+          {/* A failed conversion is not a failed download: the bytes are on
+              disk, so re-downloading them is not the fix and re-resolving a
+              source would be beside the point. */}
+          {!game.convertFailed && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => onRetry(game.gameId, 'same')}>
+                Réessayer
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onRetry(game.gameId, 'elsewhere')}
+              >
+                Chercher ailleurs
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {(game.kind === 'downloading' || game.kind === 'extracting') && (
+        <div
+          className={css({
+            mt: '1.5',
+            h: '4px',
             bg: 'bg.muted',
-            borderRadius: 'full',
+            borderRadius: '2px',
             overflow: 'hidden',
           })}
         >
-          {item.status === 'downloading' && item.progress >= 0 ? (
-            <div
-              className={css({
-                h: 'full',
-                bg: 'accent.solid',
-                borderRadius: 'full',
-                transition: 'width 0.2s',
-              })}
-              style={{ width: `${item.progress}%` }}
-            />
-          ) : (
-            <div
-              className={css({
-                h: 'full',
-                // Width is load-bearing, not just styling — the
-                // indeterminate-slide keyframe's translateX values are
-                // percentages of THIS element's own width, tuned for 25% so
-                // the sweep's ends land exactly off-track (see the keyframe
-                // comment in panda.config.ts). Changing this without
-                // retuning the keyframe brings back the "stops short, then
-                // jumps back" look this was fixing.
-                w: '25%',
-                bg: 'accent.solid',
-                borderRadius: 'full',
-                animation: 'indeterminate-slide 1.2s linear infinite',
-              })}
-            />
-          )}
+          <div
+            className={css({
+              h: 'full',
+              bg: 'accent.solid',
+              borderRadius: '2px',
+              transition: 'width 0.2s',
+            })}
+            style={
+              game.progress >= 0
+                ? { width: `${game.progress}%` }
+                : { width: '25%', animation: 'indeterminate-slide 1.2s linear infinite' }
+            }
+          />
         </div>
       )}
     </div>

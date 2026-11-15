@@ -68,6 +68,7 @@ export function App() {
     rootSettings.topology === null &&
     Object.keys(rootSettings.systemPaths).length === 0 &&
     knownDats.length === 0;
+
   const { fontScale, setFontScale } = useFontScale();
 
   let content: ReactNode;
@@ -789,6 +790,10 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           jobs={downloadJobs}
           onGamesDownloaded={deselect}
           onClearCompleted={handleClearCompletedDownloads}
+          // A retry is a new job, so it joins the list the same way a fresh
+          // download does — without switching tabs, since the user is
+          // already looking at this one.
+          onQueueRetry={(job) => setDownloadJobs((prev) => [...prev, job])}
         />
       </div>
     </main>

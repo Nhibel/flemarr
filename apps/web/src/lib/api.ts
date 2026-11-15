@@ -247,7 +247,7 @@ export async function validateDir(
 
 export async function listDirs(path: string): Promise<ListDirsResponse> {
   const res = await fetch(`/api/fs/list-dirs?path=${encodeURIComponent(path)}`);
-  if (!res.ok) return { listedPath: '', parent: null, dirs: [] };
+  if (!res.ok) return { listedPath: '', parent: null, dirs: [], fileCount: 0 };
   return listDirsResponseSchema.parse(await res.json());
 }
 

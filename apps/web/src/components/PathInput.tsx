@@ -167,10 +167,10 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
           )}
           {data.dirs.map((dir) => (
             <button
-              key={dir}
+              key={dir.path}
               onMouseDown={(e) => {
                 e.preventDefault();
-                navigate(dir);
+                navigate(dir.path);
               }}
               className={css({
                 display: 'flex',
@@ -189,7 +189,24 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
               <span className={css({ color: 'fg.faint', flexShrink: 0 })}>
                 <FolderIcon />
               </span>
-              {pathBasename(dir)}
+              <span className={css({ flex: '1', minW: '0', truncate: true })}>
+                {pathBasename(dir.path)}
+              </span>
+              {/* Files directly inside, so a folder holding a collection is
+                  recognisable without running a scan. Silent at zero: an
+                  empty folder is the normal case when creating one. */}
+              {dir.fileCount > 0 && (
+                <span
+                  className={css({
+                    flexShrink: 0,
+                    fontFamily: 'mono',
+                    fontSize: '2xs',
+                    color: 'fg.faint',
+                  })}
+                >
+                  {dir.fileCount} fichier{dir.fileCount > 1 ? 's' : ''}
+                </span>
+              )}
             </button>
           ))}
 

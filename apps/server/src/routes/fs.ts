@@ -17,29 +17,47 @@ fsRoute.get('/fs/list-dirs', async (c) => {
   const root = libraryRoot();
   const rawPath = (c.req.query('path') ?? '').trim();
 
+  /**
+   * Files directly inside `p`, sub-directories excluded. Used by the
+   * install flow to show which candidate folder holds a collection without
+   * running a scan.
+   *
+   * An unreadable directory counts 0 rather than failing the whole listing:
+   * one folder the server cannot open must not hide its siblings.
+   */
+  async function countFiles(p: string): Promise<number> {
+    try {
+      const entries = await readdir(p, { withFileTypes: true });
+      return entries.filter((e) => !e.isDirectory()).length;
+    } catch {
+      return 0;
+    }
+  }
+
   async function tryList(p: string) {
     try {
       const info = await stat(p);
       if (!info.isDirectory()) return null;
-      const entries = await readdir(p);
-      const dirs: string[] = [];
-      for (const name of entries) {
-        const full = join(p, name);
-        try {
-          const s = await stat(full);
-          if (s.isDirectory()) dirs.push(full);
-        } catch {
-          /* inaccessible — skip */
-        }
-      }
-      dirs.sort();
+      // withFileTypes, so the kind comes from the one readdir instead of a
+      // stat per entry — cheaper than the loop this replaces, which is what
+      // leaves room for the per-child count below.
+      const entries = await readdir(p, { withFileTypes: true });
+      const dirNames = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      dirNames.sort();
+      const dirs = await Promise.all(
+        dirNames.map(async (name) => {
+          const full = join(p, name);
+          return { path: full, fileCount: await countFiles(full) };
+        }),
+      );
+      const fileCount = entries.filter((e) => !e.isDirectory()).length;
       const parentPath = dirname(p);
       let parent: string | null = parentPath === p ? null : parentPath;
       // Confined to the library root: never expose a parent above it.
       if (root !== null && parent !== null && !isWithinRoot(parent, root)) {
         parent = null;
       }
-      return { listedPath: p, parent, dirs };
+      return { listedPath: p, parent, dirs, fileCount };
     } catch {
       return null;
     }
@@ -49,16 +67,16 @@ fsRoute.get('/fs/list-dirs', async (c) => {
     // Start at the root unless the request points somewhere inside it.
     const target = rawPath && isAbsolute(rawPath) && isWithinRoot(rawPath, root) ? rawPath : root;
     const result = await tryList(target);
-    if (!result) return c.json({ listedPath: '', parent: null, dirs: [] });
+    if (!result) return c.json({ listedPath: '', parent: null, dirs: [], fileCount: 0 });
     return c.json(result);
   }
 
   // No configured root (local dev): browse anywhere, as before.
   if (!rawPath || !isAbsolute(rawPath)) {
-    return c.json({ listedPath: '', parent: null, dirs: [] });
+    return c.json({ listedPath: '', parent: null, dirs: [], fileCount: 0 });
   }
   const result = (await tryList(rawPath)) ?? (await tryList(dirname(rawPath)));
-  if (!result) return c.json({ listedPath: '', parent: null, dirs: [] });
+  if (!result) return c.json({ listedPath: '', parent: null, dirs: [], fileCount: 0 });
   return c.json(result);
 });
 
