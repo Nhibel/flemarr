@@ -17,7 +17,7 @@ import { SystemFolderBar } from '@/components/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames, listDats, deleteDat, getSettings } from '@/lib/api.js';
-import { computeMissingGameIds } from '@/lib/missing-games.js';
+import { computeMissingGameIds, computeOwnership } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { LexiquePage } from '@/features/lexique/LexiquePage.js';
@@ -294,6 +294,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
+  // When that scan ran, for the header. A clock time rather than the comps'
+  // relative "il y a 2 jours": the scan result lives in React state only
+  // and is lost on reload, so it can never be older than the current
+  // session — a duration would imply a persistence that isn't there.
+  const [lastScanAt, setLastScanAt] = useState<Date | null>(null);
 
   const handleQueueDownload = (job: QueuedDownload) => {
     setDownloadJobs((prev) => [...prev, job]);
@@ -353,6 +358,21 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
     () => (lastScan ? computeMissingGameIds(selected, games, lastScan) : null),
     [lastScan, selected, games],
   );
+
+  // Per-game ownership for the row tags, and its totals for the header.
+  // Undefined until a scan has run: with no scan the app knows nothing
+  // about what's on disk, and says so rather than tagging 1500 rows
+  // "missing" on the strength of no evidence.
+  const ownership = useMemo(
+    () => (lastScan ? computeOwnership(games, lastScan) : undefined),
+    [games, lastScan],
+  );
+  const ownedCount = useMemo(() => {
+    if (!ownership) return null;
+    let owned = 0;
+    for (const state of ownership.values()) if (state !== 'missing') owned += 1;
+    return owned;
+  }, [ownership]);
 
   return (
     <main
@@ -428,9 +448,49 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         >
           {dat.system}
         </h1>
-        <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
-          {dat.source} · {dat.gameCount} jeux
-        </span>
+        {/* Ownership counter, as in the comps: how much of the catalogue is
+            already on disk, and how much is not. Two wordings, because the
+            honest answer differs — with no scan the app does not know what
+            is owned, and the comps' "catalogue, possession inconnue" state
+            says exactly that instead of showing a count of zero. */}
+        {ownedCount !== null ? (
+          <span
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2',
+              fontFamily: 'mono',
+              fontSize: '2xs',
+            })}
+          >
+            <span className={css({ color: 'status.success.text' })}>
+              {ownedCount} sur ton disque
+            </span>
+            <span className={css({ color: 'fg.faint' })}>
+              {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
+            </span>
+            {lastScanAt && (
+              <span className={css({ color: 'fg.faint' })}>
+                vérifié à {lastScanAt.toLocaleTimeString()}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
+            {dat.source} · {dat.gameCount} jeux · possession inconnue
+          </span>
+        )}
+
+        {/* The comps' "Revérifier mon dossier". It navigates to the scanner
+            rather than starting a scan from here: the scan trigger lives in
+            ScanPage with its own directory picker and progress stream, and
+            lifting it into the header belongs with dissolving the tabs, not
+            with this change. */}
+        {showScanner && (
+          <Button variant="secondary" size="sm" onClick={() => setTab('scanner')}>
+            {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
+          </Button>
+        )}
 
         {tab === 'games' && (
           <label
@@ -574,7 +634,36 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 isAllSelected={isAllSelected}
               />
             </div>
-            <GameList datId={dat.id} games={filtered} selected={selected} onToggle={toggle} />
+            {/* The comps' "possession inconnue" notice. Only when a scan
+                could tell us something but hasn't run — in browser mode it
+                never can, and repeating that on every visit would be
+                nagging about a choice the user already made. */}
+            {showScanner && ownership === undefined && (
+              <p
+                className={css({
+                  flexShrink: '0',
+                  mb: '2',
+                  px: '4',
+                  py: '3',
+                  bg: 'status.info.subtle',
+                  color: 'status.info.text',
+                  borderRadius: '14px',
+                  fontSize: 'xs',
+                })}
+              >
+                Aucun dossier n&apos;a encore été vérifié, donc tout le catalogue s&apos;affiche :
+                rom-curator ne peut pas savoir quels jeux tu as déjà. Pointe ton dossier une fois et
+                chaque ligne dira où elle en est.
+              </p>
+            )}
+
+            <GameList
+              datId={dat.id}
+              games={filtered}
+              selected={selected}
+              onToggle={toggle}
+              ownership={ownership}
+            />
             {/* Reserved space, not sticky — a fixed slot below the table so
                 the summary's two states (plain text vs. the bordered chip)
                 don't shift the layout when the selection count changes.
@@ -604,7 +693,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               })}
             >
               <div className={css({ flex: '1', minWidth: '0' })}>
-                <SelectionSummary games={games} selected={selected} />
+                <SelectionSummary
+                  games={games}
+                  selected={selected}
+                  target={settings?.downloadTarget}
+                />
               </div>
               {/* Primary, not secondary: in the comps the dock's button is
                   the filled accent one — it is what you press once the
@@ -623,7 +716,14 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           kept mounted otherwise to preserve scan progress */}
       {showScanner && (
         <div className={css({ display: tab === 'scanner' ? 'block' : 'none' })}>
-          <ScanPage datId={dat.id} system={dat.system} onScanComplete={setLastScan} />
+          <ScanPage
+            datId={dat.id}
+            system={dat.system}
+            onScanComplete={(result) => {
+              setLastScan(result);
+              setLastScanAt(new Date());
+            }}
+          />
         </div>
       )}
 

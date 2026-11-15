@@ -6,6 +6,7 @@ import { usePagination } from './use-pagination.js';
 import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
+import type { Ownership } from '@/lib/missing-games.js';
 
 const MODE_LABELS = { compact: 'Compact', normal: 'Normal' } as const;
 
@@ -14,6 +15,12 @@ interface Props {
   games: Game[];
   selected: Set<string>;
   onToggle: (id: string) => void;
+  /**
+   * Per-game ownership from the last scan, keyed by game id. Omitted (or a
+   * game absent from it) renders no status tag on that row — which is the
+   * state in browser mode and before any scan has run.
+   */
+  ownership?: Map<string, Ownership>;
 }
 
 const pageBtnClass = css({
@@ -31,7 +38,7 @@ const pageBtnClass = css({
   _disabled: { opacity: 0.4, cursor: 'default', shadow: 'none', _hover: { bg: 'bg.surface' } },
 });
 
-export function GameList({ datId, games, selected, onToggle }: Props) {
+export function GameList({ datId, games, selected, onToggle, ownership }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [mode, setMode] = useDisplayMode();
@@ -242,6 +249,7 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
               boxartSrc={
                 details?.get(game.id)?.hasBoxart ? gameBoxartUrl(datId, game.id) : undefined
               }
+              ownership={ownership?.get(game.id)}
             />
           ))}
         </div>

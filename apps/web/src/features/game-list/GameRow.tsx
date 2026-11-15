@@ -1,6 +1,8 @@
 import { css } from '@/styled-system/css';
 import type { Game } from '@shared/dat.js';
 import type { DisplayMode } from './use-display-mode.js';
+import { StatusTag } from '@/components/StatusTag.js';
+import type { Ownership } from '@/lib/missing-games.js';
 
 function formatSize(bytes: number): string {
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
@@ -20,6 +22,12 @@ interface Props {
   onToggle: (id: string) => void;
   /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
   boxartSrc?: string;
+  /**
+   * Ownership according to the last scan. undefined = no scan has run (or
+   * none can, in browser mode), which renders no tag at all: the app says
+   * nothing rather than implying the game is missing.
+   */
+  ownership?: Ownership;
   mode?: DisplayMode;
   style?: React.CSSProperties;
 }
@@ -30,6 +38,7 @@ export function GameRow({
   isFocused,
   onToggle,
   boxartSrc,
+  ownership,
   mode = 'normal',
   style,
 }: Props) {
@@ -179,6 +188,11 @@ export function GameRow({
           </span>
         </>
       )}
+
+      {/* Rightmost, as in the comps. Normal mode only: compact mode's whole
+          point is density, and it already fills the row's right edge with
+          the region and size. */}
+      {mode !== 'compact' && ownership !== undefined && <StatusTag state={ownership} />}
     </div>
   );
 }
