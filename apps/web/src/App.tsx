@@ -16,11 +16,12 @@ import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/components/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
-import { fetchGames, listDats, deleteDat, getSettings } from '@/lib/api.js';
+import { fetchGames, listDats, deleteDat, getSettings, updateSettings } from '@/lib/api.js';
 import { computeMissingGameIds, computeOwnership } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { LexiquePage } from '@/features/lexique/LexiquePage.js';
+import { TopologyStep } from '@/features/onboarding/TopologyStep.js';
 import { useTheme } from '@/lib/use-theme.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
@@ -43,6 +44,30 @@ export function App() {
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
   const [view, setView] = useState<AppView>('loader');
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
+  const { data: rootSettings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: knownDats } = useQuery({ queryKey: ['dats'], queryFn: listDats });
+
+  const chooseTopology = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: (updated) => queryClient.setQueryData(['settings'], updated),
+  });
+
+  // The install question runs only on an install that has never been used:
+  // no answer recorded, no system folder configured, no DAT ever loaded.
+  //
+  // All three conditions matter, not just the first. Answering writes
+  // downloadTarget, so showing this to an existing user who happens to have
+  // no topology recorded — anyone who installed before this field existed —
+  // could silently flip where their downloads go. The extra conditions make
+  // that impossible: an install with a folder or a DAT is one that already
+  // works, and its existing downloadTarget is the answer.
+  const needsTopology =
+    rootSettings !== undefined &&
+    knownDats !== undefined &&
+    rootSettings.topology === null &&
+    Object.keys(rootSettings.systemPaths).length === 0 &&
+    knownDats.length === 0;
   const { fontScale, setFontScale } = useFontScale();
 
   let content: ReactNode;
@@ -56,6 +81,8 @@ export function App() {
     );
   } else if (view === 'lexique') {
     content = <LexiquePage onClose={() => setView(activeDat ? 'game' : 'loader')} />;
+  } else if (needsTopology && activeDat === null) {
+    content = <TopologyStep saving={chooseTopology.isPending} onChoose={chooseTopology.mutate} />;
   } else if (activeDat === null) {
     content = (
       <LoaderView

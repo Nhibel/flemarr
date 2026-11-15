@@ -6,7 +6,7 @@ import { PresetSection } from './PresetSection.js';
 import { ArchiveAccountSection } from './ArchiveAccountSection.js';
 import { ConcurrencySection } from './ConcurrencySection.js';
 import { SystemPathsSection } from './SystemPathsSection.js';
-import { DownloadTargetSection } from './DownloadTargetSection.js';
+import { TopologySection } from './TopologySection.js';
 import { AutoConvertChdSection } from './AutoConvertChdSection.js';
 import { AppearanceSection } from './AppearanceSection.js';
 
@@ -96,7 +96,7 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
         saving={mutation.isPending}
         onSave={mutation.mutate}
       />
-      <DownloadTargetSection
+      <TopologySection
         settings={settings}
         saving={mutation.isPending}
         onSave={mutation.mutate}

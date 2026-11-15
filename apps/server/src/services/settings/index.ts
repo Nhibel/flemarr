@@ -13,6 +13,7 @@ function readScalars(db: Database): {
   archiveOrgLoggedInUser: string;
   archiveOrgLoggedInSig: string;
   downloadTarget: string;
+  topology: string | null;
   autoConvertChd: boolean;
 } {
   const rows = db
@@ -20,7 +21,7 @@ function readScalars(db: Database): {
       `SELECT key, value FROM settings WHERE key IN
        ('fresh1g1r_preset', 'downloader_concurrency', 'archive_org_access_key',
         'archive_org_secret_key', 'archive_org_logged_in_user', 'archive_org_logged_in_sig',
-        'download_target', 'auto_convert_chd')`,
+        'download_target', 'topology', 'auto_convert_chd')`,
     )
     .all() as { key: string; value: string }[];
 
@@ -35,6 +36,9 @@ function readScalars(db: Database): {
     archiveOrgLoggedInUser: map['archive_org_logged_in_user'] ?? '',
     archiveOrgLoggedInSig: map['archive_org_logged_in_sig'] ?? '',
     downloadTarget: map['download_target'] ?? DEFAULTS.downloadTarget,
+    // No row at all means the install question was never answered, which
+    // is what null stands for — distinct from any of the three answers.
+    topology: map['topology'] ?? null,
     autoConvertChd: map['auto_convert_chd'] === '1',
   };
 }
@@ -59,6 +63,7 @@ export function getSettings(db: Database = getDb()): Settings {
     archiveOrgLoggedInUser: scalars.archiveOrgLoggedInUser,
     archiveOrgLoggedInSig: scalars.archiveOrgLoggedInSig,
     downloadTarget: scalars.downloadTarget,
+    topology: scalars.topology,
     autoConvertChd: scalars.autoConvertChd,
   });
 }
@@ -75,6 +80,7 @@ export function toSettingsResponse(s: Settings, romsRoot: string | null): Settin
     archiveOrgKeysConfigured: s.archiveOrgAccessKey !== '' && s.archiveOrgSecretKey !== '',
     archiveOrgSessionConfigured: s.archiveOrgLoggedInUser !== '' && s.archiveOrgLoggedInSig !== '',
     downloadTarget: s.downloadTarget,
+    topology: s.topology,
     autoConvertChd: s.autoConvertChd,
     romsRoot,
   };
@@ -105,6 +111,16 @@ export function updateSettings(patch: UpdateSettings, db: Database = getDb()): S
   }
   if (patch.downloadTarget !== undefined) {
     upsert.run('download_target', patch.downloadTarget);
+  }
+  // null is a meaningful value here (never answered), so it has to be
+  // written as a row deletion rather than skipped like an absent key —
+  // otherwise the install question could never be reset.
+  if (patch.topology !== undefined) {
+    if (patch.topology === null) {
+      db.prepare(`DELETE FROM settings WHERE key = 'topology'`).run();
+    } else {
+      upsert.run('topology', patch.topology);
+    }
   }
   if (patch.autoConvertChd !== undefined) {
     upsert.run('auto_convert_chd', patch.autoConvertChd ? '1' : '0');
