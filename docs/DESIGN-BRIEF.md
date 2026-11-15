@@ -1,5 +1,26 @@
 # Brief UX/UI — rom-curator
 
+> **Document historique — rédigé le 2026-11-14, avant le redesign.**
+>
+> C'est le brief qui a servi d'entrée au travail de design, pas une
+> description de l'app actuelle. Tout ce qu'il décrit comme existant a
+> changé depuis : les sept thèmes ont remplacé les neuf, la section
+> « Destination des téléchargements » des Réglages n'existe plus (remplacée
+> par la question « où vivent tes jeux »), les lignes de la bibliothèque
+> portent leur état de possession, et il n'y a plus de bordures nulle part.
+>
+> **Pour l'état réel de l'interface, lire la Phase 14 de
+> [ROADMAP.md](../ROADMAP.md)**, qui liste aussi les écarts assumés aux
+> maquettes et les raisons. Les sections « friction ressentie » et
+> « objectif » ci-dessous restent valables comme intention produit ; la
+> section 5 (inventaire des écrans) et les listes de composants sont
+> périmées.
+>
+> Les deux canvas que ce brief a produits sont des Artifacts privés dont
+> les fichiers de travail vivent dans `.rom-curator-data/design-scratch/`
+> et `.rom-curator-data/design-directions/` — **gitignorés**, donc locaux à
+> la machine de Camille. Seules les URLs Artifact sont durables.
+
 Destiné à Claude Design. Ce document ne décrit pas l'implémentation (le code source est disponible séparément) — il couvre ce que le code ne dit pas : intention produit, parcours réels, friction ressentie, et attentes pour la direction visuelle.
 
 ---

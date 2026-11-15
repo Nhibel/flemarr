@@ -8,7 +8,9 @@ This file is the canonical context for Claude Code working on this project. Read
 
 `rom-curator` is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs) either straight to the server's library or to the user's own browser. Access-restricted collections are supported via an archive.org account login. Downloaded disc-based games (PS1, Saturn, etc.) can be auto-converted to a single verified `.chd` file instead of staying as separate `.bin`/`.cue`.
 
-The user (Camille) runs a homelab. **Phases 0–8, 10, 12 and 13 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) was retired before completion (2026-11-08) — box art alone covers the need; see ROADMAP.md.**
+The user (Camille) runs a homelab. **Phases 0–8, 10, 12, 13 and 14 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) was retired before completion (2026-11-08) — box art alone covers the need; see ROADMAP.md.**
+
+**Phase 14 (the visual redesign) is verified and lives on the `feat/ui-refresh` branch, not yet merged into `master`.** It rebuilt the look from two design canvases: seven themes instead of nine, three type roles, no borders anywhere, per-row ownership in the library, and one install question (`topology`) that replaced the old download-destination setting. Read its ROADMAP entry before changing anything visual — several of its decisions look like oversights and are not (no row dividers, no year on a row, no status tag at all when no scan has run).
 
 ---
 
@@ -94,7 +96,7 @@ rom-curator/
 
 The project is broken into numbered phases in [ROADMAP.md](./ROADMAP.md). **Complete one phase before starting the next.** Each phase has explicit acceptance criteria. Do not start phase N+1 work while phase N is incomplete unless the user explicitly asks.
 
-**Current state: phases 0–8 and 10 are done; phase 9 (Myrient) is blocked (service shut down — see ROADMAP.md); phase 11 is code-complete awaiting verification.** The original reason for the rule — building the easy parts first so they're stable when tackling the hard one (archive.org) — has played out; the rule still applies to any phase added later: finish and verify it against its acceptance criteria before moving on.
+**Current state: phases 0–8, 10, 12, 13 and 14 are done; phase 9 (Myrient) is blocked (service shut down — see ROADMAP.md); phase 11 was retired.** The original reason for the rule — building the easy parts first so they're stable when tackling the hard one (archive.org) — has played out; the rule still applies to any phase added later: finish and verify it against its acceptance criteria before moving on.
 
 ### What to check before writing code
 
