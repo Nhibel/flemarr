@@ -612,7 +612,13 @@ export default defineConfig({
               },
               fg: {
                 value: {
-                  base: '#FFFFFF',
+                  // Dark, not white: white on this amber measures 2.77:1,
+                  // which fails the 4.5:1 the palette rules promise. Every
+                  // other theme already carries dark text here for the
+                  // same reason — the light theme was the one that did
+                  // not, because its `solid` is the only amber dark enough
+                  // that white looked plausible without being legible.
+                  base: '#2B1400',
                   _dark: '#15100A',
                   _catppuccin: '#1E1E2E',
                   _cyberpunk: '#2B0618',
