@@ -41,7 +41,15 @@ function renderList(games: Game[], onToggle = vi.fn(), selected = new Set<string
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <GameList datId="dat-1" games={games} selected={selected} onToggle={onToggle} />
+      <GameList
+        datId="dat-1"
+        games={games}
+        selected={selected}
+        onToggle={onToggle}
+        search=""
+        onSearch={vi.fn()}
+        totalGames={games.length}
+      />
     </QueryClientProvider>,
   );
 }
@@ -214,6 +222,9 @@ describe('GameList — ownership tags', () => {
           selected={new Set<string>()}
           onToggle={vi.fn()}
           ownership={ownership}
+          search=""
+          onSearch={vi.fn()}
+          totalGames={GAMES.length}
         />
       </QueryClientProvider>,
     );
@@ -246,5 +257,52 @@ describe('GameList — ownership tags', () => {
     renderWithOwnership(new Map<string, Ownership>([['a', 'owned']]));
     expect(screen.getByText('Sur ton disque')).toBeInTheDocument();
     expect(screen.queryByText('Manquant')).not.toBeInTheDocument();
+  });
+});
+
+describe('GameList — search toolbar', () => {
+  it('reports what the user types', async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <GameList
+          datId="dat-1"
+          games={GAMES}
+          selected={new Set<string>()}
+          onToggle={vi.fn()}
+          search=""
+          onSearch={onSearch}
+          totalGames={3}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.type(screen.getByRole('searchbox'), 'z');
+    expect(onSearch).toHaveBeenCalledWith('z');
+  });
+
+  // The search box lives on this component's own toolbar, so the empty
+  // state must keep the toolbar: a search that filters everything out
+  // would otherwise remove the only way to clear it.
+  it('keeps the search box when nothing matches', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <GameList
+          datId="dat-1"
+          games={[]}
+          selected={new Set<string>()}
+          onToggle={vi.fn()}
+          search="zzzz"
+          onSearch={vi.fn()}
+          totalGames={3}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText('Aucun jeu ne correspond aux filtres actuels.')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox')).toHaveValue('zzzz');
   });
 });

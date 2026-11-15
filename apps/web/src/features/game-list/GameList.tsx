@@ -5,6 +5,7 @@ import { GameRow } from './GameRow.js';
 import { usePagination } from './use-pagination.js';
 import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
+import { SearchIcon } from '@/components/icons.js';
 import type { Game } from '@shared/dat.js';
 import type { Ownership } from '@/lib/missing-games.js';
 
@@ -21,6 +22,17 @@ interface Props {
    * state in browser mode and before any scan has run.
    */
   ownership?: Map<string, Ownership>;
+  /**
+   * The library search. It lives on this component's own toolbar rather
+   * than in the page header, where its width (and therefore everything
+   * after it) moved with the length of the system name. Here it sits
+   * directly above the list it filters, on a row that was otherwise half
+   * empty, and `total` is the unfiltered count for the placeholder — this
+   * component only ever receives the already-filtered games.
+   */
+  search: string;
+  onSearch: (v: string) => void;
+  totalGames: number;
 }
 
 const pageBtnClass = css({
@@ -38,7 +50,16 @@ const pageBtnClass = css({
   _disabled: { opacity: 0.4, cursor: 'default', shadow: 'none', _hover: { bg: 'bg.surface' } },
 });
 
-export function GameList({ datId, games, selected, onToggle, ownership }: Props) {
+export function GameList({
+  datId,
+  games,
+  selected,
+  onToggle,
+  ownership,
+  search,
+  onSearch,
+  totalGames,
+}: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [mode, setMode] = useDisplayMode();
@@ -110,61 +131,110 @@ export function GameList({ datId, games, selected, onToggle, ownership }: Props)
     listRef.current?.parentElement?.scrollTo?.({ top: 0 });
   }
 
-  if (games.length === 0) {
-    return (
-      <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
-        Aucun jeu ne correspond aux filtres actuels.
-      </div>
-    );
-  }
+  // The toolbar renders in both the empty and non-empty cases on purpose:
+  // it holds the search field, and a search that filters everything out
+  // must still leave the user a box to clear.
+  const toolbar = (
+    <div
+      className={css({
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2',
+        justifyContent: 'space-between',
+        mb: '2',
+        flexShrink: '0',
+      })}
+    >
+      <label
+        className={css({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2',
+          flex: '1',
+          minWidth: '0',
+          px: '3',
+          bg: 'bg.inset',
+          borderRadius: '12px',
+          color: 'fg.subtle',
+          _focusWithin: {
+            _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
+          },
+        })}
+      >
+        <SearchIcon />
+        <span className={css({ srOnly: true })}>Rechercher un jeu</span>
+        <input
+          type="search"
+          placeholder={`Rechercher parmi ${totalGames} jeux…`}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          className={css({
+            flex: '1',
+            minWidth: '0',
+            py: '2',
+            bg: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: 'fg.default',
+            fontSize: 'sm',
+          })}
+        />
+      </label>
 
-  return (
-    <>
       {/* A segmented control, not two separate outlined buttons: the two
           modes are mutually exclusive, and one track with a sliding filled
           thumb says that where two bordered pills did not. */}
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'flex-end',
-          mb: '2',
+          display: 'inline-flex',
+          gap: '0.5',
           flexShrink: '0',
+          p: '0.5',
+          bg: 'bg.muted',
+          borderRadius: '12px',
         })}
       >
-        <div
-          className={css({
-            display: 'inline-flex',
-            gap: '0.5',
-            p: '0.5',
-            bg: 'bg.muted',
-            borderRadius: '12px',
-          })}
-        >
-          {DISPLAY_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mode === m}
-              onClick={() => setMode(m)}
-              className={css({
-                px: '2.5',
-                py: '1',
-                minH: '28px',
-                fontSize: 'xs',
-                fontWeight: mode === m ? 'bold' : 'medium',
-                border: 'none',
-                borderRadius: '9px',
-                cursor: 'pointer',
-                bg: mode === m ? 'accent.solid' : 'transparent',
-                color: mode === m ? 'accent.fg' : 'fg.subtle',
-                _hover: { color: mode === m ? 'accent.fg' : 'fg.default' },
-              })}
-            >
-              {MODE_LABELS[m]}
-            </button>
-          ))}
-        </div>
+        {DISPLAY_MODES.map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            className={css({
+              px: '2.5',
+              py: '1',
+              minH: '28px',
+              fontSize: 'xs',
+              fontWeight: mode === m ? 'bold' : 'medium',
+              border: 'none',
+              borderRadius: '9px',
+              cursor: 'pointer',
+              bg: mode === m ? 'accent.solid' : 'transparent',
+              color: mode === m ? 'accent.fg' : 'fg.subtle',
+              _hover: { color: mode === m ? 'accent.fg' : 'fg.default' },
+            })}
+          >
+            {MODE_LABELS[m]}
+          </button>
+        ))}
       </div>
+    </div>
+  );
+
+  if (games.length === 0) {
+    return (
+      <>
+        {toolbar}
+        <div className={css({ py: '12', textAlign: 'center', color: 'fg.faint', fontSize: 'sm' })}>
+          Aucun jeu ne correspond aux filtres actuels.
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {toolbar}
 
       <div
         role="listbox"

@@ -25,7 +25,7 @@ import { useTheme } from '@/lib/use-theme.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
-import { GearIcon, BookIcon, SearchIcon, iconBtnClass } from '@/components/icons.js';
+import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
@@ -409,18 +409,23 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
     >
       {/* Header — one floating card holding the system name, the library
           search and the icon actions, as the design comps show it. The
-          search used to sit at the bottom of GameFilters; it belongs with
-          the title because it is the control reached for most often, and
-          moving it freed GameFilters to collapse into a single row.
-          It renders only on the Games tab: it filters that list and
-          nothing else, so showing it over the scanner or the download
-          manager would promise something it does not do. */}
+          header holds the system it applies to on the left and the app's own
+          navigation on the right, with a divider between them.
+          It does NOT hold the library search any more: see GameList, which
+          renders it on the row above the list.
+
+          No flexWrap, and exactly ONE flexible child — the title. Every
+          other child is flexShrink: 0, so they are all pinned to the right
+          edge at a constant position and the title absorbs the variation by
+          truncating. Before this, the header wrapped and every control
+          after the title shifted with the length of the system name, which
+          moved Lexique and Réglages around between consoles. Navigation
+          that moves is navigation you have to re-find every time. */}
       <div
         className={css({
           display: 'flex',
           alignItems: 'center',
           gap: '3',
-          flexWrap: 'wrap',
           mb: '4',
           px: '4',
           py: '3',
@@ -436,6 +441,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             fontSize: 'xl',
             fontWeight: 'bold',
             color: 'fg.heading',
+            flex: '1',
             minWidth: '0',
             truncate: true,
             _cyberpunk: {
@@ -459,6 +465,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               display: 'flex',
               alignItems: 'center',
               gap: '2',
+              flexShrink: '0',
               fontFamily: 'mono',
               fontSize: '2xs',
             })}
@@ -469,14 +476,24 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             <span className={css({ color: 'fg.faint' })}>
               {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
             </span>
+            {/* Dropped below lg: this row has to stay on one line at the
+                Steam Deck's 1280px, and the time is the least load-bearing
+                thing in it. */}
             {lastScanAt && (
-              <span className={css({ color: 'fg.faint' })}>
+              <span className={css({ color: 'fg.faint', display: { base: 'none', lg: 'inline' } })}>
                 vérifié à {lastScanAt.toLocaleTimeString()}
               </span>
             )}
           </span>
         ) : (
-          <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
+          <span
+            className={css({
+              flexShrink: '0',
+              fontFamily: 'mono',
+              fontSize: '2xs',
+              color: 'fg.faint',
+            })}
+          >
             {dat.source} · {dat.gameCount} jeux · possession inconnue
           </span>
         )}
@@ -487,63 +504,44 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             lifting it into the header belongs with dissolving the tabs, not
             with this change. */}
         {showScanner && (
-          <Button variant="secondary" size="sm" onClick={() => setTab('scanner')}>
-            {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
+          <span className={css({ flexShrink: '0' })}>
+            <Button variant="secondary" size="sm" onClick={() => setTab('scanner')}>
+              {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
+            </Button>
+          </span>
+        )}
+
+        {/* Everything left of this line is about the console currently open;
+            everything right of it is about the app. A 1px rule is the right
+            tool here: it is a divider inside a card, which is the one place
+            the redesign kept borders. */}
+        <span
+          aria-hidden
+          className={css({
+            flexShrink: '0',
+            w: '1px',
+            alignSelf: 'stretch',
+            my: '1',
+            bg: 'bd.default',
+          })}
+        />
+
+        <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
+          <Button variant="secondary" size="sm" onClick={onReset}>
+            Charger un autre DAT
           </Button>
-        )}
-
-        {tab === 'games' && (
-          <label
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2',
-              flex: '1',
-              minWidth: '40',
-              px: '3',
-              bg: 'bg.inset',
-              borderRadius: '12px',
-              color: 'fg.subtle',
-              _focusWithin: {
-                _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
-              },
-            })}
+          <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
+            <BookIcon />
+          </button>
+          <button
+            onClick={onSettings}
+            title="Paramètres"
+            aria-label="Paramètres"
+            className={iconBtnClass}
           >
-            <SearchIcon />
-            <span className={css({ srOnly: true })}>Rechercher un jeu</span>
-            <input
-              type="search"
-              placeholder={`Rechercher parmi ${games.length} jeux…`}
-              value={filterState.search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={css({
-                flex: '1',
-                minWidth: '0',
-                py: '2',
-                bg: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'fg.default',
-                fontSize: 'sm',
-              })}
-            />
-          </label>
-        )}
-
-        <Button variant="secondary" size="sm" onClick={onReset}>
-          Charger un autre DAT
-        </Button>
-        <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
-          <BookIcon />
-        </button>
-        <button
-          onClick={onSettings}
-          title="Paramètres"
-          aria-label="Paramètres"
-          className={iconBtnClass}
-        >
-          <GearIcon />
-        </button>
+            <GearIcon />
+          </button>
+        </span>
       </div>
 
       {/* The system's library folder — only relevant to the scanner and to
@@ -663,6 +661,9 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               selected={selected}
               onToggle={toggle}
               ownership={ownership}
+              search={filterState.search}
+              onSearch={setSearch}
+              totalGames={games.length}
             />
             {/* Reserved space, not sticky — a fixed slot below the table so
                 the summary's two states (plain text vs. the bordered chip)
