@@ -5,7 +5,7 @@ export default defineConfig({
   include: ['./src/**/*.{ts,tsx}'],
   exclude: [],
   outdir: 'src/styled-system',
-  // Nine self-contained themes selected via a single `data-theme` attribute
+  // Seven self-contained themes selected via a single `data-theme` attribute
   // on <html> (apps/web/src/lib/use-theme.ts) — not a theme × light/dark
   // matrix. `dark` is redefined (on top of its built-in `.dark`-class
   // selector) so every theme resolves through the same mechanism; `base`
@@ -13,15 +13,22 @@ export default defineConfig({
   // condition is needed. `matrix` is the original neon-green/yellow look
   // that used to be named `cyberpunk`, renamed once an actual
   // Cyberpunk-2077-styled (black/yellow/cyan) theme was added under that name.
+  //
+  // This list and the condition keys used in semanticTokens below are the
+  // only place a theme is declared, so adding one means adding a condition
+  // here, a value under every token leaf, and an entry in both
+  // apps/web/src/lib/use-theme.ts and the Apparence settings section. A
+  // token leaf that is missing a theme's value silently falls back to
+  // `base` — i.e. to the light theme — with no error, so a new theme's
+  // value count must match the leaf count.
   conditions: {
     extend: {
       dark: '[data-theme="dark"] &',
       catppuccin: '[data-theme="catppuccin"] &',
       cyberpunk: '[data-theme="cyberpunk"] &',
       matrix: '[data-theme="matrix"] &',
-      nintendo: '[data-theme="nintendo"] &',
-      megadrive: '[data-theme="megadrive"] &',
       sonicmania: '[data-theme="sonicmania"] &',
+      contraste: '[data-theme="contraste"] &',
     },
   },
   globalCss: {
@@ -90,516 +97,409 @@ export default defineConfig({
       },
       semanticTokens: {
         colors: {
-          // Catppuccin Mocha, Matrix (neon green/yellow), Cyberpunk (CD
-          // Projekt-style black/yellow/cyan), Nintendo and Megadrive hex
-          // values below are literals, not {colors.*} scale refs — Panda's
-          // default color scale doesn't have these hues/steps, so each
-          // theme's values are hardcoded directly here, in one place.
+          // Seven self-contained themes. Every value below is a literal hex
+          // rather than a {colors.*} scale ref, including the `base` (light)
+          // theme's: the palette rules these themes follow — no pure neutral
+          // ground, a tinted page with the surface floating on it — can't be
+          // expressed with Panda's default neutral gray scale, so all seven
+          // are stated in the same form, in one place.
           //
-          // Nintendo and Megadrive: no official Nintendo/Sega brand spec
-          // exists for "Mario red" or "Sonic blue" (checked — every public
-          // hex chart for these is a third-party fan sample, and they
-          // disagree with each other), so every hue below is pixel-sampled
-          // directly from reference screenshots (captures/interface_mario.png,
-          // captures/interface_sonic_1.png) with a small sampling script —
-          // hand-picked/estimated values kept drifting off (too neon, wrong
-          // shade) compared to the real thing.
+          // The rules, decided on the design canvas and applied uniformly:
           //
-          // Cyberpunk was originally hand-picked (black/yellow/cyan,
-          // CD Projekt-style) with no source at all; it's now re-grounded
-          // in captures/palette cyberpunk.png, a named Coolors "CyberPunk
-          // 2077 Palette" swatch (Raisin Black #272932, Blood Red #710000,
+          //   * bg.page is always tinted, never a pure neutral, and always
+          //     distinct from bg.surface. Surfaces are meant to read as
+          //     floating on the page, so page == surface would collapse the
+          //     whole layout into one flat field.
+          //   * Three status roles stay distinguishable: action (accent),
+          //     owned (success) and warning. They differ in hue AND in the
+          //     lightness of their badge, and the components that use them
+          //     add a pictogram, so a red/green pair is never the only
+          //     signal.
+          //   * Body text clears 4.5:1 on its own background, muted
+          //     metadata text included. A bright accent always carries dark
+          //     text (accent.fg), never white.
+          //   * The bright accent is reserved for the primary action and
+          //     for selection. It is not used as general chrome.
+          //
+          // Accepted compromise in Matrix and Contraste: their accent
+          // doubles as the "owned" status color, because both themes are
+          // built on a single bright hue and inventing a second one would
+          // break their identity. The distinction there is carried by shape
+          // — a filled button versus a tinted tag — not by hue.
+          //
+          // Nintendo and Megadrive were removed (2026-11-15): navy plus a
+          // saturated red read poorly down a long game list, and the two
+          // themes were hard to tell apart from each other. Contraste
+          // replaced them.
+          //
+          // Catppuccin Mocha uses the official palette names throughout:
+          // page is Mantle, surface is Base, muted is Surface0, the border
+          // ramp is Surface0/Surface1/Surface2 and the text ramp is
+          // Text/Subtext1/Subtext0/Overlay2/Overlay1. Page moved down from
+          // Base to Mantle so that Base is free to serve as the floating
+          // surface — when both were Base, the two were indistinguishable.
+          //
+          // Cyberpunk is grounded in captures/palette cyberpunk.png, a named
+          // Coolors "CyberPunk 2077 Palette" swatch (Blood Red #710000,
           // Rich Lemon #FDF500, Keppel #1AC5B0, Electric Blue #37EBF3,
-          // Blushing Purple #9370DB, Frostbite #E455AE, Steel Pink
-          // #CB1DCD, Pale Silver #D1C5C0) — flat named hexes, not a UI
-          // screenshot, so no pixel sampling here, just a direct mapping.
-          // Rich Lemon turned out nearly identical to the already-shipped
-          // hand-picked yellow (a good sign the original choice was
-          // already on target) and now replaces it outright. bg.page/
-          // surface/muted and bd.* are same-hue darker/lighter steps off
-          // Raisin Black — safe to darken much further than Sonic Mania's
-          // page could be, because Raisin Black is already dark AND
-          // desaturated (S≈0.12): darkening a vivid, highly-saturated
-          // color is what went muddy for Sonic Mania, darkening an
-          // already-neutral dark color is just normal dark-UI chrome.
-          // fg.* stays exactly as it was — already verified against the
-          // new, very similar darks.
+          // Blushing Purple #9370DB, Frostbite #E455AE, Steel Pink #CB1DCD,
+          // Pale Silver #D1C5C0). Its bg.page/surface/muted, bd.subtle/
+          // default and its whole fg.* ramp are deliberately UNCHANGED from
+          // the version that shipped before this redesign, and must stay
+          // that way: they are the result of four iteration passes, the last
+          // of which replaced a desaturated near-black ground with this deep
+          // saturated violet-magenta precisely because Camille rejected the
+          // desaturated one outright ("je ne comprend pas le thème
+          // cyberpunk n'a rien de changé"). The redesign comp for this theme
+          // proposed a neutral near-black again; it was discarded on that
+          // basis. Rich Lemon stays the accent, Steel Pink stays accent2 and
+          // Electric Blue stays status.info — those three hexes are also
+          // hardcoded in ~11 component files (focus rings, GameFilters
+          // glows, the button recipe's neon pulse), so changing them here
+          // without touching those files would desynchronize the theme.
           //
-          // First pass of this reshuffle kept Electric Blue as accent2 —
-          // Camille called it out as indistinguishable from the original
-          // hand-picked look ("je ne comprend pas le thème cyberpunk n'a
-          // rien de changé") and asked for an actual neon ambiance. accent2
-          // is now Steel Pink (a hue this palette supplies and the old
-          // theme never used at all, so it reads as genuinely new), and
-          // Electric Blue moves to status.info instead of sitting unused
-          // behind the identical-looking accent2. status.success is Keppel,
-          // used raw; status.danger is Blood Red brightened at the same hue
-          // (the raw swatch is far too dark to use as text); status.warning
-          // is unchanged (still orange — no equivalent hue in this palette,
-          // and it already has its own reason not to be yellow, see below).
-          // Frostbite and Pale Silver are in the reference but have no
-          // natural slot in this token set, so they aren't used. The actual
-          // "neon" feel comes from glow (box-shadow) on accent-colored
-          // buttons and active/selected states, added as `_cyberpunk`
-          // conditions directly where those components are styled (the
-          // button recipe, GameFilters chips, the preset/destination
-          // selection cards) — flat hex alone read as "dark theme with a
-          // yellow accent," not neon, no matter how official the hex.
-          //
-          // Second pass: Camille pointed out that even with the glow,
-          // yellow/magenta/dark-gray was still only two neons doing all
-          // the work — Electric Blue and Blushing Purple were in the
-          // palette but invisible in practice (info.text and bd.strong are
-          // not places anyone looks). Electric Blue now also drives every
-          // `_focusVisible` ring/glow across the app (search fields,
-          // inputs, the keyboard-focused game row) instead of the default
-          // yellow-based focus style — a legitimately different role
-          // (focus vs. primary action vs. secondary/suggested action), not
-          // a re-skin for its own sake, and one every theme already had a
-          // *a* color for, just not its own. bd.strong is retinted from
-          // neutral dark gray to a dark Blushing-Purple-hued tone instead —
-          // it's a low-contrast structural border either way, so the tint
-          // costs nothing and gives every card/divider a faint neon-city
-          // undertone at rest, independent of the deliberate bright glow
-          // on interactive elements.
-          //
-          // Third pass: still not enough — Camille's actual complaint was
-          // that the *named swatches themselves* had stopped being
-          // recognizable once every one of them got darkened/desaturated
-          // into near-black UI chrome. Fix: stop treating the palette as
-          // "hue inspiration" and use the literal swatches wherever
-          // contrast allows it. bg.surface is now literal Raisin Black
-          // (#272932, not a derived near-black); bd.strong is literal
-          // Blushing Purple (#9370DB) at full strength, not a dark tint —
-          // every card border/glow in the app is now visibly that purple,
-          // not a hint of it. fg.default/muted/subtle/faint are a ramp off
-          // literal Pale Silver (#D1C5C0) instead of a generic cool gray —
-          // body text itself now carries the palette. accent2.hover is
-          // literal Frostbite (#E455AE) instead of a manually darkened
-          // Steel Pink — two named palette pinks forming an actual
-          // solid/hover pair. status.danger.subtle is literal Blood Red
-          // (#710000) as a real dark-red badge wash (its brightened
-          // sibling still carries the *text*, since #710000 itself is too
-          // dark to read) instead of reusing the generic neutral surface —
-          // the one color name that is its own semantic ("Blood Red" =
-          // danger) now actually looks like blood red, not a gray box.
-          // status.success/info `.subtleBorder` are literal Keppel and
-          // Electric Blue respectively instead of a neutral border, so
-          // every status badge's edge now matches its own text color.
-          // Rich Lemon (already the primary accent) and Steel Pink (already
-          // accent2) needed no further change — they were already literal.
-          // That leaves only warning (still orange — no equivalent hue in
-          // this palette) and Frostbite's sibling Pale Silver as the sole
-          // remaining non-literal pieces of the whole theme.
-          //
-          // Fourth pass: literal Raisin Black is still, on its own terms, a
-          // desaturated navy-GRAY (S≈0.12) — using it straight for
-          // bg.page/surface read as "gray" exactly as designed, which is
-          // the opposite of what a neon background needs. bg.page/surface/
-          // muted and bd.subtle/default are no longer Raisin-Black-derived
-          // at all: they're a deep, properly saturated (S≈0.65) violet-
-          // magenta blended from Blushing Purple's and Steel Pink's hues —
-          // dark enough to stay a background, saturated enough to read as
-          // an actual color rather than "dark theme, gray, with accents."
-          // Raisin Black itself is no longer used anywhere in this theme.
-          //
-          // Nintendo samples interface_mario.png (an actual Mario-skinned
-          // phone UI): bg.surface/muted is the red widget card (muted
-          // reuses that same card's own darker inset-shadow red, not an
-          // invented hover tint), and accent is its gold/coin dock color.
-          // bg.page is the screenshot's sky blue, but darkened at the same
-          // hue/saturation (not re-hued) — the raw sampled sky is a bright
-          // pastel meant for light-mode phone UI, and every fg.* text token
-          // here is a light-on-dark ramp shared across bg.page AND
-          // bg.surface; at the raw brightness, that same light text fails
-          // contrast on bg.page (passes fine on the red surface). Darkening
-          // the sampled hue is the fix that keeps one fg.* ramp legible
-          // everywhere without forking it into a page-specific and a
-          // surface-specific variant.
-          //
-          // Megadrive samples interface_sonic_1.png (an actual Sonic-
-          // skinned settings menu): bg.page is its background wall blue,
-          // bg.surface/muted are the row-fill blue and a brighter same-hue
-          // variant for hover, bd.* are its dark inset/outline navy, accent
-          // is the "Battle Settings" button's red, accent2 and
-          // status.warning are its gold zigzag trim, and status.success is
-          // its toggle's green.
-          //
-          // Megadrive's primary accent is red, so its danger status borrows
-          // orange instead to avoid reading as "another primary button";
-          // Nintendo's primary accent is gold, so plain red is safe there.
-          //
-          // Sonic Mania is a third, visually distinct console/game theme —
-          // sampled from captures/interface_sonic_2.png (the yellow-walled
-          // main menu) and captures/interface_sonic_3.png (the cyan options
-          // panel), not from Megadrive's interface_sonic_1.png (a different
-          // game's UI, hence a separate theme instead of overwriting
-          // Megadrive). Unlike every other theme here, bg.page and
-          // bg.surface are the raw sampled vivid gold and cyan — undarkened
-          // — because an earlier same-hue-darkened attempt (the trick used
-          // for Nintendo's page) turned the gold into a muddy brown and
-          // lost exactly the vivid look the reference has; Camille called
-          // it out directly. Since a shared LIGHT fg.* ramp can't work on
-          // backgrounds this bright, Sonic Mania flips to a DARK fg.* ramp
-          // instead — the same light-background pattern the base `light`
-          // theme already uses, not a new mechanism. bd.* are the panel's
-          // own sampled navy divider tones (still dark — they read as
-          // dividers against either vivid background, and double as the
-          // reference's actual black bars). accent is the sampled
-          // magenta-red of the "B — Back" button, chosen as the PRIMARY
-          // accent specifically because the sampled gold is too close to
-          // bg.page's own hue to read as a distinct call-to-action there;
-          // accent2 is that sampled gold instead, used only where it sits
-          // next to its siblings (chips, selection wash) rather than
-          // floating directly over bg.page. Status badge washes
-          // (success/danger/warning/info `.subtle`) are light pastels
-          // here instead of the dark-navy wash every other theme reuses
-          // from bd.subtle, because Sonic Mania's status *text* is now
-          // dark (to read on the vivid page/surface) and dark text on a
-          // dark badge wash would be illegible.
+          // Sonic Mania keeps its pixel-sampled values too: bg.page is the
+          // raw vivid gold of captures/interface_sonic_2.png's menu wall and
+          // bg.surface the raw cyan of interface_sonic_3.png's options
+          // panel, both undarkened — an earlier same-hue darkening attempt
+          // turned the gold muddy brown and lost the vivid reference look.
+          // Because both grounds are that bright, this is the only dark-UI
+          // theme with a DARK fg.* ramp and light pastel status washes, the
+          // same arrangement the base light theme uses. What did change in
+          // the redesign: accent.subtle moved from a dark gold wash to a
+          // pale pink, and accent.text from gold to a dark magenta. Gold
+          // text on a gold page was effectively invisible, and a dark wash
+          // behind dark text was unreadable.
           bg: {
             page: {
               value: {
-                base: 'white',
-                _dark: '{colors.gray.900}',
-                _catppuccin: '#1e1e2e',
+                base: '#F3F1EC',
+                _dark: '#12141A',
+                _catppuccin: '#181825',
                 _cyberpunk: '#260B32',
-                _matrix: '#0a0f0a',
-                _nintendo: '#0B436A',
-                _megadrive: '#0C1E80',
+                _matrix: '#040C07',
                 _sonicmania: '#E7CB05',
+                _contraste: '#0A0A0B',
               },
             },
             surface: {
               value: {
-                base: '{colors.gray.50}',
-                _dark: '{colors.gray.800}',
-                _catppuccin: '#313244',
+                base: '#FFFFFF',
+                _dark: '#1B1F28',
+                _catppuccin: '#1E1E2E',
                 _cyberpunk: '#3C1150',
-                _matrix: '#10160f',
-                _nintendo: '#D43D26',
-                _megadrive: '#094BE8',
+                _matrix: '#0B170F',
                 _sonicmania: '#31A2F7',
+                _contraste: '#141417',
               },
             },
             muted: {
               value: {
-                base: '{colors.gray.100}',
-                _dark: '{colors.gray.700}',
-                _catppuccin: '#45475a',
+                base: '#EAE7E0',
+                _dark: '#242A36',
+                _catppuccin: '#313244',
                 _cyberpunk: '#4F1669',
-                _matrix: '#1a241a',
-                _nintendo: '#B9321F',
-                _megadrive: '#1B59EF',
+                _matrix: '#142419',
                 _sonicmania: '#58B4F9',
+                _contraste: '#1D1D21',
               },
             },
           },
           bd: {
             subtle: {
               value: {
-                base: '{colors.gray.100}',
-                _dark: '{colors.gray.700}',
-                _catppuccin: '#45475a',
+                base: '#EDEAE3',
+                _dark: '#20252F',
+                _catppuccin: '#313244',
                 _cyberpunk: '#320E43',
-                _matrix: '#1f2e1f',
-                _nintendo: '#4A2E26',
-                _megadrive: '#052852',
+                _matrix: '#0F1E14',
                 _sonicmania: '#0B2336',
+                _contraste: '#17171A',
               },
             },
             default: {
               value: {
-                base: '{colors.gray.200}',
-                _dark: '{colors.gray.600}',
-                _catppuccin: '#585b70',
+                base: '#E0DCD3',
+                _dark: '#2B3240',
+                _catppuccin: '#45475A',
                 _cyberpunk: '#4C1565',
-                _matrix: '#2d4a2d',
-                _nintendo: '#6E3C30',
-                _megadrive: '#0A1B53',
+                _matrix: '#1B3123',
                 _sonicmania: '#123A59',
+                _contraste: '#26262B',
               },
             },
             strong: {
               value: {
-                base: '{colors.gray.300}',
-                _dark: '{colors.gray.500}',
-                _catppuccin: '#6c7086',
+                base: '#CFC9BD',
+                _dark: '#3A4356',
+                _catppuccin: '#585B70',
+                // Literal Blushing Purple at full strength, not a dark
+                // tint of it — every card border and divider is visibly
+                // that purple, which is what gives the theme its ambient
+                // neon-city undertone at rest.
                 _cyberpunk: '#9370DB',
-                _matrix: '#3f6b3f',
-                _nintendo: '#A85C46',
-                _megadrive: '#0E39B4',
+                _matrix: '#2E5438',
                 _sonicmania: '#1D6194',
+                _contraste: '#3A3A42',
               },
             },
           },
           fg: {
             heading: {
               value: {
-                base: '{colors.gray.800}',
-                _dark: '{colors.gray.100}',
-                _catppuccin: '#cdd6f4',
+                base: '#121214',
+                _dark: '#F3F5FA',
+                _catppuccin: '#CDD6F4',
                 _cyberpunk: '#FFFFFF',
-                _matrix: '#39ff14',
-                _nintendo: '#FFFBF2',
-                _megadrive: '#FFFFFF',
+                _matrix: '#43F57B',
                 _sonicmania: '#0D0D0D',
+                _contraste: '#FFFFFF',
               },
             },
             default: {
               value: {
-                base: '{colors.gray.700}',
-                _dark: '{colors.gray.200}',
-                _catppuccin: '#bac2de',
+                base: '#17171A',
+                _dark: '#ECEEF4',
+                _catppuccin: '#BAC2DE',
+                // A ramp off literal Pale Silver, so body text itself
+                // carries the palette instead of a generic cool gray.
                 _cyberpunk: '#D1C5C0',
-                _matrix: '#c8ffcf',
-                _nintendo: '#F7E6D2',
-                _megadrive: '#E4ECFF',
+                _matrix: '#D7F5E0',
                 _sonicmania: '#202020',
+                _contraste: '#F5F5F6',
               },
             },
             muted: {
               value: {
-                base: '{colors.gray.600}',
-                _dark: '{colors.gray.300}',
-                _catppuccin: '#a6adc8',
+                base: '#4A4842',
+                _dark: '#B9C0CF',
+                _catppuccin: '#A6ADC8',
                 _cyberpunk: '#BAA8A1',
-                _matrix: '#8fae8f',
-                _nintendo: '#E0BFA0',
-                _megadrive: '#C7D6FF',
+                _matrix: '#A8CDB4',
                 _sonicmania: '#343434',
+                _contraste: '#B4B4BC',
               },
             },
             subtle: {
               value: {
-                base: '{colors.gray.500}',
-                _dark: '{colors.gray.400}',
-                _catppuccin: '#9399b2',
+                base: '#5E5C55',
+                _dark: '#99A1B3',
+                _catppuccin: '#9399B2',
                 _cyberpunk: '#A58D83',
-                _matrix: '#6b8a6b',
-                _nintendo: '#C49B7D',
-                _megadrive: '#A9BFFA',
+                _matrix: '#7FAE8E',
                 _sonicmania: '#404040',
+                _contraste: '#8E8E96',
               },
             },
             faint: {
               value: {
-                base: '{colors.gray.400}',
-                _dark: '{colors.gray.500}',
-                _catppuccin: '#7f849c',
+                base: '#7C7A72',
+                _dark: '#7B8396',
+                _catppuccin: '#7F849C',
                 _cyberpunk: '#886E63',
-                _matrix: '#4a614a',
-                _nintendo: '#9C7860',
-                _megadrive: '#9AB2EE',
+                _matrix: '#5C8A6B',
                 _sonicmania: '#4E4E4E',
+                _contraste: '#6B6B74',
               },
             },
           },
           // The app's single primary action color — one place to retune it.
-          // Mirrors the blue.* values every button/link already used in
-          // hardcoded form, so this is a drop-in replacement, not a new look.
-          // `fg` is the text color used ON TOP of `solid` — white works for
-          // the saturated blue.500, but Catppuccin's mauve and Cyberpunk's
-          // neon green are pastel/bright enough that dark text reads better.
+          // `fg` is the text color used ON TOP of `solid`: white only where
+          // `solid` is saturated enough to carry it, dark text everywhere
+          // the accent is bright (Catppuccin's mauve, Cyberpunk's lemon,
+          // Matrix's green, Contraste's lime).
           accent: {
             solid: {
               value: {
-                base: '{colors.blue.500}',
-                _dark: '{colors.blue.500}',
-                _catppuccin: '#cba6f7',
+                base: '#2F5BD9',
+                _dark: '#6C8FFF',
+                _catppuccin: '#CBA6F7',
                 _cyberpunk: '#FDF500',
-                _matrix: '#39ff14',
-                _nintendo: '#FFC933',
-                _megadrive: '#D61C1D',
+                _matrix: '#43F57B',
                 _sonicmania: '#CF1646',
+                _contraste: '#C4F000',
               },
             },
             hover: {
               value: {
-                base: '{colors.blue.600}',
-                _dark: '{colors.blue.400}',
-                _catppuccin: '#b4befe',
+                base: '#2449B5',
+                _dark: '#8BA6FF',
+                _catppuccin: '#DDBFFA',
                 _cyberpunk: '#D6CF00',
-                _matrix: '#6bff57',
-                _nintendo: '#FFE066',
-                _megadrive: '#AB1517',
+                _matrix: '#7CFAA5',
                 _sonicmania: '#A61238',
+                _contraste: '#D8FF33',
               },
             },
             subtle: {
               value: {
-                base: '{colors.blue.50}',
-                _dark: '{colors.blue.900}',
-                _catppuccin: '#45475a',
-                _cyberpunk: '#292800',
-                _matrix: '#142414',
-                _nintendo: '#4A3A1A',
-                _megadrive: '#081389',
-                _sonicmania: '#473A00',
+                base: '#E8EEFD',
+                _dark: '#1A2234',
+                _catppuccin: '#2A2140',
+                _cyberpunk: '#2E2A0B',
+                _matrix: '#0E2615',
+                _sonicmania: '#FFE8EF',
+                _contraste: '#1E2405',
               },
             },
             subtleBorder: {
               value: {
-                base: '{colors.blue.200}',
-                _dark: '{colors.blue.700}',
-                _catppuccin: '#6c7086',
+                base: '#BBCCF7',
+                _dark: '#33467A',
+                _catppuccin: '#4D3F6B',
                 _cyberpunk: '#8A7828',
-                _matrix: '#2d4a2d',
-                _nintendo: '#6E5A28',
-                _megadrive: '#27B0FE',
-                _sonicmania: '#EFC300',
+                _matrix: '#2E5438',
+                _sonicmania: '#F0A0B8',
+                _contraste: '#5A6E12',
               },
             },
             text: {
               value: {
-                base: '{colors.blue.600}',
-                _dark: '{colors.blue.400}',
-                _catppuccin: '#cba6f7',
+                base: '#2449B5',
+                _dark: '#8BA6FF',
+                _catppuccin: '#CBA6F7',
                 _cyberpunk: '#FDF500',
-                _matrix: '#39ff14',
-                _nintendo: '#FFD166',
-                _megadrive: '#9FE3FF',
-                _sonicmania: '#FFD51A',
+                _matrix: '#43F57B',
+                // Dark magenta, not the sampled gold: gold text sat on a
+                // gold page and could not be seen.
+                _sonicmania: '#8C1D3A',
+                _contraste: '#C4F000',
               },
             },
             fg: {
               value: {
-                base: 'white',
-                _dark: 'white',
-                _catppuccin: '#1e1e2e',
+                base: '#FFFFFF',
+                _dark: '#0B0E16',
+                _catppuccin: '#1E1E2E',
                 _cyberpunk: '#1A1900',
-                _matrix: '#06100a',
-                _nintendo: '#0B436A',
-                _megadrive: 'white',
-                _sonicmania: 'white',
+                _matrix: '#04120A',
+                _sonicmania: '#FFFFFF',
+                _contraste: '#0A0A0B',
               },
             },
           },
-          // Status colors used for error/success/warning/info text and the
-          // light "wash" badges (Chip, LayoutBadge, DownloadManager status
-          // dots...). base/_dark preserve exactly what was hardcoded inline
-          // across ~18 files before this token existed — zero visual change
-          // there. Catppuccin/Cyberpunk use a neutral surface + colored
-          // text/border instead of a hue-tinted background: neither palette
-          // defines tinted-surface variants per accent, so a colored wash
-          // would be an invented look, not an idiomatic one.
+          // Status colors for error/success/warning/info text and the
+          // tinted badges (Chip, LayoutBadge, DownloadManager status
+          // dots...). Every theme now uses a wash tinted with its own role
+          // hue. The dark themes previously used a NEUTRAL surface here
+          // instead, on the grounds that Catppuccin and Cyberpunk define no
+          // tinted-surface variant per accent, so a colored wash would be
+          // an invented look. The redesign overrides that deliberately: the
+          // status tags are now the main place a row's state is read, and a
+          // neutral wash makes all four roles look identical at a glance.
+          // The wash hues are derived from each theme's own role text
+          // color, so nothing foreign to the palette is introduced.
           status: {
             success: {
               subtle: {
                 value: {
-                  base: '{colors.green.50}',
-                  _dark: '{colors.green.950}',
-                  _catppuccin: '#313244',
-                  _cyberpunk: '#272932',
-                  _matrix: '#10160f',
-                  _nintendo: '#4A2E26',
-                  _megadrive: '#052852',
+                  base: '#D8F0E4',
+                  _dark: '#10231D',
+                  _catppuccin: '#1C2A20',
+                  _cyberpunk: '#0E2E2C',
+                  _matrix: '#0E2615',
                   _sonicmania: '#DEFCF0',
+                  _contraste: '#1E2405',
                 },
               },
               subtleBorder: {
                 value: {
-                  base: '{colors.green.200}',
-                  _dark: '{colors.green.800}',
-                  _catppuccin: '#585b70',
+                  base: '#A8DCC4',
+                  _dark: '#1F6B55',
+                  _catppuccin: '#44603F',
                   _cyberpunk: '#1AC5B0',
-                  _matrix: '#2d4a2d',
-                  _nintendo: '#6E3C30',
-                  _megadrive: '#0A1B53',
+                  _matrix: '#2E5438',
                   _sonicmania: '#10BC76',
+                  _contraste: '#5A6E12',
                 },
               },
               text: {
                 value: {
-                  base: '{colors.green.700}',
-                  _dark: '{colors.green.300}',
-                  _catppuccin: '#a6e3a1',
+                  base: '#0E6B46',
+                  _dark: '#35D4A4',
+                  _catppuccin: '#A6E3A1',
                   _cyberpunk: '#1AC5B0',
-                  _matrix: '#39ff14',
-                  _nintendo: '#3FDE7A',
-                  _megadrive: '#71FF96',
+                  // Matrix and Contraste reuse their accent here on
+                  // purpose — see the note at the top of this block.
+                  _matrix: '#43F57B',
                   _sonicmania: '#085C3A',
+                  _contraste: '#C4F000',
                 },
               },
             },
             danger: {
               subtle: {
                 value: {
-                  base: '{colors.red.50}',
-                  _dark: '{colors.red.950}',
-                  _catppuccin: '#313244',
+                  base: '#FBE4E2',
+                  _dark: '#2A1517',
+                  _catppuccin: '#2C1A22',
+                  // Literal Blood Red as a real dark-red badge wash — the
+                  // one swatch in this palette whose name is already its
+                  // own semantic. Its brightened sibling carries the text,
+                  // since #710000 is too dark to read on.
                   _cyberpunk: '#710000',
-                  _matrix: '#10160f',
-                  _nintendo: '#4A2E26',
-                  _megadrive: '#052852',
+                  _matrix: '#2A0F0F',
                   _sonicmania: '#FAE2E0',
+                  _contraste: '#2A1212',
                 },
               },
               subtleBorder: {
                 value: {
-                  base: '{colors.red.200}',
-                  _dark: '{colors.red.800}',
-                  _catppuccin: '#585b70',
+                  base: '#F0BEB9',
+                  _dark: '#7A3034',
+                  _catppuccin: '#6B3A4A',
                   _cyberpunk: '#FF3D3D',
-                  _matrix: '#2d4a2d',
-                  _nintendo: '#6E3C30',
-                  _megadrive: '#0A1B53',
+                  _matrix: '#6B2A2A',
                   _sonicmania: '#DF423A',
+                  _contraste: '#6B2C2C',
                 },
               },
               text: {
                 value: {
-                  base: '{colors.red.600}',
-                  _dark: '{colors.red.300}',
-                  _catppuccin: '#f38ba8',
+                  base: '#B3261E',
+                  _dark: '#FF8080',
+                  _catppuccin: '#F38BA8',
                   _cyberpunk: '#FF3D3D',
-                  _matrix: '#ff3b3b',
-                  _nintendo: '#FF4D4D',
-                  // Megadrive's accent is Sonic red — a same-hue danger
-                  // would read as "another primary button", not an error.
-                  // (Nintendo's accent is gold, so plain red is safe there.)
-                  _megadrive: '#ff7a33',
+                  _matrix: '#FF5C5C',
                   _sonicmania: '#8C1D17',
+                  _contraste: '#FF6B6B',
                 },
               },
             },
             warning: {
               subtle: {
                 value: {
-                  base: '{colors.amber.50}',
-                  _dark: '{colors.amber.950}',
-                  _catppuccin: '#313244',
-                  _cyberpunk: '#272932',
-                  _matrix: '#10160f',
-                  _nintendo: '#4A2E26',
-                  _megadrive: '#052852',
+                  base: '#FBE6CC',
+                  _dark: '#2A1F10',
+                  _catppuccin: '#2C2118',
+                  _cyberpunk: '#33210A',
+                  _matrix: '#2A2110',
                   _sonicmania: '#FFEFDB',
+                  _contraste: '#2A1E08',
                 },
               },
               subtleBorder: {
                 value: {
-                  base: '{colors.amber.200}',
-                  _dark: '{colors.amber.800}',
-                  _catppuccin: '#585b70',
-                  _cyberpunk: '#ff9d2f',
-                  _matrix: '#2d4a2d',
-                  _nintendo: '#6E3C30',
-                  _megadrive: '#0A1B53',
+                  base: '#F0CFA0',
+                  _dark: '#7A5520',
+                  _catppuccin: '#6B4A33',
+                  _cyberpunk: '#FF9D2F',
+                  _matrix: '#6B5520',
                   _sonicmania: '#CC6E00',
+                  _contraste: '#6B4A12',
                 },
               },
               text: {
                 value: {
-                  base: '{colors.amber.700}',
-                  _dark: '{colors.amber.300}',
-                  _catppuccin: '#f9e2af',
+                  base: '#8A4600',
+                  _dark: '#FFB454',
+                  _catppuccin: '#FAB387',
                   // Cyberpunk's accent already owns yellow — orange keeps
                   // warning visually distinct from the primary action color.
-                  _cyberpunk: '#ff9d2f',
-                  _matrix: '#f9e24a',
-                  _nintendo: '#FFC933',
-                  _megadrive: '#FBCF0A',
+                  _cyberpunk: '#FF9D2F',
+                  _matrix: '#F5C542',
                   _sonicmania: '#7A4200',
+                  _contraste: '#FFB020',
                 },
               },
               // The only status role with a *solid* usage (ScanPage's
@@ -607,133 +507,130 @@ export default defineConfig({
               // appear as a filled button, so they don't need this shape.
               solid: {
                 value: {
-                  base: '{colors.amber.500}',
-                  _dark: '{colors.amber.500}',
-                  _catppuccin: '#f9e2af',
-                  _cyberpunk: '#ff9d2f',
-                  _matrix: '#f9e24a',
-                  _nintendo: '#FFC933',
-                  _megadrive: '#FBCF0A',
+                  base: '#D98A00',
+                  _dark: '#E8963A',
+                  _catppuccin: '#FAB387',
+                  _cyberpunk: '#FF9D2F',
+                  _matrix: '#F5C542',
                   _sonicmania: '#C96E00',
+                  _contraste: '#FFB020',
                 },
               },
               hover: {
                 value: {
-                  base: '{colors.amber.600}',
-                  _dark: '{colors.amber.600}',
-                  _catppuccin: '#fab387',
-                  _cyberpunk: '#ffb65c',
-                  _matrix: '#fff066',
-                  _nintendo: '#FFE066',
-                  _megadrive: '#FFDC4D',
+                  base: '#B87400',
+                  _dark: '#FFB454',
+                  _catppuccin: '#F8C9A8',
+                  _cyberpunk: '#FFB65C',
+                  _matrix: '#FFD966',
                   _sonicmania: '#A85C00',
+                  _contraste: '#FFC14D',
                 },
               },
               fg: {
                 value: {
-                  base: 'white',
-                  _dark: 'white',
-                  _catppuccin: '#1e1e2e',
-                  _cyberpunk: '#1a1000',
-                  _matrix: '#06100a',
-                  _nintendo: '#0B436A',
-                  _megadrive: '#0C1E80',
+                  base: '#FFFFFF',
+                  _dark: '#15100A',
+                  _catppuccin: '#1E1E2E',
+                  _cyberpunk: '#1A1000',
+                  _matrix: '#0F0C02',
                   _sonicmania: '#0D0D0D',
+                  _contraste: '#140E00',
                 },
               },
             },
             info: {
               subtle: {
                 value: {
-                  base: '{colors.blue.50}',
-                  _dark: '{colors.blue.950}',
-                  _catppuccin: '#313244',
-                  _cyberpunk: '#272932',
-                  _matrix: '#10160f',
-                  _nintendo: '#4A2E26',
-                  _megadrive: '#052852',
+                  base: '#E3EDFA',
+                  _dark: '#141E2E',
+                  _catppuccin: '#1A2234',
+                  _cyberpunk: '#0C2A2E',
+                  _matrix: '#0A2528',
                   _sonicmania: '#DDEBFD',
+                  _contraste: '#0A1F2C',
                 },
               },
               subtleBorder: {
                 value: {
-                  base: '{colors.blue.200}',
-                  _dark: '{colors.blue.800}',
-                  _catppuccin: '#585b70',
+                  base: '#B9D3F0',
+                  _dark: '#2C4A75',
+                  _catppuccin: '#3C4F75',
                   _cyberpunk: '#37EBF3',
-                  _matrix: '#2d4a2d',
-                  _nintendo: '#6E3C30',
-                  _megadrive: '#0A1B53',
+                  _matrix: '#2A5A5E',
                   _sonicmania: '#267EF3',
+                  _contraste: '#1E5878',
                 },
               },
               text: {
                 value: {
-                  base: '{colors.blue.700}',
-                  _dark: '{colors.blue.300}',
-                  _catppuccin: '#89b4fa',
+                  base: '#1F5AA8',
+                  _dark: '#7FB6FF',
+                  _catppuccin: '#89B4FA',
+                  // Literal Electric Blue. Also hardcoded in every
+                  // `_focusVisible` ring across the app, so the two must
+                  // stay in sync.
                   _cyberpunk: '#37EBF3',
-                  _matrix: '#39f9ff',
-                  _nintendo: '#78C1FF',
-                  _megadrive: '#3BC8FE',
+                  _matrix: '#39F9FF',
                   _sonicmania: '#073A7D',
+                  _contraste: '#38BDF8',
                 },
               },
             },
           },
-          // A second, distinct accent the app already used ad hoc (raw
-          // violet.*, found during the status-color audit, same problem as
-          // accent.* before that token existed): the "suggested by the app"
-          // actions (SourcesManager's "✨ Suggérer des sources", its adopt
-          // button in SuggestionRow) and the Category filter chips — kept
-          // visually separate from the primary accent on purpose.
+          // A second, distinct accent for the "suggested by the app"
+          // actions (SourcesManager's suggest button, its adopt button in
+          // SuggestionRow) and the Category filter chips — kept visually
+          // separate from the primary accent on purpose.
+          //
+          // Contraste's is a sky blue rather than another lime: its lime is
+          // already carrying both the primary action and the owned status,
+          // and a third use would erase the distinction entirely.
           accent2: {
             solid: {
               value: {
-                base: '{colors.violet.500}',
-                _dark: '{colors.violet.500}',
-                _catppuccin: '#f5c2e7',
+                base: '#6D44C8',
+                _dark: '#A78BFA',
+                _catppuccin: '#F5C2E7',
                 _cyberpunk: '#CB1DCD',
-                _matrix: '#f9e24a',
-                _nintendo: '#2F6FD1',
-                _megadrive: '#FBCF0A',
+                _matrix: '#F5C542',
                 _sonicmania: '#EFC300',
+                _contraste: '#38BDF8',
               },
             },
             hover: {
               value: {
-                base: '{colors.violet.600}',
-                _dark: '{colors.violet.400}',
-                _catppuccin: '#f5e0dc',
+                base: '#5835A8',
+                _dark: '#BFA6FC',
+                _catppuccin: '#F8D4EE',
+                // Literal Frostbite, not a darkened Steel Pink — two named
+                // palette pinks forming an actual solid/hover pair.
                 _cyberpunk: '#E455AE',
-                _matrix: '#fff066',
-                _nintendo: '#3F80E0',
-                _megadrive: '#FFDC4D',
+                _matrix: '#FFD966',
                 _sonicmania: '#D6AF00',
+                _contraste: '#7DD3FC',
               },
             },
             subtleBorder: {
               value: {
-                base: '{colors.violet.200}',
-                _dark: '{colors.violet.800}',
-                _catppuccin: '#6c7086',
+                base: '#D5C8F2',
+                _dark: '#3E3566',
+                _catppuccin: '#5A4257',
                 _cyberpunk: '#4C1565',
-                _matrix: '#2d4a2d',
-                _nintendo: '#6E3C30',
-                _megadrive: '#0A1B53',
-                _sonicmania: '#123A59',
+                _matrix: '#4A3A12',
+                _sonicmania: '#B08C00',
+                _contraste: '#15425E',
               },
             },
             fg: {
               value: {
-                base: 'white',
-                _dark: 'white',
-                _catppuccin: '#1e1e2e',
-                _cyberpunk: 'white',
-                _matrix: '#06100a',
-                _nintendo: 'white',
-                _megadrive: '#0C1E80',
+                base: '#FFFFFF',
+                _dark: '#0B0E16',
+                _catppuccin: '#1E1E2E',
+                _cyberpunk: '#FFFFFF',
+                _matrix: '#0F0C02',
                 _sonicmania: '#0D0D0D',
+                _contraste: '#04131C',
               },
             },
           },
