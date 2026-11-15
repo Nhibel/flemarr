@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from '../App.js';
 import { getSettings, listDats } from '@/lib/api.js';
@@ -47,9 +48,13 @@ describe('App', () => {
     getSettingsMock.mockResolvedValue(settings({ topology: 'local' }));
     render(<App />, { wrapper });
 
+    // With no DAT registered, the two ways to add a system render inline
+    // rather than behind the "+ Ajouter un système" button — a first run
+    // would otherwise be an empty screen whose only content is a button.
     expect(await screen.findByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /rom-curator/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /manuel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /importer un \.dat/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ajouter un système/i })).not.toBeInTheDocument();
   });
 
   it('asks where the games live on a never-used install', async () => {
@@ -91,5 +96,51 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: /où vivent tes jeux/i })).toBeInTheDocument(),
     );
+  });
+});
+
+describe('App — the systems screen', () => {
+  const dats = [
+    { id: 'd1', system: 'Super Nintendo', gameCount: 1842, source: 'no-intro' as const },
+    { id: 'd2', system: 'PlayStation', gameCount: 1304, source: 'redump' as const },
+  ];
+
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue(settings({ topology: 'local' }));
+    listDatsMock.mockResolvedValue(dats);
+  });
+
+  it('shows one card per registered system', async () => {
+    render(<App />, { wrapper });
+
+    expect(await screen.findByRole('button', { name: /^Super Nintendo/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^PlayStation/ })).toBeInTheDocument();
+    // Removing a system is its own control, not part of the card's target.
+    expect(screen.getByRole('button', { name: 'Retirer Super Nintendo' })).toBeInTheDocument();
+  });
+
+  // The console catalogue is long, and it is not what you came for when you
+  // already have systems to open.
+  it('keeps the catalogue behind a button once a system exists', async () => {
+    render(<App />, { wrapper });
+
+    expect(
+      await screen.findByRole('button', { name: /ajouter un système/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /fresh1g1r/i })).not.toBeInTheDocument();
+  });
+
+  it('opens the catalogue in a dialog', async () => {
+    const user = userEvent.setup();
+    render(<App />, { wrapper });
+
+    await user.click(await screen.findByRole('button', { name: /ajouter un système/i }));
+
+    const dialog = screen.getByRole('dialog', { name: /ajouter un système/i });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Fermer' }));
+    expect(screen.queryByRole('button', { name: /fresh1g1r/i })).not.toBeInTheDocument();
   });
 });
