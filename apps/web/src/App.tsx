@@ -25,7 +25,7 @@ import { useTheme } from '@/lib/use-theme.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
-import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
+import { GearIcon, BookIcon, SearchIcon, iconBtnClass } from '@/components/icons.js';
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
@@ -380,32 +380,89 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         flexDirection: 'column',
       })}
     >
-      {/* Header */}
+      {/* Header — one floating card holding the system name, the library
+          search and the icon actions, as the design comps show it. The
+          search used to sit at the bottom of GameFilters; it belongs with
+          the title because it is the control reached for most often, and
+          moving it freed GameFilters to collapse into a single row.
+          It renders only on the Games tab: it filters that list and
+          nothing else, so showing it over the scanner or the download
+          manager would promise something it does not do. */}
       <div
         className={css({
           display: 'flex',
           alignItems: 'center',
-          gap: '4',
+          gap: '3',
+          flexWrap: 'wrap',
           mb: '4',
+          px: '4',
+          py: '3',
+          bg: 'bg.surface',
+          borderRadius: '16px',
+          shadow: 'md',
           flexShrink: '0',
         })}
       >
         <h1
           title={dat.system}
           className={css({
-            fontSize: '3xl',
+            fontSize: 'xl',
             fontWeight: 'bold',
             color: 'fg.heading',
-            flex: 1,
             minWidth: '0',
             truncate: true,
+            _cyberpunk: {
+              textShadow: '0 0 12px rgba(253, 245, 0, 0.3)',
+            },
+            _matrix: {
+              textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
+            },
           })}
         >
           {dat.system}
         </h1>
-        <span className={css({ fontSize: 'sm', color: 'fg.faint' })}>
+        <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
           {dat.source} · {dat.gameCount} jeux
         </span>
+
+        {tab === 'games' && (
+          <label
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2',
+              flex: '1',
+              minWidth: '40',
+              px: '3',
+              bg: 'bg.page',
+              borderRadius: '12px',
+              color: 'fg.subtle',
+              _focusWithin: {
+                _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
+              },
+            })}
+          >
+            <SearchIcon />
+            <span className={css({ srOnly: true })}>Rechercher un jeu</span>
+            <input
+              type="search"
+              placeholder={`Rechercher parmi ${games.length} jeux…`}
+              value={filterState.search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={css({
+                flex: '1',
+                minWidth: '0',
+                py: '2',
+                bg: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'fg.default',
+                fontSize: 'sm',
+              })}
+            />
+          </label>
+        )}
+
         <Button variant="secondary" size="sm" onClick={onReset}>
           Charger un autre DAT
         </Button>
@@ -436,9 +493,10 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           display: 'flex',
           gap: '1',
           mb: '4',
-          pb: '2',
-          borderBottom: '1px solid',
-          borderColor: 'bd.default',
+          alignSelf: 'flex-start',
+          p: '0.5',
+          bg: 'bg.muted',
+          borderRadius: '13px',
           flexWrap: 'wrap',
           flexShrink: '0',
         })}
@@ -449,17 +507,18 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             onClick={() => setTab(t)}
             className={css({
               px: '4',
-              py: '1.5',
+              minH: '34px',
               fontSize: 'sm',
-              fontWeight: 'medium',
+              fontWeight: tab === t ? 'bold' : 'medium',
               cursor: 'pointer',
-              borderRadius: 'lg',
+              border: 'none',
+              borderRadius: '10px',
               transition: 'background-color 0.15s, color 0.15s',
-              bg: tab === t ? 'accent.subtle' : 'transparent',
-              color: tab === t ? 'accent.text' : 'fg.subtle',
+              bg: tab === t ? 'accent.solid' : 'transparent',
+              color: tab === t ? 'accent.fg' : 'fg.subtle',
+              _cyberpunk: { boxShadow: tab === t ? '0 0 10px #FDF500' : 'none' },
               _hover: {
-                color: tab === t ? 'accent.text' : 'fg.default',
-                bg: tab === t ? 'accent.subtle' : 'bg.surface',
+                color: tab === t ? 'accent.fg' : 'fg.default',
               },
             })}
           >
@@ -500,7 +559,6 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 selectedOnly={selectedOnly}
                 selectedCount={selected.size}
                 onToggleSelectedOnly={() => setSelectedOnly((v) => !v)}
-                onSearch={setSearch}
                 onToggleRegion={toggleRegion}
                 onToggleCategory={toggleCategory}
                 onSetSortBy={setSortBy}
@@ -542,8 +600,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               <div className={css({ flex: '1', minWidth: '0' })}>
                 <SelectionSummary games={games} selected={selected} />
               </div>
+              {/* Primary, not secondary: in the comps the dock's button is
+                  the filled accent one — it is what you press once the
+                  selection is made, and the dock exists to carry it. */}
               {nextTab && (
-                <Button variant="secondary" size="sm" onClick={() => setTab(nextTab)}>
+                <Button variant="primary" size="md" onClick={() => setTab(nextTab)}>
                   {TAB_LABELS[nextTab]} ›
                 </Button>
               )}
