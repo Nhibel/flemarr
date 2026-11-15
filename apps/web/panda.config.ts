@@ -674,8 +674,10 @@ export default defineConfig({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '2',
-            fontWeight: 'medium',
-            borderRadius: 'lg',
+            fontWeight: 'semibold',
+            // Literal px, not the `lg` token — a rem radius would grow with
+            // the live font-size control and round a button into a pill.
+            borderRadius: '12px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             transition: 'background-color 0.15s, border-color 0.15s, box-shadow 0.15s',
@@ -697,17 +699,22 @@ export default defineConfig({
                   animation: 'neon-pulse 2.4s ease-in-out infinite',
                 },
               },
+              // A filled tone rather than an outline, for the same reason
+              // the card lost its border: a screen full of 1px-outlined
+              // buttons reads as a wireframe. Cyberpunk keeps its cyan
+              // outline locally, where the line is the neon, not chrome.
               secondary: {
-                bg: 'bg.surface',
+                bg: 'bg.muted',
                 color: 'fg.default',
-                border: '1px solid',
-                borderColor: 'bd.strong',
-                _cyberpunk: { borderColor: '#37EBF3' },
+                _cyberpunk: { border: '1px solid', borderColor: '#37EBF3' },
                 _hover: {
-                  bg: 'bg.muted',
+                  bg: 'bg.surface',
                   _cyberpunk: { boxShadow: '0 0 12px #CB1DCD, 0 0 28px rgba(203, 29, 205, 0.4)' },
                 },
               },
+              // Danger keeps its outline: it is the one variant where the
+              // border carries meaning rather than structure, and a filled
+              // red would read as the primary action.
               danger: {
                 bg: 'bg.surface',
                 color: 'status.danger.text',
@@ -724,9 +731,12 @@ export default defineConfig({
                 _hover: { bg: 'bg.surface', color: 'fg.default' },
               },
             },
+            // minH in literal px, like the radius: these are touch targets
+            // (the app is used on a Steam Deck), so they must not shrink
+            // when the live font-size control is turned down.
             size: {
-              sm: { px: '2.5', py: '1', fontSize: 'xs' },
-              md: { px: '4', py: '2', fontSize: 'sm' },
+              sm: { px: '2.5', py: '1', fontSize: 'xs', minH: '32px' },
+              md: { px: '4', py: '2', fontSize: 'sm', minH: '40px' },
             },
           },
           defaultVariants: { variant: 'primary', size: 'md' },
@@ -735,15 +745,29 @@ export default defineConfig({
           className: 'card',
           base: {
             bg: 'bg.surface',
-            border: '1px solid',
-            borderColor: 'bd.default',
-            borderRadius: 'xl',
-            shadow: 'sm',
+            // Depth comes from the shadow and from the surface being a
+            // different tone than the page, not from a 1px gray line. The
+            // old `1px solid bd.default` border is gone on purpose: with a
+            // dozen stacked cards, the lines were the loudest thing on
+            // screen. bd.* is still used for dividers INSIDE a card, where
+            // a line is the right tool.
+            //
+            // borderRadius is a literal 16px, not the `xl` token: every rem
+            // token scales with the live font-size control
+            // (src/lib/use-font-scale.ts), and a corner radius that grows
+            // with the text size turns cards into lozenges at 24px.
+            borderRadius: '16px',
+            shadow: 'md',
             // Cyberpunk-only: every card gets a standing neon edge (not
             // just on hover/active) — a magenta border glow with a faint
             // cyan undertone, so the ambiance is ambient, not purely
             // reactive to clicks.
+            // Keeps its own 1px border, unlike every other theme: the
+            // border IS the neon edge here, not structural chrome, so it
+            // has to be declared locally now that the shared border is
+            // gone.
             _cyberpunk: {
+              border: '1px solid',
               borderColor: 'rgba(203, 29, 205, 0.5)',
               boxShadow:
                 '0 0 1px rgba(203, 29, 205, 0.6), 0 0 14px rgba(203, 29, 205, 0.2), inset 0 0 18px rgba(55, 235, 243, 0.05)',

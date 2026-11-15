@@ -33,8 +33,11 @@ export function GameRow({
   mode = 'normal',
   style,
 }: Props) {
-  // Boxart slot size; compact mode has no slot at all.
-  const artSize = '10';
+  // Boxart slot size; compact mode has no slot at all. A literal px, not a
+  // spacing token: the art is a fixed-size image slot, and a rem value
+  // would be rescaled by the live font-size control
+  // (src/lib/use-font-scale.ts) independently of the image inside it.
+  const artSize = mode === 'compact' ? '0px' : '44px';
   return (
     <div
       role="option"
@@ -45,11 +48,20 @@ export function GameRow({
         display: 'flex',
         alignItems: 'center',
         gap: '3',
-        px: '4',
-        py: '2',
-        borderBottom: '1px solid',
-        borderColor: 'bd.subtle',
+        px: '3',
+        py: '1.5',
+        // 56px of rhythm per row (44px art + breathing room), as a floor
+        // rather than a fixed height so a long name that wraps, or a large
+        // font-scale setting, can still grow the row instead of clipping.
+        minH: mode === 'compact' ? '40px' : '56px',
+        // The selection/hover highlight is an inset rounded block, not a
+        // band running edge to edge: the list is a rounded card now, and a
+        // full-bleed highlight on the first or last row would square off
+        // its corners. mx + a literal radius keep it clear of them.
+        mx: '1.5',
+        borderRadius: '12px',
         bg: isSelected ? 'accent.subtle' : isFocused ? 'bg.muted' : 'transparent',
+        // Inset, so the keyboard focus ring also stays inside the card.
         outline: isFocused ? '2px solid token(colors.accent.solid)' : 'none',
         outlineOffset: '-2px',
         cursor: 'pointer',
@@ -76,65 +88,97 @@ export function GameRow({
             src={boxartSrc}
             alt=""
             loading="lazy"
+            style={{ width: artSize, height: artSize }}
             className={css({
-              w: artSize,
-              h: artSize,
               objectFit: 'contain',
               flexShrink: 0,
-              borderRadius: 'sm',
+              borderRadius: '10px',
             })}
           />
         ) : (
           <span
             aria-hidden
+            style={{ width: artSize, height: artSize }}
             className={css({
-              w: artSize,
-              h: artSize,
               flexShrink: 0,
-              borderRadius: 'sm',
+              borderRadius: '10px',
               bg: 'bg.muted',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'fg.faint',
-              fontSize: 'xs',
+              // The first letter of the title rather than a "?": at 44px
+              // the slot is big enough to read as a real element, and an
+              // initial distinguishes neighbouring rows while the actual
+              // art loads (or when none exists at all).
+              fontFamily: 'display',
+              fontSize: 'sm',
+              fontWeight: 'bold',
             })}
           >
-            ?
+            {game.name.slice(0, 1).toUpperCase()}
           </span>
         ))}
 
-      <span className={css({ flex: 1, fontSize: 'sm', truncate: true })}>{game.name}</span>
-
-      <span className={css({ display: 'flex', gap: '1', flexShrink: 0 })}>
-        {game.region.map((r) => (
+      <span className={css({ flex: 1, minW: '0' })}>
+        <span className={css({ display: 'block', fontSize: 'sm', truncate: true })}>
+          {game.name}
+        </span>
+        {/* Region and size on one mono line under the title: they are
+            technical data, which is exactly what the mono face is reserved
+            for, and stacking them frees the row's full width for the name.
+            Compact mode keeps the old single-line shape. */}
+        {mode !== 'compact' && (
           <span
-            key={r}
             className={css({
+              display: 'block',
+              fontFamily: 'mono',
               fontSize: 'xs',
-              px: '1.5',
-              py: '0.5',
-              bg: 'bg.muted',
-              color: 'fg.muted',
-              borderRadius: 'sm',
+              color: 'fg.subtle',
+              mt: '0.5',
+              truncate: true,
             })}
           >
-            {r}
+            {[game.region.join('/'), formatSize(totalSize(game))].filter(Boolean).join(' · ')}
           </span>
-        ))}
+        )}
       </span>
 
-      <span
-        className={css({
-          fontSize: 'xs',
-          color: 'fg.faint',
-          flexShrink: 0,
-          w: '16',
-          textAlign: 'right',
-        })}
-      >
-        {formatSize(totalSize(game))}
-      </span>
+      {mode === 'compact' && (
+        <>
+          <span className={css({ display: 'flex', gap: '1', flexShrink: 0 })}>
+            {game.region.map((r) => (
+              <span
+                key={r}
+                className={css({
+                  fontFamily: 'mono',
+                  fontSize: 'xs',
+                  px: '1.5',
+                  py: '0.5',
+                  bg: 'bg.muted',
+                  color: 'fg.muted',
+                  borderRadius: '6px',
+                })}
+              >
+                {r}
+              </span>
+            ))}
+          </span>
+
+          <span
+            className={css({
+              fontFamily: 'mono',
+              fontSize: 'xs',
+              color: 'fg.faint',
+              flexShrink: 0,
+              w: '16',
+              textAlign: 'right',
+            })}
+          >
+            {formatSize(totalSize(game))}
+          </span>
+        </>
+      )}
     </div>
   );
 }

@@ -19,14 +19,16 @@ interface Props {
 const pageBtnClass = css({
   px: '3',
   py: '1',
+  minH: '32px',
   fontSize: 'sm',
-  border: '1px solid',
-  borderColor: 'bd.default',
-  borderRadius: 'lg',
+  borderRadius: '11px',
   cursor: 'pointer',
   bg: 'bg.surface',
+  border: 'none',
+  color: 'fg.default',
+  shadow: 'sm',
   _hover: { bg: 'bg.muted' },
-  _disabled: { opacity: 0.4, cursor: 'default', _hover: { bg: 'bg.surface' } },
+  _disabled: { opacity: 0.4, cursor: 'default', shadow: 'none', _hover: { bg: 'bg.surface' } },
 });
 
 export function GameList({ datId, games, selected, onToggle }: Props) {
@@ -111,37 +113,50 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
 
   return (
     <>
+      {/* A segmented control, not two separate outlined buttons: the two
+          modes are mutually exclusive, and one track with a sliding filled
+          thumb says that where two bordered pills did not. */}
       <div
         className={css({
           display: 'flex',
           justifyContent: 'flex-end',
-          gap: '1',
           mb: '2',
           flexShrink: '0',
         })}
       >
-        {DISPLAY_MODES.map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            onClick={() => setMode(m)}
-            className={css({
-              px: '2',
-              py: '0.5',
-              fontSize: 'xs',
-              border: '1px solid',
-              borderRadius: 'lg',
-              cursor: 'pointer',
-              bg: mode === m ? 'accent.solid' : 'bg.surface',
-              color: mode === m ? 'accent.fg' : 'fg.muted',
-              borderColor: mode === m ? 'accent.solid' : 'bd.strong',
-              _hover: { borderColor: 'accent.hover' },
-            })}
-          >
-            {MODE_LABELS[m]}
-          </button>
-        ))}
+        <div
+          className={css({
+            display: 'inline-flex',
+            gap: '0.5',
+            p: '0.5',
+            bg: 'bg.muted',
+            borderRadius: '12px',
+          })}
+        >
+          {DISPLAY_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={css({
+                px: '2.5',
+                py: '1',
+                minH: '28px',
+                fontSize: 'xs',
+                fontWeight: mode === m ? 'bold' : 'medium',
+                border: 'none',
+                borderRadius: '9px',
+                cursor: 'pointer',
+                bg: mode === m ? 'accent.solid' : 'transparent',
+                color: mode === m ? 'accent.fg' : 'fg.subtle',
+                _hover: { color: mode === m ? 'accent.fg' : 'fg.default' },
+              })}
+            >
+              {MODE_LABELS[m]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div
@@ -186,9 +201,14 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           minHeight: '180px',
           overflowY: 'auto',
           bg: 'bg.surface',
-          border: '1px solid',
-          borderColor: 'bd.default',
-          borderRadius: 'xl',
+          // A floating surface: shadow and tone for depth, no 1px outline,
+          // and literal-px radii so they don't scale with the live
+          // font-size control. The small padding is what lets each row's
+          // inset selection highlight (GameRow) stay clear of these
+          // rounded corners.
+          borderRadius: '18px',
+          shadow: 'md',
+          p: '1',
           outline: 'none',
           _focusVisible: {
             ring: '2px',
@@ -248,7 +268,10 @@ export function GameList({ datId, games, selected, onToggle }: Props) {
           >
             ‹ Précédent
           </button>
-          <span>
+          {/* Counts in mono — they are technical data, and the fixed
+              advance stops the whole row from shifting as the numbers
+              change width between pages. */}
+          <span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>
             {start + 1}–{Math.min(start + pageItems.length, total)} sur {total}
             {' · '}page {page + 1} / {pageCount}
           </span>

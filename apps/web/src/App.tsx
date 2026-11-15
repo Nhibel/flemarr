@@ -518,6 +518,13 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 a small window or cramped on a large one. The next-tab
                 button lives in the same row instead of adding one of its
                 own — every row here is vertical space taken from the list. */}
+            {/* A floating action dock: its own rounded surface detached
+                from the page, rather than text sitting loose under the
+                list. SelectionSummary no longer draws a surface of its own
+                (that was a card inside a card), so the dock is the only
+                one here. Radius in literal px, like every other radius
+                since the redesign, so the live font-size control can't
+                round it into a lozenge. */}
             <div
               className={css({
                 flexShrink: '0',
@@ -526,6 +533,10 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3',
+                px: '4',
+                bg: 'bg.surface',
+                borderRadius: '16px',
+                shadow: 'lg',
               })}
             >
               <div className={css({ flex: '1', minWidth: '0' })}>

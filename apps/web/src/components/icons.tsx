@@ -41,3 +41,64 @@ export function GearIcon() {
     </svg>
   );
 }
+
+/* Status pictograms for Chip. Each status is carried by hue, by the
+   lightness of its tinted wash AND by one of these shapes, so the three
+   remain distinguishable to an eye that confuses the hues — a red/green
+   pair is never the only signal. Deliberately tiny and stroke-only: they
+   sit inside a text-sized tag and must not outweigh the number next to
+   them. `currentColor` makes each one inherit its tag's status color. */
+
+export function CheckIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 12.5l5.5 5.5L20 7" />
+    </svg>
+  );
+}
+
+export function WarningIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 3.5L21 19H3z" />
+      <path d="M12 10v4M12 16.5v.01" />
+    </svg>
+  );
+}
+
+export function PlusIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}

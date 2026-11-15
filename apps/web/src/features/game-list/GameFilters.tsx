@@ -158,7 +158,9 @@ export function GameFilters({
           Sélection uniquement ({selectedCount})
         </button>
 
-        <span className={css({ ml: 'auto', fontSize: 'xs', color: 'fg.faint' })}>
+        {/* Mono: the two counts are technical data, and a proportional
+            face made the row jitter as they changed width. */}
+        <span className={css({ ml: 'auto', fontFamily: 'mono', fontSize: 'xs', color: 'fg.subtle' })}>
           {filteredCount} / {totalCount}
         </span>
 

@@ -20,33 +20,26 @@ export function SelectionSummary({ games, selected }: Props) {
     0,
   );
 
+  // No surface, border or radius of its own any more: this renders inside
+  // the action dock in App.tsx, which is the surface. Two nested cards read
+  // as a box in a box, and the old bordered chip was also why the empty and
+  // non-empty states had different heights.
   if (selected.size === 0) {
-    return (
-      <p className={css({ fontSize: 'sm', color: 'fg.faint', py: '2' })}>Aucun jeu sélectionné.</p>
-    );
+    return <p className={css({ fontSize: 'sm', color: 'fg.subtle' })}>Aucun jeu sélectionné.</p>;
   }
 
   return (
-    <div
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4',
-        px: '4',
-        py: '2',
-        bg: 'accent.subtle',
-        border: '1px solid',
-        borderColor: 'accent.subtleBorder',
-        borderRadius: 'lg',
-        fontSize: 'sm',
-      })}
-    >
-      <span className={css({ fontWeight: 'semibold', color: 'accent.text' })}>
+    <p className={css({ display: 'flex', alignItems: 'baseline', gap: '2', fontSize: 'sm' })}>
+      <span className={css({ fontWeight: 'bold', color: 'fg.heading' })}>
         {selected.size} jeu{selected.size !== 1 ? 'x' : ''} sélectionné
         {selected.size !== 1 ? 's' : ''}
       </span>
-      <span className={css({ color: 'accent.text' })}>·</span>
-      <span className={css({ color: 'accent.text' })}>{formatSize(totalBytes)} au total</span>
-    </div>
+      {/* The total is technical data, hence the mono face — and it is the
+          number that decides whether a download is worth starting, so it
+          gets its own voice rather than blending into the sentence. */}
+      <span className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.subtle' })}>
+        · {formatSize(totalBytes)} au total
+      </span>
+    </p>
   );
 }
