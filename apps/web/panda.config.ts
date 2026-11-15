@@ -58,8 +58,11 @@ export default defineConfig({
       fontFamily: 'display',
       letterSpacing: '-0.02em',
     },
+    // bg.inset, not bg.page: a field is a recess inside whatever surface
+    // holds it, and on bg.page it was the page tone drawn on top of the
+    // page — invisible as a field.
     'input, textarea, select': {
-      bg: 'bg.page',
+      bg: 'bg.inset',
       color: 'fg.default',
     },
   },
@@ -94,19 +97,7 @@ export default defineConfig({
           },
         },
       },
-      // Cyberpunk-only: a slow breathing glow for the primary CTA, so the
-      // neon reads as an actual lit sign rather than a static colored
-      // shadow. Every other theme ignores this — nothing references it
-      // outside the button recipe's `_cyberpunk` primary variant below.
       keyframes: {
-        'neon-pulse': {
-          '0%, 100%': {
-            boxShadow: '0 0 10px #FDF500, 0 0 24px rgba(253, 245, 0, 0.35)',
-          },
-          '50%': {
-            boxShadow: '0 0 18px #FDF500, 0 0 44px rgba(253, 245, 0, 0.6)',
-          },
-        },
         // Every theme: a sliding stripe for download progress when the
         // total size is unknown (archive.org's zip-view extraction streams
         // chunked, with no Content-Length) — a static bar frozen at 0%
@@ -206,6 +197,39 @@ export default defineConfig({
                 _matrix: '#16291C',
                 _sonicmania: '#BFEFF7',
                 _contraste: '#1D1D21',
+              },
+            },
+            // A recessed field sitting INSIDE a surface: the comps' search
+            // input and icon buttons. Always a step deeper than
+            // bg.surface, which is why it cannot just reuse bg.page — in
+            // the light comp it is darker than the page, and in the dark
+            // ones it sits between page and surface. Without it, an input
+            // inside the header card fell back to bg.page and read as a
+            // hole punched through the card.
+            inset: {
+              value: {
+                base: '#F0EEE8',
+                _dark: '#141821',
+                _catppuccin: '#11111B',
+                _cyberpunk: '#0A0D12',
+                _matrix: '#06100A',
+                _sonicmania: '#BFEFF7',
+                _contraste: '#0E0E10',
+              },
+            },
+            // The boxart placeholder slot. Mostly a step lighter than
+            // bg.muted, but Sonic Mania's comp fills it with the page's
+            // own gold and Contraste's with a lighter grey than its muted
+            // tone, so it cannot be derived from either.
+            slot: {
+              value: {
+                base: '#E7E4DC',
+                _dark: '#2A3040',
+                _catppuccin: '#313244',
+                _cyberpunk: '#1E242D',
+                _matrix: '#16291C',
+                _sonicmania: '#FFD522',
+                _contraste: '#222228',
               },
             },
           },
@@ -659,32 +683,28 @@ export default defineConfig({
           },
           variants: {
             variant: {
-              // Cyberpunk-only glow (box-shadow in the theme's own accent
-              // hues) layered on top of the shared variants below, rather
-              // than a parallel set of cyberpunk-specific styles — flat
-              // hex alone reads as "dark theme with a yellow accent," not
-              // neon, so the glow is what actually sells the ambiance.
+              // Two themes' comps put a glow behind this button, and it is
+              // a *static* one at the exact strengths below — not the
+              // breathing animation that used to be here, which was my
+              // invention and which neither artboard shows.
               primary: {
                 bg: 'accent.solid',
                 color: 'accent.fg',
                 shadow: 'sm',
                 _hover: { bg: 'accent.hover' },
-                _cyberpunk: {
-                  animation: 'neon-pulse 2.4s ease-in-out infinite',
-                },
+                _cyberpunk: { boxShadow: '0 0 18px rgba(253, 245, 0, 0.4)' },
+                _matrix: { boxShadow: '0 0 18px rgba(67, 245, 123, 0.35)' },
               },
               // A filled tone rather than an outline, for the same reason
               // the card lost its border: a screen full of 1px-outlined
-              // buttons reads as a wireframe. Cyberpunk keeps its cyan
-              // outline locally, where the line is the neon, not chrome.
+              // buttons reads as a wireframe. The cyan outline and the
+              // magenta hover glow that used to be here for Cyberpunk were
+              // mine; its comp draws this button as a plain filled tone
+              // like every other theme.
               secondary: {
                 bg: 'bg.muted',
                 color: 'fg.default',
-                _cyberpunk: { border: '1px solid', borderColor: '#37EBF3' },
-                _hover: {
-                  bg: 'bg.surface',
-                  _cyberpunk: { boxShadow: '0 0 12px #CB1DCD, 0 0 28px rgba(203, 29, 205, 0.4)' },
-                },
+                _hover: { bg: 'bg.surface' },
               },
               // Danger keeps its outline: it is the one variant where the
               // border carries meaning rather than structure, and a filled
@@ -694,10 +714,7 @@ export default defineConfig({
                 color: 'status.danger.text',
                 border: '1px solid',
                 borderColor: 'status.danger.subtleBorder',
-                _hover: {
-                  bg: 'status.danger.subtle',
-                  _cyberpunk: { boxShadow: '0 0 12px #FF3D3D, 0 0 28px rgba(255, 61, 61, 0.4)' },
-                },
+                _hover: { bg: 'status.danger.subtle' },
               },
               ghost: {
                 bg: 'transparent',
@@ -731,21 +748,20 @@ export default defineConfig({
             // (src/lib/use-font-scale.ts), and a corner radius that grows
             // with the text size turns cards into lozenges at 24px.
             borderRadius: '16px',
-            shadow: 'md',
-            // Cyberpunk-only: every card gets a standing neon edge (not
-            // just on hover/active) — a magenta border glow with a faint
-            // cyan undertone, so the ambiance is ambient, not purely
-            // reactive to clicks.
-            // Keeps its own 1px border, unlike every other theme: the
-            // border IS the neon edge here, not structural chrome, so it
-            // has to be declared locally now that the shared border is
-            // gone.
-            _cyberpunk: {
-              border: '1px solid',
-              borderColor: 'rgba(203, 29, 205, 0.5)',
-              boxShadow:
-                '0 0 1px rgba(203, 29, 205, 0.6), 0 0 14px rgba(203, 29, 205, 0.2), inset 0 0 18px rgba(55, 235, 243, 0.05)',
-            },
+            // The comps' own card shadows: a plain black drop shadow,
+            // deeper in the darker themes. Cyberpunk used to get a
+            // standing magenta neon edge here with a cyan inner glow —
+            // that was my invention, and its artboard shows nothing of the
+            // kind, just the shadow below. The theme's neon now comes only
+            // from where its comp actually puts it: the yellow page title,
+            // the glow behind the primary button, and the cyan icons.
+            boxShadow: '0 4px 14px rgba(23, 23, 26, 0.08)',
+            _dark: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
+            _catppuccin: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
+            _cyberpunk: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
+            _matrix: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
+            _sonicmania: { boxShadow: '0 6px 18px rgba(10, 34, 41, 0.25)' },
+            _contraste: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.45)' },
           },
         },
       },

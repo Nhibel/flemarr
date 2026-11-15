@@ -14,6 +14,10 @@ import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
  * indistinguishable from the interactive filter chips in GameFilters, and
  * a rem radius would also be rescaled by the live font-size control
  * (src/lib/use-font-scale.ts).
+ *
+ * No border. The comps draw these as a tinted fill and nothing else; the
+ * 1px outline this used to have was left over from before the shell
+ * dropped borders everywhere else.
  */
 export function Chip({
   label,
@@ -26,18 +30,10 @@ export function Chip({
 }) {
   const colorStyle = css.raw(
     color === 'green'
-      ? {
-          bg: 'status.success.subtle',
-          borderColor: 'status.success.subtleBorder',
-          color: 'status.success.text',
-        }
+      ? { bg: 'status.success.subtle', color: 'status.success.text' }
       : color === 'amber'
-        ? {
-            bg: 'status.warning.subtle',
-            borderColor: 'status.warning.subtleBorder',
-            color: 'status.warning.text',
-          }
-        : { bg: 'bg.muted', borderColor: 'bd.default', color: 'fg.muted' },
+        ? { bg: 'status.warning.subtle', color: 'status.warning.text' }
+        : { bg: 'bg.muted', color: 'fg.muted' },
   );
 
   const Icon = color === 'green' ? CheckIcon : color === 'amber' ? WarningIcon : PlusIcon;
@@ -55,7 +51,7 @@ export function Chip({
           fontSize: 'xs',
           fontWeight: 'semibold',
           whiteSpace: 'nowrap',
-          border: '1px solid',
+          border: 'none',
         },
         colorStyle,
       )}

@@ -102,7 +102,7 @@ export function GameRow({
             className={css({
               flexShrink: 0,
               borderRadius: '10px',
-              bg: 'bg.muted',
+              bg: 'bg.slot',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

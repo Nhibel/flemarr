@@ -1,13 +1,31 @@
 import { css } from '@/styled-system/css';
 
-/** Class for the small header icon buttons (settings). */
+/**
+ * Class for the small header icon buttons (settings, lexique).
+ *
+ * A filled recess inside the header card, as in the comps, rather than a
+ * bare glyph on the card: 36px square, radius 11px, bg.inset. Both are
+ * literal px because they are a touch target and a corner — neither should
+ * be rescaled by the live font-size control.
+ *
+ * Cyberpunk's artboard is the one that tints these icons: cyan, which is
+ * also where that theme's status.info sits. The others use fg.subtle.
+ */
 export const iconBtnClass = css({
-  color: 'fg.faint',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  w: '36px',
+  h: '36px',
+  color: 'fg.subtle',
+  bg: 'bg.inset',
+  border: 'none',
   cursor: 'pointer',
-  p: '2',
-  borderRadius: 'lg',
+  borderRadius: '11px',
   transition: 'background-color 0.15s, color 0.15s',
-  _hover: { color: 'fg.muted', bg: 'bg.muted' },
+  _cyberpunk: { color: '#37EBF3' },
+  _hover: { color: 'fg.default', bg: 'bg.muted' },
 });
 
 export function BookIcon() {

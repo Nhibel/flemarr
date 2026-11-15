@@ -138,7 +138,14 @@ function LoaderView({
             color: 'fg.heading',
             flex: 1,
             _cyberpunk: {
-              textShadow: '0 0 10px #FDF500, 0 0 24px rgba(253, 245, 0, 0.4)',
+              // The comps' own title glow strength. Cyberpunk and Matrix
+              // are the two themes whose artboard lights the page title;
+              // both read the colour from fg.heading, which is their
+              // accent.
+              textShadow: '0 0 14px rgba(253, 245, 0, 0.3)',
+            },
+            _matrix: {
+              textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
             },
           })}
         >
@@ -434,7 +441,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               flex: '1',
               minWidth: '40',
               px: '3',
-              bg: 'bg.page',
+              bg: 'bg.inset',
               borderRadius: '12px',
               color: 'fg.subtle',
               _focusWithin: {
@@ -516,7 +523,6 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               transition: 'background-color 0.15s, color 0.15s',
               bg: tab === t ? 'accent.solid' : 'transparent',
               color: tab === t ? 'accent.fg' : 'fg.subtle',
-              _cyberpunk: { boxShadow: tab === t ? '0 0 10px #FDF500' : 'none' },
               _hover: {
                 color: tab === t ? 'accent.fg' : 'fg.default',
               },

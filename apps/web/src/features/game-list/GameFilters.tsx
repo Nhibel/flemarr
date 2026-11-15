@@ -182,7 +182,6 @@ export function GameFilters({
             bg: selectedOnly ? 'accent.solid' : 'transparent',
             color: selectedOnly ? 'accent.fg' : 'fg.subtle',
             fontWeight: selectedOnly ? 'bold' : 'medium',
-            _cyberpunk: { boxShadow: selectedOnly ? '0 0 8px #FDF500' : 'none' },
             _hover: { color: selectedOnly ? 'accent.fg' : 'fg.default' },
           })}
         >
@@ -199,7 +198,6 @@ export function GameFilters({
             bg: !selectedOnly ? 'accent.solid' : 'transparent',
             color: !selectedOnly ? 'accent.fg' : 'fg.subtle',
             fontWeight: !selectedOnly ? 'bold' : 'medium',
-            _cyberpunk: { boxShadow: !selectedOnly ? '0 0 8px #FDF500' : 'none' },
             _hover: { color: !selectedOnly ? 'accent.fg' : 'fg.default' },
           })}
         >
@@ -225,7 +223,6 @@ export function GameFilters({
                 className={css(chipBase, {
                   bg: active ? 'accent.solid' : 'bg.muted',
                   color: active ? 'accent.fg' : 'fg.muted',
-                  _cyberpunk: { boxShadow: active ? '0 0 8px #FDF500' : 'none' },
                   _hover: { color: active ? 'accent.fg' : 'fg.default' },
                 })}
               >
@@ -254,7 +251,6 @@ export function GameFilters({
                 className={css(chipBase, {
                   bg: active ? 'accent2.solid' : 'bg.muted',
                   color: active ? 'accent2.fg' : 'fg.muted',
-                  _cyberpunk: { boxShadow: active ? '0 0 8px #CB1DCD' : 'none' },
                   _hover: { color: active ? 'accent2.fg' : 'fg.default' },
                 })}
               >

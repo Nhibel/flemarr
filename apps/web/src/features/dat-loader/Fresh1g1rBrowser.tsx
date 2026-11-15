@@ -90,12 +90,6 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                 bg: resolvedPreset === p ? 'accent.subtle' : 'bg.surface',
                 color: resolvedPreset === p ? 'accent.text' : 'fg.muted',
                 _hover: { bg: resolvedPreset === p ? 'accent.subtle' : 'bg.muted' },
-                _cyberpunk: {
-                  boxShadow:
-                    resolvedPreset === p
-                      ? '0 0 10px #FDF500, 0 0 20px rgba(253, 245, 0, 0.3)'
-                      : 'none',
-                },
               })}
             >
               {p}
