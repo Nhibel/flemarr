@@ -1078,11 +1078,12 @@ export default defineConfig({
             boxShadow: '0 4px 14px rgba(23, 23, 26, 0.08)',
             _dark: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
             _catppuccin: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
-            // Cyberpunk's is the one shadow in the app that is not black:
-            // the Overdrive comp lights its cards from a magenta source,
-            // which is what separates them from a violet page without
-            // adding the border this shell removed everywhere.
-            _cyberpunk: { boxShadow: '0 8px 28px rgba(123, 20, 160, 0.45)' },
+            // The Overdrive comp lit these from a magenta source. Dropped
+            // on sight (Camille, 2026-11-17): a coloured shadow under every
+            // card muddied the violet page. The depth is black like
+            // everywhere else; the theme's colour comes from the surfaces,
+            // the tags and the accent, not from the shadows.
+            _cyberpunk: { boxShadow: '0 8px 28px rgba(0, 0, 0, 0.5)' },
             _matrix: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
             _sonicmania: { boxShadow: '0 6px 18px rgba(10, 34, 41, 0.25)' },
             _contraste: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },

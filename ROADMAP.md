@@ -540,9 +540,15 @@ Night City pushed much further and the one Camille chose.
   new. It is the theme that was already there, under the name that fits.
 - **Cyberpunk** is Overdrive: a saturated violet ground (`#1A0B2E` /
   `#271142` / `#3A1A5E`), status tags as **solid fills** instead of 14 %
-  washes, technical values in cyan `#4FD6E0`, a **magenta card shadow**
-  instead of black, filter triggers tinted by family, and all nine palette
-  colours in use — Blood Red `#710000` fills the danger surface.
+  washes, technical values in cyan `#4FD6E0`, filter triggers tinted by
+  family, and all nine palette colours in use — Blood Red `#710000` fills
+  the danger surface.
+
+  The artboard also lit its cards from a magenta source. Shipped that way,
+  reverted on sight the same day: a coloured shadow under every card
+  muddied the violet page. Cyberpunk's shadows are black like every other
+  theme's, and the theme's colour comes from the surfaces, the tags and
+  the accent.
 
 Three structural additions came out of it, all in `panda.config.ts` and
 all documented there and in ARCHITECTURE.md:

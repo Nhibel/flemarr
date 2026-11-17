@@ -213,8 +213,10 @@ colours in the supplied Cyberpunk 2077 palette were unused, its own black
 among them (Raisin Black `#272932`, which is violet, not neutral).
 Contraste now carries, value for value, the palette that used to be
 Cyberpunk's; Cyberpunk is the canvas's "Overdrive" artboard: saturated
-violet ground, solid status tags, cyan technical values, a magenta card
-shadow, all nine palette colours in use. One rule is deliberately broken
+violet ground, solid status tags, cyan technical values, all nine palette
+colours in use. Its card shadows are **black like every other theme's**:
+the artboard lit them from a magenta source, which muddied the violet
+page and was dropped on sight. One rule is deliberately broken
 there and only there — Cyberpunk's filter triggers are tinted by family
 (Région cyan, Catégorie violet), which spends a vivid hue on something
 that is neither the primary action nor the selection. It is on the
