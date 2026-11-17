@@ -559,11 +559,14 @@ Verified: 450 server tests and 220 web tests pass, lint, typecheck and build
 are clean, and a live server resolved and proxied real icons — colour for
 SNES, silhouette for Toshiba Pasopia, 404 for Video CD.
 
-**Not verified: nobody has looked at it in a browser.** The two things that
-cannot be measured are whether a colour illustration of a console sits well
-beside the name in all seven themes, and whether the 29 silhouettes look
-wrong next to the 265 colour drawings. Both are Camille's call, and the
-fallback to monochrome alone exists for exactly that.
+Looked at in a browser and accepted (Camille, 2026-11-17). The matching was
+right on her own systems. One correction came out of it: the icons read as
+blurry, because a clean 256px source reduced to 40px — 20px in the folder
+bar — loses the thin outlines these colour drawings are built from. The
+slots grew to 56 / 44 / 28 and the `<img>` carries
+`image-rendering: high-quality`, which Chrome honours and the others ignore.
+The fallback to monochrome alone was therefore not needed; it stays one
+line away, the order of `STYLES`, if the mix ever stops working.
 
 ---
 
