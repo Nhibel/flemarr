@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
 import { PathInput } from '@/components/PathInput.js';
+import { SystemIcon } from '@/components/SystemIcon.js';
+import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { displayPath } from '@/lib/paths.js';
 
 /**
@@ -18,6 +20,7 @@ export function SystemFolderBar({ system }: { system: string }) {
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const systemIcons = useSystemIcons([system]);
 
   const save = useMutation({
     mutationFn: async (path: string) => {
@@ -61,6 +64,7 @@ export function SystemFolderBar({ system }: { system: string }) {
   if (!editing) {
     return (
       <div className={barClass}>
+        <SystemIcon system={system} style={systemIcons.get(system)} size={28} />
         <span className={css({ color: 'fg.subtle', flexShrink: 0 })}>Dossier du système :</span>
         {folder ? (
           <span
@@ -96,6 +100,7 @@ export function SystemFolderBar({ system }: { system: string }) {
 
   return (
     <div className={barClass}>
+      <SystemIcon system={system} style={systemIcons.get(system)} size={28} />
       <span className={css({ color: 'fg.subtle', flexShrink: 0 })}>Dossier du système :</span>
       <PathInput
         value={draft}

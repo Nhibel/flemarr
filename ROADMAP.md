@@ -521,6 +521,55 @@ These are visual and cannot be automated. They are the checklist for
 
 ---
 
+## Phase 15 — System icons beside the system name
+
+Camille asked whether an API could supply a logo per registered system, to
+show next to the name. There is no need for one: `libretro/retroarch-assets`
+(CC BY 4.0) holds nine icon sets as plain PNG files named on the same
+No-Intro/Redump convention the DAT headers use, so the same "no key, no
+quota, fetch a file" shape as the boxarts already in place covers it. The
+alternatives with a real API — TheGamesDB, IGDB — need a key and a quota and
+buy only brand wordmarks; ScreenScraper is out of scope (CLAUDE.md).
+
+Chosen (Camille, 2026-11-17): the colour set `systematic` first, the white
+silhouette `monochrome` as fallback, and if the mix reads badly on screen,
+monochrome alone — that is a change of probe order, nothing else. Shown on
+the home screen's system cards (40px), the open system's header (36px) and
+the folder bar (20px). Not in the Fresh1G1R browser. A system with no icon
+upstream shows its initial on a filled square, the same placeholder a game
+row uses for a missing boxart.
+
+What this is worth, measured against snapshots of both real lists (the
+pinned commit `8c918e2` and the 348 system names of the Fresh1G1R PropeR
+preset): **265 in colour, 29 as a silhouette, 54 with no icon at all**. The
+54 are arcade boards, disc formats (Video CD, DVD-Video, Audio CD…) and a
+few toys. Every mainstream console is covered, in colour, and a test asserts
+that by name.
+
+The matching is the substance: upstream and the DAT headers agree on the
+convention and disagree on every detail ("NeoGeo" against "Neo Geo",
+"TurboGrafx-16" against "TurboGrafx 16", "Atari - Atari 2600" against
+"Atari - 2600"). Resolution is a match key that drops case, spaces and
+punctuation, five shape rules, and 22 explicit aliases for machines filed
+under another company upstream (`3DO Interactive Multiplayer` →
+`The 3DO Company - 3DO`). The upstream commit is pinned, so the name index
+is fetched once per installation and cached in the data directory.
+
+Verified: 450 server tests and 220 web tests pass, lint, typecheck and build
+are clean, and a live server resolved and proxied real icons — colour for
+SNES, silhouette for Toshiba Pasopia, 404 for Video CD.
+
+Looked at in a browser and accepted (Camille, 2026-11-17). The matching was
+right on her own systems. One correction came out of it: the icons read as
+blurry, because a clean 256px source reduced to 40px — 20px in the folder
+bar — loses the thin outlines these colour drawings are built from. The
+slots grew to 56 / 44 / 28 and the `<img>` carries
+`image-rendering: high-quality`, which Chrome honours and the others ignore.
+The fallback to monochrome alone was therefore not needed; it stays one
+line away, the order of `STYLES`, if the mix ever stops working.
+
+---
+
 ## Beyond the numbered phases — Authentication (only if exposing beyond the LAN)
 
 Not planned as committed work, but tracked so it isn't forgotten. The app currently has **no authentication**; it is safe only on localhost or a trusted LAN. Making it reachable from the internet requires adding a gate first. The concrete risks, the options (VPN, authenticated reverse proxy, or a ~100-line single-password gate in the app), and the trade-offs are written up in [docs/security.md](./docs/security.md). Pick this up if and when internet exposure actually happens.

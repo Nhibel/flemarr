@@ -6,6 +6,8 @@
  * <Game> is the canonical game name with forbidden characters replaced.
  */
 
+import { stripDatSystemTags } from '@/lib/dat-system.js';
+
 const BASE_URL = 'https://thumbnails.libretro.com';
 
 // DAT header names and libretro-thumbnails directory names diverge for a few
@@ -22,13 +24,7 @@ const DIR_ALIASES: Record<string, string> = {
  * "Vendor - System" form, which is what libretro-thumbnails uses.
  */
 export function libretroSystemDir(datSystem: string): string {
-  let name = datSystem.trim();
-  for (;;) {
-    const stripped = name.replace(/\s*\([^)]*\)$/, '').trim();
-    if (stripped === name || stripped === '') break;
-    name = stripped;
-  }
-  if (name === '') return datSystem;
+  const name = stripDatSystemTags(datSystem);
   return DIR_ALIASES[name] ?? name;
 }
 

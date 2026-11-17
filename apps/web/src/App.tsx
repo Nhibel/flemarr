@@ -15,6 +15,8 @@ import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/components/SystemFolderBar.js';
+import { SystemIcon } from '@/components/SystemIcon.js';
+import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { fetchGames, listDats, deleteDat, getSettings, updateSettings } from '@/lib/api.js';
@@ -150,6 +152,7 @@ function LoaderView({
     mutationFn: deleteDat,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['dats'] }),
   });
+  const systemIcons = useSystemIcons(existingDats.map((d) => d.system));
 
   return (
     <main
@@ -234,7 +237,9 @@ function LoaderView({
                 <button
                   onClick={() => onLoaded(dat)}
                   className={css({
-                    display: 'block',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3',
                     width: '100%',
                     textAlign: 'left',
                     px: '4',
@@ -245,29 +250,34 @@ function LoaderView({
                     cursor: 'pointer',
                   })}
                 >
-                  <span
-                    title={dat.system}
-                    className={css({
-                      display: 'block',
-                      fontFamily: 'display',
-                      fontSize: 'base',
-                      fontWeight: 'bold',
-                      color: 'fg.heading',
-                      truncate: true,
-                    })}
-                  >
-                    {dat.system}
-                  </span>
-                  <span
-                    className={css({
-                      display: 'block',
-                      mt: '1',
-                      fontFamily: 'mono',
-                      fontSize: '2xs',
-                      color: 'fg.faint',
-                    })}
-                  >
-                    {dat.source} · {dat.gameCount} jeux
+                  <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={56} />
+                  {/* The text is the row's one flexible child, so a long
+                      system name truncates instead of squeezing the icon. */}
+                  <span className={css({ flex: '1', minW: '0' })}>
+                    <span
+                      title={dat.system}
+                      className={css({
+                        display: 'block',
+                        fontFamily: 'display',
+                        fontSize: 'base',
+                        fontWeight: 'bold',
+                        color: 'fg.heading',
+                        truncate: true,
+                      })}
+                    >
+                      {dat.system}
+                    </span>
+                    <span
+                      className={css({
+                        display: 'block',
+                        mt: '1',
+                        fontFamily: 'mono',
+                        fontSize: '2xs',
+                        color: 'fg.faint',
+                      })}
+                    >
+                      {dat.source} · {dat.gameCount} jeux
+                    </span>
                   </span>
                 </button>
                 {/* Absolutely positioned, so it stays out of the card's own
@@ -418,6 +428,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   // and is lost on reload, so it can never be older than the current
   // session — a duration would imply a persistence that isn't there.
   const [lastScanAt, setLastScanAt] = useState<Date | null>(null);
+  const systemIcons = useSystemIcons([dat.system]);
 
   const handleQueueDownload = (job: QueuedDownload) => {
     setDownloadJobs((prev) => [...prev, job]);
@@ -561,6 +572,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             to show. Stacked, the title gets the full width of the block and
             the counter reads as what it is: a subtitle about that console,
             not a separate control. */}
+        <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={44} />
         <div className={css({ flex: '1', minWidth: '0' })}>
           <h1
             title={dat.system}
