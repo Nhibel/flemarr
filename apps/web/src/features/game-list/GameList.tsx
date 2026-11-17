@@ -343,16 +343,32 @@ export function GameList({
               game={game}
               isSelected={selected.has(game.id)}
               isFocused={resolvedFocus === i}
+              // POINTERDOWN, not click, and this is the whole fix.
+              //
+              // A row is a plain, non-focusable div, so pressing one moves
+              // the browser's focus to the nearest focusable ancestor —
+              // this listbox — not to the row. The listbox's onFocus below
+              // then falls back to "focus row 0" whenever nothing was
+              // focused yet (the first press after mounting, and the first
+              // press after Suivant/Précédent, which reset the index to
+              // -1), and the effect above scrolls row 0 into view.
+              //
+              // All of that happens while the button is still down. The
+              // list has therefore scrolled to the top before the user
+              // releases, so mouseup lands on a different row and the
+              // click fires on their common ancestor — the listbox —
+              // instead of on a row. The result the user sees: the row is
+              // not selected AND the list jumps back to the start.
+              //
+              // Claiming the index on click was the previous attempt at
+              // this and could not work: that click never reaches a row.
+              // pointerdown runs before the focus moves, so onFocus finds
+              // an index already set and leaves it alone.
+              onPointerDown={() => setFocusedIndex(i)}
               onToggle={(id) => {
-                // Clicking a row's own content (a plain, non-focusable
-                // div) moves the browser's focus to the nearest focusable
-                // ancestor — this listbox — not to the row itself. Without
-                // setting the real clicked index here, the listbox's own
-                // onFocus below falls back to "focus row 0" whenever
-                // nothing was focused yet (first click of a page, or right
-                // after Suivant/Précédent reset it to -1), which then
-                // scrolled row 0 into view — snapping back to the top of
-                // the list no matter which row was actually clicked.
+                // Still set here for the paths that produce no pointerdown
+                // at all: a synthetic click, and assistive tech that
+                // activates the row directly.
                 setFocusedIndex(i);
                 onToggle(id);
               }}

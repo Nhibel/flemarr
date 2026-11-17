@@ -14,6 +14,13 @@ interface Props {
   isSelected: boolean;
   isFocused: boolean;
   onToggle: (id: string) => void;
+  /**
+   * Fired on pointerdown, before the browser moves focus to the list's
+   * focusable ancestor. GameList uses it to claim the focused index for
+   * this row while the button is still down — see the comment on its own
+   * handler for what goes wrong when the index is only claimed on click.
+   */
+  onPointerDown?: () => void;
   /** Backend proxy URL of the boxart; undefined = none known (placeholder). */
   boxartSrc?: string;
   /**
@@ -31,6 +38,7 @@ export function GameRow({
   isSelected,
   isFocused,
   onToggle,
+  onPointerDown,
   boxartSrc,
   ownership,
   mode = 'normal',
@@ -71,6 +79,7 @@ export function GameRow({
         userSelect: 'none',
         _hover: { bg: isSelected ? 'accent.subtle' : 'bg.muted' },
       })}
+      onPointerDown={onPointerDown}
       onClick={() => onToggle(game.id)}
     >
       {/* Decorative only — the row's own onClick is the single toggle source.
