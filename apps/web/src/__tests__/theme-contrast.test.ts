@@ -125,6 +125,12 @@ const PAIRS: Pair[] = [
   // fg.faint is decorative (placeholder initials, timestamps), so it is
   // held to the 3:1 that applies to non-text and large text, not to 4.5.
   { label: 'fg.faint on bg.surface', fg: 'fg.faint', bg: 'bg.surface', min: 3 },
+  // The mono pair. fg.data stands in for fg.subtle at a technical value,
+  // so it answers to 4.5; fg.dataFaint stands in for fg.faint and keeps
+  // that role's 3:1.
+  { label: 'fg.data on bg.surface', fg: 'fg.data', bg: 'bg.surface', min: 4.5 },
+  { label: 'fg.data on bg.page', fg: 'fg.data', bg: 'bg.page', min: 4.5 },
+  { label: 'fg.dataFaint on bg.surface', fg: 'fg.dataFaint', bg: 'bg.surface', min: 3 },
   // The action dock. Six themes make bg.inverse the same value as
   // bg.surface; Sonic Mania does not, which is exactly why its text needs
   // measuring separately rather than being assumed to match fg.default.
@@ -175,6 +181,39 @@ const PAIRS: Pair[] = [
     label: 'info.text on its wash',
     fg: 'status.info.text',
     bg: 'status.info.subtle',
+    backdrop: 'bg.surface',
+    min: 4.5,
+  },
+  // The status TAGS, which are a wash in six themes and a solid fill in
+  // Cyberpunk. Measured separately from status.*.text precisely because
+  // the two shapes diverge: a tag that passed as a wash says nothing
+  // about the same role drawn as an opaque fill with dark text.
+  {
+    label: 'chip.success.fg on chip.success.bg',
+    fg: 'chip.success.fg',
+    bg: 'chip.success.bg',
+    backdrop: 'bg.surface',
+    min: 4.5,
+  },
+  {
+    label: 'chip.warning.fg on chip.warning.bg',
+    fg: 'chip.warning.fg',
+    bg: 'chip.warning.bg',
+    backdrop: 'bg.surface',
+    min: 4.5,
+  },
+  {
+    label: 'chip.info.fg on chip.info.bg',
+    fg: 'chip.info.fg',
+    bg: 'chip.info.bg',
+    backdrop: 'bg.surface',
+    min: 4.5,
+  },
+  // Cyberpunk's Catégorie filter trigger, tinted by family.
+  {
+    label: 'accent2.text on accent2.subtle',
+    fg: 'accent2.text',
+    bg: 'accent2.subtle',
     backdrop: 'bg.surface',
     min: 4.5,
   },
