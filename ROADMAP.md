@@ -519,6 +519,54 @@ These are visual and cannot be automated. They are the checklist for
 - [ ] Checkboxes are tinted with each theme's accent, at a comfortable
       size on the Deck's touchscreen.
 
+### Revision — Cyberpunk and Contraste (2026-11-17)
+
+Camille, after living with the merged result: Cyberpunk stayed too close
+to Contraste, and the Cyberpunk 2077 palette she supplied
+(`captures/palette cyberpunk.png`) barely showed. Both were true. The two
+themes' page backgrounds were `#07080B` and `#0A0A0B`, their accents
+`#FDF500` and `#C4F000` — the same theme twice — and seven of the nine
+palette colours were unused, starting with its own black, which is violet
+(Raisin Black `#272932`), not neutral.
+
+A third canvas settled it: <https://claude.ai/artifact/CFC36ikYv4kaAnT6Ww9UKi>.
+Three artboards — the diagnosis, a conservative "Night City" and a
+magenta-led "Neon District" — then a fourth, **Overdrive**, which is
+Night City pushed much further and the one Camille chose.
+
+- **Contraste** now carries, value for value, the palette that used to be
+  Cyberpunk's: neutral black, Rich Lemon, cyan owned, pink warning, the
+  yellow page title with its glow, the cyan focus trim. Nothing in it is
+  new. It is the theme that was already there, under the name that fits.
+- **Cyberpunk** is Overdrive: a saturated violet ground (`#1A0B2E` /
+  `#271142` / `#3A1A5E`), status tags as **solid fills** instead of 14 %
+  washes, technical values in cyan `#4FD6E0`, a **magenta card shadow**
+  instead of black, filter triggers tinted by family, and all nine palette
+  colours in use — Blood Red `#710000` fills the danger surface.
+
+Three structural additions came out of it, all in `panda.config.ts` and
+all documented there and in ARCHITECTURE.md:
+
+- `chip.{success,warning,info}.{bg,fg}` — a status TAG's fill, separate
+  from `status.*.text`, which ~30 plain-text messages still use. Without
+  the split, Cyberpunk's solid tags would have turned those messages
+  dark-on-dark.
+- `fg.data` / `fg.dataFaint` — the mono face's own colour role. Two steps,
+  not one, so the other six themes keep the exact `fg.subtle` / `fg.faint`
+  they had.
+- `accent2.subtle` / `accent2.text` — the second accent's wash pair, read
+  today only by Cyberpunk's Catégorie filter trigger.
+
+**Accepted cost, named on the canvas before it shipped:** Cyberpunk's
+filter triggers spend the info and accent2 hues on something that is
+neither a status nor the primary action, which the palette rules above
+otherwise forbid. It is the one place any theme breaks that rule.
+
+Verified: 215 web tests (the contrast test now measures 23 pairs × 7
+themes, no accepted exceptions), typecheck and lint clean, built CSS
+greps confirm both palettes. **Not looked at in a browser** — same
+constraint as the rest of this phase.
+
 ---
 
 ## Beyond the numbered phases — Authentication (only if exposing beyond the LAN)

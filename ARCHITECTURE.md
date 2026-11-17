@@ -188,10 +188,37 @@ component, and undoing one of them re-breaks something that was fixed.
   data — sizes, CRCs, counts, pagination — never globally. Self-hosted via
   `@fontsource*`, never a Google Fonts `<link>`: this runs on a homelab
   that may have no outbound internet.
+- **A status tag reads from `chip.*`, not `status.*`.** Six themes draw a
+  tag as a tinted wash with the status colour as text; Cyberpunk draws it
+  as a solid fill with dark text. Both shapes live in the tokens, so
+  `Chip`, `StatusTag` and `LayoutBadge` never branch on the theme. The
+  same status spoken as _prose_ keeps `status.*.text` on whatever surface
+  it sits on — that is why the two pairs exist. Keep `chip.*` in step when
+  a status colour changes.
+- **Mono values read from `fg.data` / `fg.dataFaint`.** Technical values in
+  the mono face get their own colour role, so Cyberpunk can put them in
+  cyan while the other six keep exactly the `fg.subtle` / `fg.faint` they
+  had. Two steps, not one, so those six do not lose contrast to buy one
+  theme's cyan. Not for mono text already inside a coloured container (the
+  dock, a `Chip`'s own count, a source id in `accent.text`).
 - **Contrast is a test**, not a promise: `theme-contrast.test.ts` measures
-  14 pairs across the 7 themes, compositing translucent washes over their
-  surface first. One documented exception. Anything not on that list has to
-  clear 4.5:1.
+  23 pairs across the 7 themes, compositing translucent washes over their
+  surface first. No exceptions are currently accepted. Anything not on
+  that list has to clear 4.5:1 (3:1 for the two decorative `faint` roles).
+
+**Cyberpunk and Contraste were rebuilt together on 2026-11-17** from a
+third canvas. They had converged into the same theme — a neutral
+near-black page under a yellow-green accent — and seven of the nine
+colours in the supplied Cyberpunk 2077 palette were unused, its own black
+among them (Raisin Black `#272932`, which is violet, not neutral).
+Contraste now carries, value for value, the palette that used to be
+Cyberpunk's; Cyberpunk is the canvas's "Overdrive" artboard: saturated
+violet ground, solid status tags, cyan technical values, a magenta card
+shadow, all nine palette colours in use. One rule is deliberately broken
+there and only there — Cyberpunk's filter triggers are tinted by family
+(Région cyan, Catégorie violet), which spends a vivid hue on something
+that is neither the primary action nor the selection. It is on the
+artboard and the cost was named before it shipped.
 
 The design canvases these came from are private Artifacts; their working
 files are gitignored under `.rom-curator-data/`. ROADMAP.md's Phase 14
