@@ -10,6 +10,7 @@ import { fresh1g1rRoute } from '@/routes/fresh1g1r.js';
 import { settingsRoute } from '@/routes/settings.js';
 import { fsRoute } from '@/routes/fs.js';
 import { gameDetailsRoute } from '@/routes/game-details.js';
+import { systemIconsRoute } from '@/routes/system-icons.js';
 
 export const app = new Hono();
 
@@ -42,3 +43,4 @@ app.route('/api', fresh1g1rRoute);
 app.route('/api', settingsRoute);
 app.route('/api', fsRoute);
 app.route('/api', gameDetailsRoute);
+app.route('/api', systemIconsRoute);
