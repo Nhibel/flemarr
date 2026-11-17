@@ -158,6 +158,44 @@ A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so both the conversi
 
 ---
 
+## External art providers
+
+Two kinds of picture come from outside: a game's boxart and a system's icon.
+Both follow the same shape, and new art sources should too.
+
+- **No API, no key, no quota.** Both providers are plain files in a public
+  repository, addressed by name: boxarts at `thumbnails.libretro.com`
+  (`apps/server/src/services/game-details/libretro.ts`), system icons in
+  `libretro/retroarch-assets`, CC BY 4.0
+  (`apps/server/src/services/system-icon/retroarch-assets.ts`). A provider
+  that needs an account, a key or a rate limit is a last resort, not a
+  starting point.
+- **The browser never talks to the provider.** Every image is fetched through
+  a backend proxy route, and the route builds the upstream URL itself — it
+  never fetches an address a caller supplied. That keeps the one external
+  dependency on the server side, where it can be cached and logged, and it
+  stops the page from leaking which systems the user owns to a third party.
+- **Names are the hard part.** DAT headers, libretro-thumbnails and
+  retroarch-assets all use the No-Intro/Redump "Vendor - System" convention
+  and all disagree about the details. The icon provider resolves a DAT system
+  against the upstream file list through a match key that ignores case,
+  spaces and punctuation, a handful of shape rules, and an explicit alias
+  table for the machines upstream files under another company entirely.
+  `apps/server/src/__tests__/system-icon-coverage.test.ts` measures the
+  result against snapshots of both real lists, so a rule that stops working
+  shows up as a number rather than as missing pictures.
+- **The icon repository is pinned to a commit**, not to `master`: the name
+  index is then immutable, fetched once per installation, cached in the data
+  directory, and the proxied bytes can be served `immutable` forever.
+- **Two icon sets, drawn two ways.** `systematic` is a colour drawing of the
+  machine and is shown as an `<img>`; `monochrome` is a white silhouette and
+  is used as a CSS mask filled with a theme token, so it follows all seven
+  themes. Colour is preferred and the silhouette only covers what colour
+  lacks. With neither, the slot shows the system's initial, the same
+  placeholder a game row shows for a missing boxart.
+
+---
+
 ## Theming and visual rules
 
 All of this lives in `apps/web/panda.config.ts`. It is written down here
