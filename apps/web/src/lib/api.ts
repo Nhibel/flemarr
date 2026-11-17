@@ -17,6 +17,8 @@ import { settingsResponseSchema } from '@shared/settings.js';
 import type { SettingsResponse, UpdateSettings } from '@shared/settings.js';
 import { gameDetailsResponseSchema } from '@shared/game-details.js';
 import type { GameDetailsResponse } from '@shared/game-details.js';
+import { systemIconsResponseSchema } from '@shared/system-icon.js';
+import type { SystemIconsResponse } from '@shared/system-icon.js';
 import {
   getSourcesResponseSchema,
   searchResponseSchema,
@@ -275,6 +277,20 @@ export async function fetchGameDetails(
 /** Boxart proxy URL — the browser never talks to the provider directly. */
 export function gameBoxartUrl(datId: string, gameId: string): string {
   return `/api/dats/${encodeURIComponent(datId)}/games/${encodeURIComponent(gameId)}/boxart`;
+}
+
+export async function fetchSystemIcons(systems: string[]): Promise<SystemIconsResponse> {
+  const res = await fetch('/api/systems/icons', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ systems }),
+  });
+  return parseResponse(res, systemIconsResponseSchema);
+}
+
+/** System icon proxy URL — same rule as the boxart one. */
+export function systemIconUrl(system: string): string {
+  return `/api/systems/icon?system=${encodeURIComponent(system)}`;
 }
 
 export type { ListDirsResponse, CreateDirResponse };
