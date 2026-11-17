@@ -64,7 +64,7 @@ export function SystemFolderBar({ system }: { system: string }) {
   if (!editing) {
     return (
       <div className={barClass}>
-        <SystemIcon system={system} style={systemIcons.get(system)} size={20} />
+        <SystemIcon system={system} style={systemIcons.get(system)} size={28} />
         <span className={css({ color: 'fg.subtle', flexShrink: 0 })}>Dossier du système :</span>
         {folder ? (
           <span
@@ -100,7 +100,7 @@ export function SystemFolderBar({ system }: { system: string }) {
 
   return (
     <div className={barClass}>
-      <SystemIcon system={system} style={systemIcons.get(system)} size={20} />
+      <SystemIcon system={system} style={systemIcons.get(system)} size={28} />
       <span className={css({ color: 'fg.subtle', flexShrink: 0 })}>Dossier du système :</span>
       <PathInput
         value={draft}

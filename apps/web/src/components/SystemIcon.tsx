@@ -42,7 +42,17 @@ export function SystemIcon({ system, style, size }: Props) {
         alt=""
         loading="lazy"
         style={box}
-        className={css({ objectFit: 'contain', flexShrink: 0 })}
+        className={css({
+          objectFit: 'contain',
+          flexShrink: 0,
+          // The source is 256px and the slot is a fraction of that, so every
+          // one of these is a large downscale and the thin outlines of the
+          // drawings are the first thing to go. Chrome picks its better
+          // filter for this; Firefox and Safari ignore the value and keep
+          // their default, which is why the sizes above are the real fix and
+          // this is only a hint.
+          imageRendering: 'high-quality',
+        })}
       />
     );
   }

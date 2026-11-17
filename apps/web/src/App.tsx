@@ -250,7 +250,7 @@ function LoaderView({
                     cursor: 'pointer',
                   })}
                 >
-                  <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={40} />
+                  <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={56} />
                   {/* The text is the row's one flexible child, so a long
                       system name truncates instead of squeezing the icon. */}
                   <span className={css({ flex: '1', minW: '0' })}>
@@ -572,7 +572,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             to show. Stacked, the title gets the full width of the block and
             the counter reads as what it is: a subtitle about that console,
             not a separate control. */}
-        <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={36} />
+        <SystemIcon system={dat.system} style={systemIcons.get(dat.system)} size={44} />
         <div className={css({ flex: '1', minWidth: '0' })}>
           <h1
             title={dat.system}
