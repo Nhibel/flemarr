@@ -15,6 +15,7 @@ export const inputClass = css({
     ring: '2px',
     ringColor: 'accent.subtleBorder',
     _cyberpunk: { ringColor: '#37EBF3' },
+    _contraste: { ringColor: '#37EBF3' },
   },
 });
 

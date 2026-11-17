@@ -10,8 +10,8 @@ export function LayoutBadge({ layout }: { layout: ArchiveLayout }) {
         py: '0.5',
         fontSize: 'xs',
         borderRadius: 'md',
-        bg: isDirect ? 'status.success.subtle' : 'status.info.subtle',
-        color: isDirect ? 'status.success.text' : 'status.info.text',
+        bg: isDirect ? 'chip.success.bg' : 'chip.info.bg',
+        color: isDirect ? 'chip.success.fg' : 'chip.info.fg',
       })}
     >
       {isDirect ? 'direct' : 'zip'}

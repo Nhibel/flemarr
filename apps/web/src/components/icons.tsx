@@ -25,6 +25,7 @@ export const iconBtnClass = css({
   borderRadius: '11px',
   transition: 'background-color 0.15s, color 0.15s',
   _cyberpunk: { color: '#37EBF3' },
+  _contraste: { color: '#37EBF3' },
   _hover: { color: 'fg.default', bg: 'bg.muted' },
 });
 

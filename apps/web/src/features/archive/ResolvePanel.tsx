@@ -255,7 +255,7 @@ export function ResolvePanel({
               <span
                 className={css({
                   fontSize: 'sm',
-                  color: 'fg.faint',
+                  color: 'fg.dataFaint',
                   fontFamily: 'mono',
                   minW: 0,
                   truncate: true,

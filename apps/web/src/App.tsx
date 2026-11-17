@@ -273,7 +273,7 @@ function LoaderView({
                         mt: '1',
                         fontFamily: 'mono',
                         fontSize: '2xs',
-                        color: 'fg.faint',
+                        color: 'fg.dataFaint',
                       })}
                     >
                       {dat.source} · {dat.gameCount} jeux
@@ -612,11 +612,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               <span className={css({ color: 'status.success.text' })}>
                 {ownedCount} sur ton disque
               </span>
-              <span className={css({ color: 'fg.faint' })}>
+              <span className={css({ color: 'fg.dataFaint' })}>
                 {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
               </span>
               {lastScanAt && (
-                <span className={css({ color: 'fg.faint' })}>
+                <span className={css({ color: 'fg.dataFaint' })}>
                   vérifié à {lastScanAt.toLocaleTimeString()}
                 </span>
               )}
@@ -628,7 +628,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 mt: '0.5',
                 fontFamily: 'mono',
                 fontSize: '2xs',
-                color: 'fg.faint',
+                color: 'fg.dataFaint',
                 truncate: true,
               })}
             >

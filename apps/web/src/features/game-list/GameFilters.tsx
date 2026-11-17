@@ -34,7 +34,7 @@ interface Props {
 // the live font-size control if expressed in rem, which would round these
 // into pills and shrink the tap targets exactly when the text was made
 // bigger to help (this app is used on a Steam Deck).
-const triggerClass = css({
+const triggerRaw = css.raw({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '1.5',
@@ -85,6 +85,21 @@ const chipBase = css.raw({
   cursor: 'pointer',
   whiteSpace: 'nowrap',
   transition: 'background-color 0.1s, color 0.1s, box-shadow 0.1s',
+});
+
+// Cyberpunk only: a menu that is filtering something tints its own
+// trigger by family — Région in the info cyan, Catégorie in the second
+// accent's violet. This is the one place that theme spends a vivid hue on
+// something that is neither the primary action nor the selection, which
+// the phase-14 palette rules otherwise forbid; it is on the Overdrive
+// artboard and was accepted with that cost named. The other six themes
+// keep a filtering trigger in bg.muted like an idle one — there, the
+// active count alone says it.
+const triggerTintRegion = css.raw({
+  _cyberpunk: { bg: 'status.info.subtle', color: 'status.info.text' },
+});
+const triggerTintCategory = css.raw({
+  _cyberpunk: { bg: 'accent2.subtle', color: 'accent2.text' },
 });
 
 /** Count of active values, shown on a closed menu so nothing hides. */
@@ -214,7 +229,9 @@ export function GameFilters({
       </div>
 
       <details className={css({ position: 'relative' })}>
-        <summary className={triggerClass}>
+        <summary
+          className={css(triggerRaw, filterState.regions.length > 0 ? triggerTintRegion : {})}
+        >
           Région
           <ActiveCount n={filterState.regions.length} />
           <Caret />
@@ -242,7 +259,9 @@ export function GameFilters({
       </details>
 
       <details className={css({ position: 'relative' })}>
-        <summary className={triggerClass}>
+        <summary
+          className={css(triggerRaw, filterState.categories.length > 0 ? triggerTintCategory : {})}
+        >
           Catégorie
           <ActiveCount n={filterState.categories.length} />
           <Caret />
@@ -270,7 +289,7 @@ export function GameFilters({
       </details>
 
       <details className={css({ position: 'relative' })}>
-        <summary className={triggerClass}>
+        <summary className={css(triggerRaw)}>
           Tri&nbsp;: {sortLabel} {filterState.sortDir === 'asc' ? '↑' : '↓'}
           <Caret />
         </summary>
@@ -314,7 +333,7 @@ export function GameFilters({
           ml: 'auto',
           fontFamily: 'mono',
           fontSize: 'xs',
-          color: 'fg.subtle',
+          color: 'fg.data',
         })}
       >
         {filteredCount} / {totalCount}

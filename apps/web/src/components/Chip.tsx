@@ -2,10 +2,10 @@ import { css } from '@/styled-system/css';
 import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
 
 /**
- * A tinted status tag: pictogram, count, label.
+ * A status tag: pictogram, count, label.
  *
  * Three roles, and all three differ in more than hue — each has its own
- * tinted wash, its own text color and its own shape — so they stay
+ * fill, its own text color and its own shape — so they stay
  * readable for an eye that confuses hues. `gray` is the neutral "nothing
  * here yet" role (unmatched files, missing games), which is why it carries
  * a plus rather than a warning: it is a gap to fill, not a problem.
@@ -15,9 +15,15 @@ import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
  * a rem radius would also be rescaled by the live font-size control
  * (src/lib/use-font-scale.ts).
  *
- * No border. The comps draw these as a tinted fill and nothing else; the
+ * No border. The comps draw these as a fill and nothing else; the
  * 1px outline this used to have was left over from before the shell
  * dropped borders everywhere else.
+ *
+ * The fill comes from `chip.*`, not `status.*`: six themes make a tag a
+ * tinted wash with the status colour as text, while Cyberpunk makes it a
+ * solid fill with dark text. Both shapes live in those tokens, so this
+ * component does not branch on the theme. See the `chip` block in
+ * panda.config.ts.
  */
 export function Chip({
   label,
@@ -30,9 +36,9 @@ export function Chip({
 }) {
   const colorStyle = css.raw(
     color === 'green'
-      ? { bg: 'status.success.subtle', color: 'status.success.text' }
+      ? { bg: 'chip.success.bg', color: 'chip.success.fg' }
       : color === 'amber'
-        ? { bg: 'status.warning.subtle', color: 'status.warning.text' }
+        ? { bg: 'chip.warning.bg', color: 'chip.warning.fg' }
         : { bg: 'bg.muted', color: 'fg.muted' },
   );
 

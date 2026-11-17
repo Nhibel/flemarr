@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GameList } from './GameList.js';
@@ -304,5 +304,62 @@ describe('GameList — search toolbar', () => {
 
     expect(screen.getByText('Aucun jeu ne correspond aux filtres actuels.')).toBeInTheDocument();
     expect(screen.getByRole('searchbox')).toHaveValue('zzzz');
+  });
+});
+
+// Regression: pressing a row used to lose the click AND scroll the list
+// back to its first row. A row is a plain div, so pressing one moves focus
+// to the listbox, whose onFocus fell back to "focus row 0" while nothing
+// was focused yet — and the scroll that followed happened before the user
+// released the button, so mouseup landed on another row and the click fired
+// on the listbox instead of on a row. Claiming the index on pointerdown,
+// before the focus moves, is what makes the fallback stay out of the way.
+describe('GameList — pressing a row', () => {
+  const realScrollIntoView = Element.prototype.scrollIntoView;
+
+  beforeEach(() => {
+    // jsdom has no layout and ships no scrollIntoView at all; the component
+    // calls it optionally. A stub lets these tests observe the scroll the
+    // user actually saw.
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  afterEach(() => {
+    Element.prototype.scrollIntoView = realScrollIntoView;
+  });
+
+  it('claims the pressed row before focus reaches the listbox', () => {
+    renderList(GAMES);
+    // Scoped to the listbox: the « Par page » select also renders
+    // elements with role=option, and they come first in the document.
+    const rows = within(screen.getByRole('listbox')).getAllByRole('option');
+
+    // The browser's own order on a press.
+    fireEvent.pointerDown(rows[2]!);
+    fireEvent.focusIn(screen.getByRole('listbox'));
+
+    expect(rows[2]!).toHaveAttribute('data-focused');
+    expect(rows[0]!).not.toHaveAttribute('data-focused');
+  });
+
+  it('never scrolls the first row into view because of a press on another', () => {
+    renderList(GAMES);
+    const rows = within(screen.getByRole('listbox')).getAllByRole('option');
+    const scrolled = vi.mocked(Element.prototype.scrollIntoView);
+
+    fireEvent.pointerDown(rows[2]!);
+    fireEvent.focusIn(screen.getByRole('listbox'));
+
+    expect(scrolled.mock.instances).not.toContain(rows[0]!);
+  });
+
+  // The fallback still has a job: a keyboard user tabbing into the list
+  // with nothing focused yet lands on the first row.
+  it('still focuses the first row when focus arrives without a press', () => {
+    renderList(GAMES);
+    fireEvent.focusIn(screen.getByRole('listbox'));
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')[0]!).toHaveAttribute(
+      'data-focused',
+    );
   });
 });

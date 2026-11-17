@@ -68,9 +68,9 @@ export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: P
                         fontSize: 'xs',
                         color:
                           source == null
-                            ? 'fg.faint'
+                            ? 'fg.dataFaint'
                             : source.verified
-                              ? 'fg.subtle'
+                              ? 'fg.data'
                               : 'status.warning.text',
                         fontFamily: 'mono',
                         truncate: true,
