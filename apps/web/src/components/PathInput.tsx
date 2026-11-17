@@ -134,7 +134,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                 px: '3',
                 py: '1',
                 fontSize: 'xs',
-                color: 'fg.faint',
+                color: 'fg.dataFaint',
                 fontFamily: 'mono',
               })}
             >
@@ -201,7 +201,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                     flexShrink: 0,
                     fontFamily: 'mono',
                     fontSize: '2xs',
-                    color: 'fg.faint',
+                    color: 'fg.dataFaint',
                   })}
                 >
                   {dir.fileCount} fichier{dir.fileCount > 1 ? 's' : ''}

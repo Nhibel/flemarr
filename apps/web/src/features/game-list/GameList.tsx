@@ -163,6 +163,7 @@ export function GameList({
           color: 'fg.subtle',
           _focusWithin: {
             _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
+            _contraste: { boxShadow: '0 0 0 1px #37EBF3' },
           },
         })}
       >
@@ -331,6 +332,7 @@ export function GameList({
             ringColor: 'accent.subtleBorder',
             ringOffset: '2px',
             _cyberpunk: { ringColor: '#37EBF3' },
+            _contraste: { ringColor: '#37EBF3' },
           },
         })}
       >
@@ -388,7 +390,7 @@ export function GameList({
           {/* Counts in mono — they are technical data, and the fixed
               advance stops the whole row from shifting as the numbers
               change width between pages. */}
-          <span className={css({ fontFamily: 'mono', fontSize: 'xs' })}>
+          <span className={css({ fontFamily: 'mono', fontSize: 'xs', color: 'fg.data' })}>
             {start + 1}–{Math.min(start + pageItems.length, total)} sur {total}
             {' · '}page {page + 1} / {pageCount}
           </span>

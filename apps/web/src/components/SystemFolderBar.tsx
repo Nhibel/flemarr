@@ -119,6 +119,9 @@ export function SystemFolderBar({ system }: { system: string }) {
             _cyberpunk: {
               boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
             },
+            _contraste: {
+              boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
+            },
           },
         })}
       />

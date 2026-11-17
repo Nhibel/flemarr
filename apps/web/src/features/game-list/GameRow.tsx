@@ -137,7 +137,7 @@ export function GameRow({
               display: 'block',
               fontFamily: 'mono',
               fontSize: 'xs',
-              color: 'fg.subtle',
+              color: 'fg.data',
               mt: '0.5',
               truncate: true,
             })}
@@ -172,7 +172,7 @@ export function GameRow({
             className={css({
               fontFamily: 'mono',
               fontSize: 'xs',
-              color: 'fg.faint',
+              color: 'fg.dataFaint',
               flexShrink: 0,
               w: '16',
               textAlign: 'right',

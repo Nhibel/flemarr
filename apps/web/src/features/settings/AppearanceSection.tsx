@@ -27,10 +27,11 @@ const THEME_DESCRIPTIONS: Record<Theme, string> = {
   light: 'Fond papier chaud, cartes blanches, accent bleu.',
   dark: 'Encre bleutée, texte clair, accent bleu vif.',
   catppuccin: 'Mocha — pastel sur fond bleu-nuit.',
-  cyberpunk: 'Noir, titre jaune néon, cyan électrique et rose.',
+  cyberpunk: 'Violet saturé, titre jaune néon, étiquettes pleines, données en cyan.',
   matrix: 'Néon vert sur fond quasi noir.',
   sonicmania: 'Fond jaune vif, cartes cyan, accent magenta et or.',
-  contraste: 'Noir franc, accent lime, ambre en avertissement — le plus lisible à distance.',
+  contraste:
+    'Noir franc, titre jaune néon, cyan électrique et rose — le plus lisible à distance.',
 };
 
 // Unlike the other sections here, this isn't a server-persisted setting —

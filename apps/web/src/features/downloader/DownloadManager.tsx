@@ -453,7 +453,7 @@ function JobCard({
           <p
             className={css({
               fontSize: 'xs',
-              color: 'fg.faint',
+              color: 'fg.dataFaint',
               fontFamily: 'mono',
               truncate: true,
             })}
@@ -482,7 +482,7 @@ function JobCard({
       {/* What the job is doing, in one line, as the comps show it. Counted
           per game rather than per file: a three-disc game is one thing the
           user asked for, not three. */}
-      <p className={css({ fontSize: 'xs', color: 'fg.subtle', fontFamily: 'mono' })}>
+      <p className={css({ fontSize: 'xs', color: 'fg.data', fontFamily: 'mono' })}>
         {[
           `${summary.done} terminé${summary.done > 1 ? 's' : ''}`,
           `${summary.running} en cours`,
@@ -595,7 +595,7 @@ function GameRow({
         <span className={css({ flex: '1', minW: '0', fontSize: 'sm', truncate: true })}>
           {game.label}
           {game.fileCount > 1 && (
-            <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.faint' })}>
+            <span className={css({ fontFamily: 'mono', fontSize: '2xs', color: 'fg.dataFaint' })}>
               {' '}
               · {game.fileCount} fichiers
             </span>
@@ -611,7 +611,7 @@ function GameRow({
             <span className={css({ fontFamily: 'mono' })}> {formatSize(game.bytesDownloaded)}</span>
           )}
           {game.kind === 'downloading' && rate !== undefined && (
-            <span className={css({ fontFamily: 'mono', color: 'fg.faint' })}>
+            <span className={css({ fontFamily: 'mono', color: 'fg.dataFaint' })}>
               {' '}
               · {formatRate(rate)}
             </span>

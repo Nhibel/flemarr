@@ -4,14 +4,14 @@ import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
 import type { Ownership } from '@/lib/missing-games.js';
 
 /**
- * One game's ownership state, as a tinted tag.
+ * One game's ownership state, as a status tag.
  *
  * Separate from Chip, which reads "N label" for an aggregate (the scanner's
  * totals). This is the state of a single row, so it carries a word, not a
- * count — but it follows the same rules: tinted fill, no border, a literal
- * 8px radius, and a pictogram so the three states differ by shape as well
- * as by hue and by the lightness of their wash. A red/green pair is never
- * the only signal.
+ * count — but it follows the same rules: a `chip.*` fill, no border, a
+ * literal 8px radius, and a pictogram so the three states differ by shape
+ * as well as by hue and by lightness. A red/green pair is never the only
+ * signal.
  *
  * `missing` is deliberately the quiet one: on a fresh collection almost
  * every row is missing, and a loud tag repeated 1500 times is noise. It
@@ -21,12 +21,12 @@ const TAGS = {
   owned: {
     label: 'Sur ton disque',
     Icon: CheckIcon,
-    style: css.raw({ bg: 'status.success.subtle', color: 'status.success.text' }),
+    style: css.raw({ bg: 'chip.success.bg', color: 'chip.success.fg' }),
   },
   wrongName: {
     label: 'Mal nommé',
     Icon: WarningIcon,
-    style: css.raw({ bg: 'status.warning.subtle', color: 'status.warning.text' }),
+    style: css.raw({ bg: 'chip.warning.bg', color: 'chip.warning.fg' }),
   },
   missing: {
     label: 'Manquant',
