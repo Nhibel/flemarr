@@ -210,28 +210,58 @@ export default defineConfig({
           //     magenta family wins accent.* because the selection wash and
           //     accent text are both derived from it; the gold becomes
           //     accent2.
-          //   * Cyberpunk's comp assigns cyan to the owned status and pink
+          //   * Contraste's comp assigns cyan to the owned status and pink
           //     to the warning, which leaves no third hue for info; info
           //     reuses the cyan. Both are non-alarming states, so sharing a
           //     hue costs less than inventing one.
-          //   * Cyberpunk and Matrix are the two themes whose comp gives the
-          //     page heading its own colour (the accent, with a glow) rather
-          //     than the body text colour.
+          //   * Cyberpunk, Contraste and Matrix are the themes whose comp
+          //     gives the page heading its own colour (the accent, with a
+          //     glow) rather than the body text colour.
           //
           // Nintendo and Megadrive were removed (2026-11-15): navy plus a
           // saturated red read poorly down a long game list, and the two
           // themes were hard to tell apart from each other. Contraste
           // replaced them.
+          //
+          // Cyberpunk and Contraste were rebuilt together (2026-11-17),
+          // from a third canvas:
+          // https://claude.ai/artifact/CFC36ikYv4kaAnT6Ww9UKi
+          //
+          // They had converged into the same theme — a neutral near-black
+          // page (#07080B against #0A0A0B) under a yellow-green accent
+          // (#FDF500 against #C4F000) — and seven of the nine colours in
+          // the Cyberpunk 2077 palette Camille supplied were unused,
+          // starting with its own black, which is violet (Raisin Black
+          // #272932), not neutral.
+          //
+          //   * CONTRASTE now carries, value for value, the palette that
+          //     used to be Cyberpunk's: neutral black, Rich Lemon, cyan
+          //     owned, pink warning. Nothing of it is new; it is the theme
+          //     that was already there, under the name that fits it.
+          //   * CYBERPUNK is the canvas's "Overdrive" artboard: a saturated
+          //     violet ground instead of a near-black one, status tags as
+          //     SOLID fills instead of 14 % washes (see the `chip` tokens),
+          //     technical values in cyan (fg.data), a magenta card shadow,
+          //     and all nine palette colours in use, Blood Red #710000
+          //     included.
+          //
+          // The visible cost, accepted on the canvas rather than
+          // overlooked: Cyberpunk's filter chips are tinted by family
+          // (Région cyan, Catégorie violet) in GameFilters, which spends
+          // the info and accent2 hues on something that is not a status and
+          // not the primary action. It is the one place this theme breaks
+          // the phase-14 rule that a vivid accent is reserved for the
+          // primary action and the selection.
           bg: {
             page: {
               value: {
                 base: '#F3F1EC',
                 _dark: '#12141A',
                 _catppuccin: '#181825',
-                _cyberpunk: '#07080B',
+                _cyberpunk: '#1A0B2E',
                 _matrix: '#040C07',
                 _sonicmania: '#FFD522',
-                _contraste: '#0A0A0B',
+                _contraste: '#07080B',
               },
             },
             surface: {
@@ -239,10 +269,10 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#1B1F28',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#11141A',
+                _cyberpunk: '#271142',
                 _matrix: '#0B170F',
                 _sonicmania: '#63D9EC',
-                _contraste: '#141417',
+                _contraste: '#11141A',
               },
             },
             muted: {
@@ -250,10 +280,10 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#232936',
                 _catppuccin: '#313244',
-                _cyberpunk: '#1E242D',
+                _cyberpunk: '#3A1A5E',
                 _matrix: '#16291C',
                 _sonicmania: '#BFEFF7',
-                _contraste: '#1D1D21',
+                _contraste: '#1E242D',
               },
             },
             // A recessed field sitting INSIDE a surface: the comps' search
@@ -268,10 +298,10 @@ export default defineConfig({
                 base: '#F0EEE8',
                 _dark: '#141821',
                 _catppuccin: '#11111B',
-                _cyberpunk: '#0A0D12',
+                _cyberpunk: '#120620',
                 _matrix: '#06100A',
                 _sonicmania: '#BFEFF7',
-                _contraste: '#0E0E10',
+                _contraste: '#0A0D12',
               },
             },
             // The action dock's surface. Identical to bg.surface in six of
@@ -289,10 +319,10 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#1B1F28',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#11141A',
+                _cyberpunk: '#271142',
                 _matrix: '#0B170F',
                 _sonicmania: '#052A33',
-                _contraste: '#141417',
+                _contraste: '#11141A',
               },
             },
             // The boxart placeholder slot. Mostly a step lighter than
@@ -304,10 +334,10 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#2A3040',
                 _catppuccin: '#313244',
-                _cyberpunk: '#1E242D',
+                _cyberpunk: '#4A2278',
                 _matrix: '#16291C',
                 _sonicmania: '#FFD522',
-                _contraste: '#222228',
+                _contraste: '#1E242D',
               },
             },
           },
@@ -320,10 +350,10 @@ export default defineConfig({
                 base: '#EFEDE7',
                 _dark: '#232936',
                 _catppuccin: '#313244',
-                _cyberpunk: '#1A1F27',
+                _cyberpunk: '#331553',
                 _matrix: '#142419',
                 _sonicmania: '#8FD3E0',
-                _contraste: '#17171A',
+                _contraste: '#1A1F27',
               },
             },
             default: {
@@ -331,10 +361,10 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#2A3040',
                 _catppuccin: '#45475A',
-                _cyberpunk: '#1E242D',
+                _cyberpunk: '#3A1A5E',
                 _matrix: '#16291C',
                 _sonicmania: '#19A9C4',
-                _contraste: '#26262B',
+                _contraste: '#1E242D',
               },
             },
             strong: {
@@ -342,10 +372,10 @@ export default defineConfig({
                 base: '#CFCABE',
                 _dark: '#3A4356',
                 _catppuccin: '#585B70',
-                _cyberpunk: '#2A323D',
+                _cyberpunk: '#5A2E8C',
                 _matrix: '#2E5438',
                 _sonicmania: '#0B4D5C',
-                _contraste: '#3A3A42',
+                _contraste: '#2A323D',
               },
             },
           },
@@ -360,7 +390,7 @@ export default defineConfig({
                 _cyberpunk: '#FDF500',
                 _matrix: '#43F57B',
                 _sonicmania: '#052A33',
-                _contraste: '#FFFFFF',
+                _contraste: '#FDF500',
               },
             },
             default: {
@@ -368,10 +398,10 @@ export default defineConfig({
                 base: '#17171A',
                 _dark: '#ECEEF4',
                 _catppuccin: '#CDD6F4',
-                _cyberpunk: '#EDF2F4',
+                _cyberpunk: '#F5EDE9',
                 _matrix: '#D7F5E0',
                 _sonicmania: '#0A2229',
-                _contraste: '#F5F5F6',
+                _contraste: '#EDF2F4',
               },
             },
             muted: {
@@ -379,10 +409,10 @@ export default defineConfig({
                 base: '#4A4843',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#93A4AD',
+                _cyberpunk: '#C9A8E0',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#0B4D5C',
-                _contraste: '#B4B4BC',
+                _contraste: '#93A4AD',
               },
             },
             subtle: {
@@ -390,10 +420,10 @@ export default defineConfig({
                 base: '#5E5C55',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#93A4AD',
+                _cyberpunk: '#C9A8E0',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#0B4D5C',
-                _contraste: '#8E8E96',
+                _contraste: '#93A4AD',
               },
             },
             faint: {
@@ -401,10 +431,10 @@ export default defineConfig({
                 base: '#8C887E',
                 _dark: '#717A91',
                 _catppuccin: '#7F849C',
-                _cyberpunk: '#6B7C86',
+                _cyberpunk: '#9B7BBF',
                 _matrix: '#5C8A6B',
                 _sonicmania: '#6B5300',
-                _contraste: '#6B6B74',
+                _contraste: '#6B7C86',
               },
             },
             // Text on bg.inverse. Same as fg.default wherever bg.inverse is
@@ -416,10 +446,10 @@ export default defineConfig({
                 base: '#17171A',
                 _dark: '#ECEEF4',
                 _catppuccin: '#CDD6F4',
-                _cyberpunk: '#EDF2F4',
+                _cyberpunk: '#F5EDE9',
                 _matrix: '#D7F5E0',
                 _sonicmania: '#E6FAFF',
-                _contraste: '#F5F5F6',
+                _contraste: '#EDF2F4',
               },
             },
             // The quieter half of the dock's text — the size, in mono.
@@ -428,10 +458,48 @@ export default defineConfig({
                 base: '#5E5C55',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#93A4AD',
+                _cyberpunk: '#C9A8E0',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#8FD3E0',
-                _contraste: '#8E8E96',
+                _contraste: '#93A4AD',
+              },
+            },
+            // Technical values set in the mono face — file sizes, CRCs,
+            // counts, pagination, "1401 / 1401". Six of the seven themes
+            // define these as exactly their own fg.subtle / fg.faint, so
+            // nothing moves in them; the pair exists because the Overdrive
+            // comp gives Cyberpunk's data its own colour, a cyan that reads
+            // as a HUD readout against the violet chrome.
+            //
+            // Two steps rather than one so those six themes keep the
+            // contrast they already had: a mono value that was fg.subtle
+            // becomes fg.data, one that was fg.faint becomes fg.dataFaint.
+            // Collapsing them would have dimmed a dozen labels in every
+            // other theme to buy one theme's cyan.
+            //
+            // Not for mono text that already sits in a coloured context —
+            // the dock (fg.onInverseMuted), a source id in accent.text, a
+            // Chip's own count — which keeps its container's colour.
+            data: {
+              value: {
+                base: '#5E5C55',
+                _dark: '#99A1B3',
+                _catppuccin: '#A6ADC8',
+                _cyberpunk: '#4FD6E0',
+                _matrix: '#7FAE8E',
+                _sonicmania: '#0B4D5C',
+                _contraste: '#93A4AD',
+              },
+            },
+            dataFaint: {
+              value: {
+                base: '#8C887E',
+                _dark: '#717A91',
+                _catppuccin: '#7F849C',
+                _cyberpunk: '#4FD6E0',
+                _matrix: '#5C8A6B',
+                _sonicmania: '#6B5300',
+                _contraste: '#6B7C86',
               },
             },
           },
@@ -448,7 +516,7 @@ export default defineConfig({
                 _cyberpunk: '#FDF500',
                 _matrix: '#43F57B',
                 _sonicmania: '#E01B55',
-                _contraste: '#C4F000',
+                _contraste: '#FDF500',
               },
             },
             // Derived except where a comp showed a second step of its
@@ -462,7 +530,7 @@ export default defineConfig({
                 _cyberpunk: '#D6CF00',
                 _matrix: '#7CFAA5',
                 _sonicmania: '#C4134A',
-                _contraste: '#D8FF33',
+                _contraste: '#D6CF00',
               },
             },
             // The comps' row-selection wash. Kept as the comp's own rgba
@@ -473,10 +541,10 @@ export default defineConfig({
                 base: '#E8EEFD',
                 _dark: 'rgba(108, 143, 255, 0.13)',
                 _catppuccin: 'rgba(203, 166, 247, 0.14)',
-                _cyberpunk: 'rgba(253, 245, 0, 0.1)',
+                _cyberpunk: 'rgba(253, 245, 0, 0.16)',
                 _matrix: 'rgba(67, 245, 123, 0.1)',
                 _sonicmania: '#FFD9E4',
-                _contraste: 'rgba(196, 240, 0, 0.09)',
+                _contraste: 'rgba(253, 245, 0, 0.1)',
               },
             },
             // Derived: the same wash at a strength that reads as an edge.
@@ -485,10 +553,10 @@ export default defineConfig({
                 base: '#BBCCF7',
                 _dark: 'rgba(108, 143, 255, 0.45)',
                 _catppuccin: 'rgba(203, 166, 247, 0.45)',
-                _cyberpunk: 'rgba(253, 245, 0, 0.4)',
+                _cyberpunk: 'rgba(253, 245, 0, 0.45)',
                 _matrix: 'rgba(67, 245, 123, 0.4)',
                 _sonicmania: '#F5A8C0',
-                _contraste: 'rgba(196, 240, 0, 0.4)',
+                _contraste: 'rgba(253, 245, 0, 0.4)',
               },
             },
             text: {
@@ -499,7 +567,7 @@ export default defineConfig({
                 _cyberpunk: '#FDF500',
                 _matrix: '#43F57B',
                 _sonicmania: '#7A2238',
-                _contraste: '#C4F000',
+                _contraste: '#FDF500',
               },
             },
             fg: {
@@ -507,10 +575,10 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#0B0E16',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#07080B',
+                _cyberpunk: '#1A0B2E',
                 _matrix: '#04120A',
                 _sonicmania: '#FFFFFF',
-                _contraste: '#0A0A0B',
+                _contraste: '#07080B',
               },
             },
           },
@@ -527,10 +595,10 @@ export default defineConfig({
                   base: '#D8F0E4',
                   _dark: 'rgba(53, 212, 164, 0.14)',
                   _catppuccin: 'rgba(166, 227, 161, 0.15)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.13)',
+                  _cyberpunk: 'rgba(26, 197, 176, 0.18)',
                   _matrix: 'rgba(67, 245, 123, 0.14)',
                   _sonicmania: '#8FE8C2',
-                  _contraste: 'rgba(196, 240, 0, 0.14)',
+                  _contraste: 'rgba(55, 235, 243, 0.13)',
                 },
               },
               subtleBorder: {
@@ -538,10 +606,10 @@ export default defineConfig({
                   base: '#A8DCC4',
                   _dark: 'rgba(53, 212, 164, 0.45)',
                   _catppuccin: 'rgba(166, 227, 161, 0.45)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.45)',
+                  _cyberpunk: 'rgba(26, 197, 176, 0.5)',
                   _matrix: 'rgba(67, 245, 123, 0.45)',
                   _sonicmania: '#4FBF8F',
-                  _contraste: 'rgba(196, 240, 0, 0.4)',
+                  _contraste: 'rgba(55, 235, 243, 0.45)',
                 },
               },
               text: {
@@ -549,12 +617,13 @@ export default defineConfig({
                   base: '#0E6B46',
                   _dark: '#35D4A4',
                   _catppuccin: '#A6E3A1',
-                  // Cyan, per the comp — this theme's owned status is not
-                  // green at all.
-                  _cyberpunk: '#37EBF3',
+                  // Keppel, per the Overdrive comp — this theme's owned
+                  // status is a teal, and Contraste inherited the cyan the
+                  // old Cyberpunk theme used for the same role.
+                  _cyberpunk: '#2BE0C8',
                   _matrix: '#43F57B',
                   _sonicmania: '#063B2A',
-                  _contraste: '#C4F000',
+                  _contraste: '#37EBF3',
                 },
               },
             },
@@ -566,10 +635,15 @@ export default defineConfig({
                   base: '#FBE4E2',
                   _dark: 'rgba(255, 128, 128, 0.14)',
                   _catppuccin: 'rgba(243, 139, 168, 0.15)',
-                  _cyberpunk: 'rgba(255, 61, 61, 0.14)',
+                  // The one solid value in a field of washes: Blood Red
+                  // #710000 from the Coolors palette, which the Overdrive
+                  // comp fills its error panel and its "Introuvable" tag
+                  // with. A 14 % wash of it over the violet surface would
+                  // have been invisible.
+                  _cyberpunk: '#710000',
                   _matrix: 'rgba(255, 92, 92, 0.14)',
                   _sonicmania: '#FFD2D6',
-                  _contraste: 'rgba(255, 107, 107, 0.14)',
+                  _contraste: 'rgba(255, 61, 61, 0.14)',
                 },
               },
               subtleBorder: {
@@ -577,10 +651,10 @@ export default defineConfig({
                   base: '#F0BEB9',
                   _dark: 'rgba(255, 128, 128, 0.45)',
                   _catppuccin: 'rgba(243, 139, 168, 0.45)',
-                  _cyberpunk: 'rgba(255, 61, 61, 0.5)',
+                  _cyberpunk: 'rgba(255, 138, 122, 0.5)',
                   _matrix: 'rgba(255, 92, 92, 0.45)',
                   _sonicmania: '#F09AA2',
-                  _contraste: 'rgba(255, 107, 107, 0.4)',
+                  _contraste: 'rgba(255, 61, 61, 0.5)',
                 },
               },
               text: {
@@ -588,10 +662,10 @@ export default defineConfig({
                   base: '#B3261E',
                   _dark: '#FF8080',
                   _catppuccin: '#F38BA8',
-                  _cyberpunk: '#FF3D3D',
+                  _cyberpunk: '#FF8A7A',
                   _matrix: '#FF5C5C',
                   _sonicmania: '#8C1220',
-                  _contraste: '#FF6B6B',
+                  _contraste: '#FF3D3D',
                 },
               },
             },
@@ -601,10 +675,10 @@ export default defineConfig({
                   base: '#FBE6CC',
                   _dark: 'rgba(255, 180, 84, 0.14)',
                   _catppuccin: 'rgba(250, 179, 135, 0.15)',
-                  _cyberpunk: 'rgba(255, 77, 157, 0.14)',
+                  _cyberpunk: 'rgba(228, 85, 174, 0.18)',
                   _matrix: 'rgba(245, 197, 66, 0.14)',
                   _sonicmania: '#FFCE8A',
-                  _contraste: 'rgba(255, 176, 32, 0.14)',
+                  _contraste: 'rgba(255, 77, 157, 0.14)',
                 },
               },
               subtleBorder: {
@@ -612,10 +686,10 @@ export default defineConfig({
                   base: '#F0CFA0',
                   _dark: 'rgba(255, 180, 84, 0.45)',
                   _catppuccin: 'rgba(250, 179, 135, 0.45)',
-                  _cyberpunk: 'rgba(255, 77, 157, 0.45)',
+                  _cyberpunk: 'rgba(228, 85, 174, 0.5)',
                   _matrix: 'rgba(245, 197, 66, 0.45)',
                   _sonicmania: '#D69B47',
-                  _contraste: 'rgba(255, 176, 32, 0.4)',
+                  _contraste: 'rgba(255, 77, 157, 0.45)',
                 },
               },
               text: {
@@ -623,12 +697,17 @@ export default defineConfig({
                   base: '#8A4600',
                   _dark: '#FFB454',
                   _catppuccin: '#FAB387',
-                  // Pink, per the comp: this theme's accent already owns
-                  // yellow, so its warning is not orange either.
-                  _cyberpunk: '#FF4D9D',
+                  // Pink, per both comps: these two themes' accent already
+                  // owns yellow, so their warning is not orange either.
+                  // Cyberpunk's is a step lighter than the Frostbite
+                  // #E455AE its comp fills the TAG with, because that hex
+                  // as text on the 18 % wash measures 3.92:1 against the
+                  // saturated violet surface. #E455AE stays where the comp
+                  // actually puts it: `solid` and `chip.warning.bg`.
+                  _cyberpunk: '#F285C6',
                   _matrix: '#F5C542',
                   _sonicmania: '#613100',
-                  _contraste: '#FFB020',
+                  _contraste: '#FF4D9D',
                 },
               },
               // The only status role with a *solid* usage (ScanPage's
@@ -641,10 +720,10 @@ export default defineConfig({
                   base: '#D98A00',
                   _dark: '#E8963A',
                   _catppuccin: '#FAB387',
-                  _cyberpunk: '#FF4D9D',
+                  _cyberpunk: '#E455AE',
                   _matrix: '#F5C542',
                   _sonicmania: '#D69B47',
-                  _contraste: '#FFB020',
+                  _contraste: '#FF4D9D',
                 },
               },
               hover: {
@@ -652,10 +731,10 @@ export default defineConfig({
                   base: '#B87400',
                   _dark: '#FFB454',
                   _catppuccin: '#F8C9A8',
-                  _cyberpunk: '#FF75B4',
+                  _cyberpunk: '#F285C6',
                   _matrix: '#FFD966',
                   _sonicmania: '#B87F2E',
-                  _contraste: '#FFC14D',
+                  _contraste: '#FF75B4',
                 },
               },
               fg: {
@@ -669,26 +748,28 @@ export default defineConfig({
                   base: '#2B1400',
                   _dark: '#15100A',
                   _catppuccin: '#1E1E2E',
-                  _cyberpunk: '#2B0618',
+                  _cyberpunk: '#2E0620',
                   _matrix: '#0F0C02',
                   _sonicmania: '#2B1A00',
-                  _contraste: '#140E00',
+                  _contraste: '#2B0618',
                 },
               },
             },
-            // All derived. Cyberpunk shares its cyan with success, since
-            // that comp spends its three hues on accent, owned and warning
-            // and leaves none over; both are non-alarming states.
+            // All derived. Contraste shares its cyan with success, since
+            // the comp it inherited spends its three hues on accent, owned
+            // and warning and leaves none over; both are non-alarming
+            // states. Cyberpunk no longer has to: Overdrive gives owned the
+            // Keppel teal and leaves the Electric Blue free for info.
             info: {
               subtle: {
                 value: {
                   base: '#E8EEFD',
                   _dark: 'rgba(108, 143, 255, 0.13)',
                   _catppuccin: 'rgba(137, 180, 250, 0.15)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.13)',
+                  _cyberpunk: 'rgba(55, 235, 243, 0.16)',
                   _matrix: 'rgba(57, 249, 255, 0.13)',
                   _sonicmania: '#E6FAFF',
-                  _contraste: 'rgba(56, 189, 248, 0.14)',
+                  _contraste: 'rgba(55, 235, 243, 0.13)',
                 },
               },
               subtleBorder: {
@@ -696,10 +777,10 @@ export default defineConfig({
                   base: '#B9D3F0',
                   _dark: 'rgba(108, 143, 255, 0.45)',
                   _catppuccin: 'rgba(137, 180, 250, 0.45)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.45)',
+                  _cyberpunk: 'rgba(55, 235, 243, 0.5)',
                   _matrix: 'rgba(57, 249, 255, 0.45)',
                   _sonicmania: '#8FD3E0',
-                  _contraste: 'rgba(56, 189, 248, 0.4)',
+                  _contraste: 'rgba(55, 235, 243, 0.45)',
                 },
               },
               text: {
@@ -710,7 +791,7 @@ export default defineConfig({
                   _cyberpunk: '#37EBF3',
                   _matrix: '#39F9FF',
                   _sonicmania: '#0E6B7E',
-                  _contraste: '#38BDF8',
+                  _contraste: '#37EBF3',
                 },
               },
             },
@@ -733,10 +814,10 @@ export default defineConfig({
                 base: '#6D44C8',
                 _dark: '#A78BFA',
                 _catppuccin: '#F5C2E7',
-                _cyberpunk: '#CB1DCD',
+                _cyberpunk: '#B88BFF',
                 _matrix: '#F5C542',
                 _sonicmania: '#F2A20C',
-                _contraste: '#38BDF8',
+                _contraste: '#CB1DCD',
               },
             },
             hover: {
@@ -744,10 +825,10 @@ export default defineConfig({
                 base: '#5835A8',
                 _dark: '#BFA6FC',
                 _catppuccin: '#F8D4EE',
-                _cyberpunk: '#E455AE',
+                _cyberpunk: '#D0B4FF',
                 _matrix: '#FFD966',
                 _sonicmania: '#D68B00',
-                _contraste: '#7DD3FC',
+                _contraste: '#E455AE',
               },
             },
             subtleBorder: {
@@ -755,10 +836,38 @@ export default defineConfig({
                 base: '#D5C8F2',
                 _dark: 'rgba(167, 139, 250, 0.45)',
                 _catppuccin: 'rgba(245, 194, 231, 0.45)',
-                _cyberpunk: 'rgba(203, 29, 205, 0.5)',
+                _cyberpunk: 'rgba(184, 139, 255, 0.5)',
                 _matrix: 'rgba(245, 197, 66, 0.45)',
                 _sonicmania: '#6B5300',
-                _contraste: 'rgba(56, 189, 248, 0.4)',
+                _contraste: 'rgba(203, 29, 205, 0.5)',
+              },
+            },
+            // The wash-and-text pair, mirroring accent.subtle /
+            // accent.text. Only Cyberpunk currently reads them (its
+            // Catégorie filter trigger, tinted by family), but every theme
+            // carries a value: a token leaf that skips a theme falls back
+            // to `base` with no error, which would put a light lavender
+            // wash on a dark page the day another theme reaches for it.
+            subtle: {
+              value: {
+                base: '#EDE7FA',
+                _dark: 'rgba(167, 139, 250, 0.14)',
+                _catppuccin: 'rgba(245, 194, 231, 0.15)',
+                _cyberpunk: 'rgba(184, 139, 255, 0.2)',
+                _matrix: 'rgba(245, 197, 66, 0.14)',
+                _sonicmania: '#FFE9BF',
+                _contraste: 'rgba(203, 29, 205, 0.18)',
+              },
+            },
+            text: {
+              value: {
+                base: '#5835A8',
+                _dark: '#A78BFA',
+                _catppuccin: '#F5C2E7',
+                _cyberpunk: '#B88BFF',
+                _matrix: '#F5C542',
+                _sonicmania: '#6B5300',
+                _contraste: '#E455AE',
               },
             },
             fg: {
@@ -766,10 +875,109 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#0B0E16',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#FFFFFF',
+                _cyberpunk: '#1A0B2E',
                 _matrix: '#0F0C02',
                 _sonicmania: '#2B1A00',
-                _contraste: '#04131C',
+                _contraste: '#FFFFFF',
+              },
+            },
+          },
+          // The fill and the text of a status TAG (Chip, StatusTag), as
+          // opposed to the same status spoken as plain prose, which keeps
+          // using status.*.text on whatever surface it sits on.
+          //
+          // The two were one pair of tokens until Cyberpunk's Overdrive
+          // comp drew its tags as solid fills with dark text while every
+          // other theme draws them as a tinted wash with the status colour
+          // as text. Reusing status.*.subtle / status.*.text for both would
+          // have forced a choice: either Cyberpunk's tags stay washes, or
+          // its ~30 plain-text status messages turn dark-on-dark. So the
+          // tag gets its own pair.
+          //
+          // In the six wash themes these are character-for-character the
+          // status.*.subtle / status.*.text values. Only Cyberpunk differs.
+          // Keep them in step when a status colour changes.
+          //
+          // The neutral third role (Chip's `gray`, StatusTag's `missing`)
+          // is not here: it is bg.muted + fg.muted/fg.subtle in every
+          // theme, Cyberpunk included, because a quiet tag repeated across
+          // 1500 unscanned rows must stay quiet.
+          chip: {
+            success: {
+              bg: {
+                value: {
+                  base: '#D8F0E4',
+                  _dark: 'rgba(53, 212, 164, 0.14)',
+                  _catppuccin: 'rgba(166, 227, 161, 0.15)',
+                  _cyberpunk: '#1AC5B0',
+                  _matrix: 'rgba(67, 245, 123, 0.14)',
+                  _sonicmania: '#8FE8C2',
+                  _contraste: 'rgba(55, 235, 243, 0.13)',
+                },
+              },
+              fg: {
+                value: {
+                  base: '#0E6B46',
+                  _dark: '#35D4A4',
+                  _catppuccin: '#A6E3A1',
+                  _cyberpunk: '#06211D',
+                  _matrix: '#43F57B',
+                  _sonicmania: '#063B2A',
+                  _contraste: '#37EBF3',
+                },
+              },
+            },
+            warning: {
+              bg: {
+                value: {
+                  base: '#FBE6CC',
+                  _dark: 'rgba(255, 180, 84, 0.14)',
+                  _catppuccin: 'rgba(250, 179, 135, 0.15)',
+                  _cyberpunk: '#E455AE',
+                  _matrix: 'rgba(245, 197, 66, 0.14)',
+                  _sonicmania: '#FFCE8A',
+                  _contraste: 'rgba(255, 77, 157, 0.14)',
+                },
+              },
+              fg: {
+                value: {
+                  base: '#8A4600',
+                  _dark: '#FFB454',
+                  _catppuccin: '#FAB387',
+                  _cyberpunk: '#2E0620',
+                  _matrix: '#F5C542',
+                  _sonicmania: '#613100',
+                  _contraste: '#FF4D9D',
+                },
+              },
+            },
+            // LayoutBadge's "zip" half, and the comp's "En attente" tag.
+            // There is no chip.danger: Cyberpunk's status.danger.subtle is
+            // already the solid Blood Red the comp fills that tag with, so
+            // a danger tag built from status.* lands on the right shape in
+            // every theme without a second pair.
+            info: {
+              bg: {
+                value: {
+                  base: '#E8EEFD',
+                  _dark: 'rgba(108, 143, 255, 0.13)',
+                  _catppuccin: 'rgba(137, 180, 250, 0.15)',
+                  _cyberpunk: '#37EBF3',
+                  _matrix: 'rgba(57, 249, 255, 0.13)',
+                  _sonicmania: '#E6FAFF',
+                  _contraste: 'rgba(55, 235, 243, 0.13)',
+                },
+              },
+              fg: {
+                value: {
+                  base: '#244AB5',
+                  _dark: '#93AEFF',
+                  _catppuccin: '#89B4FA',
+                  _cyberpunk: '#04282B',
+                  _matrix: '#39F9FF',
+                  _sonicmania: '#0E6B7E',
+                  _contraste: '#37EBF3',
+                },
               },
             },
           },
@@ -803,8 +1011,9 @@ export default defineConfig({
                 color: 'accent.fg',
                 shadow: 'sm',
                 _hover: { bg: 'accent.hover' },
-                _cyberpunk: { boxShadow: '0 0 18px rgba(253, 245, 0, 0.4)' },
+                _cyberpunk: { boxShadow: '0 0 26px rgba(253, 245, 0, 0.55)' },
                 _matrix: { boxShadow: '0 0 18px rgba(67, 245, 123, 0.35)' },
+                _contraste: { boxShadow: '0 0 18px rgba(253, 245, 0, 0.4)' },
               },
               // A filled tone rather than an outline, for the same reason
               // the card lost its border: a screen full of 1px-outlined
@@ -869,10 +1078,14 @@ export default defineConfig({
             boxShadow: '0 4px 14px rgba(23, 23, 26, 0.08)',
             _dark: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
             _catppuccin: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
-            _cyberpunk: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
+            // Cyberpunk's is the one shadow in the app that is not black:
+            // the Overdrive comp lights its cards from a magenta source,
+            // which is what separates them from a violet page without
+            // adding the border this shell removed everywhere.
+            _cyberpunk: { boxShadow: '0 8px 28px rgba(123, 20, 160, 0.45)' },
             _matrix: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
             _sonicmania: { boxShadow: '0 6px 18px rgba(10, 34, 41, 0.25)' },
-            _contraste: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.45)' },
+            _contraste: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
           },
         },
       },
