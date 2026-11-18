@@ -12,7 +12,10 @@ export default defineConfig({
   // in semantic tokens below already IS the light theme, so no `light`
   // condition is needed. `matrix` is the original neon-green/yellow look
   // that used to be named `cyberpunk`, renamed once an actual
-  // Cyberpunk-2077-styled (black/yellow/cyan) theme was added under that name.
+  // Cyberpunk-2077-styled (black/yellow/cyan) theme was added under that
+  // name. That second theme is gone (2026-11-18); `matrix` keeps the name
+  // it was given, since renaming it back would move everyone's stored
+  // preference for nothing.
   //
   // This list and the condition keys used in semanticTokens below are the
   // only place a theme is declared, so adding one means adding a condition
@@ -25,7 +28,9 @@ export default defineConfig({
     extend: {
       dark: '[data-theme="dark"] &',
       catppuccin: '[data-theme="catppuccin"] &',
-      cyberpunk: '[data-theme="cyberpunk"] &',
+      nightdrive: '[data-theme="nightdrive"] &',
+      lemongrid: '[data-theme="lemongrid"] &',
+      keppel: '[data-theme="keppel"] &',
       matrix: '[data-theme="matrix"] &',
       sonicmania: '[data-theme="sonicmania"] &',
       contraste: '[data-theme="contraste"] &',
@@ -69,8 +74,8 @@ export default defineConfig({
     //
     // The focus ring is here too, for the same reason. These fields used to
     // show focus by recolouring their border; with no border left, several
-    // of them were down to a Cyberpunk-only glow and had no visible focus
-    // at all in the other six themes. One global rule cannot be forgotten
+    // of them were down to a one-theme glow and had no visible focus
+    // at all in any of the others. One global rule cannot be forgotten
     // on the next field someone adds.
     'input, textarea, select': {
       bg: 'bg.inset',
@@ -175,7 +180,7 @@ export default defineConfig({
       },
       semanticTokens: {
         colors: {
-          // Seven self-contained themes. Every value here is taken from the
+          // Nine self-contained themes. Every value here is taken from the
           // validated design comps in
           // .rom-curator-data/design-directions/project/*.dc.html — one
           // artboard per theme — rather than re-derived. Where a comp gives
@@ -214,9 +219,10 @@ export default defineConfig({
           //     to the warning, which leaves no third hue for info; info
           //     reuses the cyan. Both are non-alarming states, so sharing a
           //     hue costs less than inventing one.
-          //   * Cyberpunk, Contraste and Matrix are the themes whose comp
-          //     gives the page heading its own colour (the accent, with a
-          //     glow) rather than the body text colour.
+          //   * Contraste and Matrix are the themes whose comp gives the
+          //     page heading its own colour (the accent, with a glow)
+          //     rather than the body text colour. Night Drive does the
+          //     same, in cyan.
           //
           // Nintendo and Megadrive were removed (2026-11-15): navy plus a
           // saturated red read poorly down a long game list, and the two
@@ -238,27 +244,59 @@ export default defineConfig({
           //     used to be Cyberpunk's: neutral black, Rich Lemon, cyan
           //     owned, pink warning. Nothing of it is new; it is the theme
           //     that was already there, under the name that fits it.
-          //   * CYBERPUNK is the canvas's "Overdrive" artboard: a saturated
-          //     violet ground instead of a near-black one, status tags as
-          //     SOLID fills instead of 14 % washes (see the `chip` tokens),
-          //     technical values in cyan (fg.data), a magenta card shadow,
-          //     and all nine palette colours in use, Blood Red #710000
-          //     included.
+          //   * CYBERPUNK became the canvas's "Overdrive" artboard, on a
+          //     saturated violet ground. It shipped, Camille lived with it,
+          //     and it was dropped on 2026-11-18. Nothing of it remains.
+          //
+          // NIGHT DRIVE, LEMON GRID and KEPPEL replaced it (2026-11-18),
+          // from a fourth canvas:
+          // https://claude.ai/artifact/MYqQctFayQR4HjmmcgYemo
+          //
+          // Three arrangements of the SAME nine Cyberpunk 2077 colours, one
+          // dominant each, chosen by Camille out of six proposals. What
+          // Overdrive introduced and these three inherit: solid-fill status
+          // tags (the `chip` tokens), a mono colour of their own (fg.data),
+          // Blood Red #710000 as the danger surface.
+          //
+          //   * NIGHT DRIVE — Electric Blue runs the chrome: ground, page
+          //     title, accent. Rich Lemon drops from the accent down to the
+          //     technical values, so the yellow leaves the button and
+          //     spreads through the list instead.
+          //   * LEMON GRID — Rich Lemon stops being an accent and becomes a
+          //     SURFACE: the Jeux header is a solid yellow band (see the
+          //     bg.band group below), over a black warmed with the same
+          //     hue. Data goes cyan.
+          //   * KEPPEL — the quiet one. Teal ground and action, yellow kept
+          //     for the title alone, and the only theme of the nine whose
+          //     technical values are not coloured at all: fg.data is Pale
+          //     Silver.
           //
           // The visible cost, accepted on the canvas rather than
-          // overlooked: Cyberpunk's filter chips are tinted by family
-          // (Région cyan, Catégorie violet) in GameFilters, which spends
-          // the info and accent2 hues on something that is not a status and
-          // not the primary action. It is the one place this theme breaks
-          // the phase-14 rule that a vivid accent is reserved for the
-          // primary action and the selection.
+          // overlooked: all three tint their filter chips by family (Région
+          // and Catégorie) in GameFilters, which spends the info and
+          // accent2 hues on something that is not a status and not the
+          // primary action. It is the one place these themes break the
+          // phase-14 rule that a vivid accent is reserved for the primary
+          // action and the selection. Overdrive broke it alone; three
+          // themes now do.
+          //
+          // Why each of the three spends info and accent2 where it does:
+          // their accent takes one hue out of the nine, so the status roles
+          // move around it. Night Drive's accent is the cyan, so its owned
+          // status keeps the teal and info falls to Blushing Purple;
+          // Keppel's accent IS the teal, so owned moves up to the cyan and
+          // info again lands on the purple. Lemon Grid, whose accent is the
+          // yellow, is the only one of the three that can leave both the
+          // teal and the cyan where Overdrive had them.
           bg: {
             page: {
               value: {
                 base: '#F3F1EC',
                 _dark: '#12141A',
                 _catppuccin: '#181825',
-                _cyberpunk: '#1A0B2E',
+                _nightdrive: '#06121C',
+                _lemongrid: '#14130A',
+                _keppel: '#04191A',
                 _matrix: '#040C07',
                 _sonicmania: '#FFD522',
                 _contraste: '#07080B',
@@ -269,7 +307,9 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#1B1F28',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#271142',
+                _nightdrive: '#0C2033',
+                _lemongrid: '#1E1C10',
+                _keppel: '#072628',
                 _matrix: '#0B170F',
                 _sonicmania: '#63D9EC',
                 _contraste: '#11141A',
@@ -280,7 +320,9 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#232936',
                 _catppuccin: '#313244',
-                _cyberpunk: '#3A1A5E',
+                _nightdrive: '#133048',
+                _lemongrid: '#2B2818',
+                _keppel: '#0D3A3B',
                 _matrix: '#16291C',
                 _sonicmania: '#BFEFF7',
                 _contraste: '#1E242D',
@@ -298,7 +340,9 @@ export default defineConfig({
                 base: '#F0EEE8',
                 _dark: '#141821',
                 _catppuccin: '#11111B',
-                _cyberpunk: '#120620',
+                _nightdrive: '#040D16',
+                _lemongrid: '#0D0C06',
+                _keppel: '#020F10',
                 _matrix: '#06100A',
                 _sonicmania: '#BFEFF7',
                 _contraste: '#0A0D12',
@@ -319,7 +363,9 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#1B1F28',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#271142',
+                _nightdrive: '#0C2033',
+                _lemongrid: '#1E1C10',
+                _keppel: '#072628',
                 _matrix: '#0B170F',
                 _sonicmania: '#052A33',
                 _contraste: '#11141A',
@@ -334,10 +380,40 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#2A3040',
                 _catppuccin: '#313244',
-                _cyberpunk: '#4A2278',
+                _nightdrive: '#1A4260',
+                _lemongrid: '#3A3620',
+                _keppel: '#11504F',
                 _matrix: '#16291C',
                 _sonicmania: '#FFD522',
                 _contraste: '#1E242D',
+              },
+            },
+            // The Jeux header's surface. Identical to bg.surface in eight
+            // of the nine themes — it exists for Lemon Grid, whose canvas
+            // makes that one header a solid Rich Lemon band while every
+            // other surface in it stays a warmed black.
+            //
+            // A token rather than a `_lemongrid` override in App.tsx for
+            // the same reason bg.inverse is one: everything written on it
+            // has to flip with it (fg.onBand* below), and a colour written
+            // into a .tsx is invisible to theme-contrast.test.ts, which
+            // reads this file. One theme needing a coloured header is
+            // still a role, not a special case.
+            //
+            // It covers the Jeux header only. The home screen, the folder
+            // bar and Réglages keep bg.surface in Lemon Grid, so the band
+            // marks the console you have open and nothing else.
+            band: {
+              value: {
+                base: '#FFFFFF',
+                _dark: '#1B1F28',
+                _catppuccin: '#1E1E2E',
+                _nightdrive: '#0C2033',
+                _lemongrid: '#FDF500',
+                _keppel: '#072628',
+                _matrix: '#0B170F',
+                _sonicmania: '#63D9EC',
+                _contraste: '#11141A',
               },
             },
           },
@@ -350,7 +426,9 @@ export default defineConfig({
                 base: '#EFEDE7',
                 _dark: '#232936',
                 _catppuccin: '#313244',
-                _cyberpunk: '#331553',
+                _nightdrive: '#0F2A40',
+                _lemongrid: '#262314',
+                _keppel: '#0A3031',
                 _matrix: '#142419',
                 _sonicmania: '#8FD3E0',
                 _contraste: '#1A1F27',
@@ -361,7 +439,9 @@ export default defineConfig({
                 base: '#E7E4DC',
                 _dark: '#2A3040',
                 _catppuccin: '#45475A',
-                _cyberpunk: '#3A1A5E',
+                _nightdrive: '#133048',
+                _lemongrid: '#2B2818',
+                _keppel: '#0D3A3B',
                 _matrix: '#16291C',
                 _sonicmania: '#19A9C4',
                 _contraste: '#1E242D',
@@ -372,7 +452,9 @@ export default defineConfig({
                 base: '#CFCABE',
                 _dark: '#3A4356',
                 _catppuccin: '#585B70',
-                _cyberpunk: '#5A2E8C',
+                _nightdrive: '#1F4A6B',
+                _lemongrid: '#46422A',
+                _keppel: '#175A58',
                 _matrix: '#2E5438',
                 _sonicmania: '#0B4D5C',
                 _contraste: '#2A323D',
@@ -387,7 +469,9 @@ export default defineConfig({
                 _catppuccin: '#CDD6F4',
                 // The two comps that give the page title its own colour:
                 // the accent, carrying a glow (applied in the components).
-                _cyberpunk: '#FDF500',
+                _nightdrive: '#37EBF3',
+                _lemongrid: '#FDF500',
+                _keppel: '#FDF500',
                 _matrix: '#43F57B',
                 _sonicmania: '#052A33',
                 _contraste: '#FDF500',
@@ -398,7 +482,9 @@ export default defineConfig({
                 base: '#17171A',
                 _dark: '#ECEEF4',
                 _catppuccin: '#CDD6F4',
-                _cyberpunk: '#F5EDE9',
+                _nightdrive: '#E8F4F8',
+                _lemongrid: '#E9E2D8',
+                _keppel: '#E6F5F2',
                 _matrix: '#D7F5E0',
                 _sonicmania: '#0A2229',
                 _contraste: '#EDF2F4',
@@ -409,7 +495,9 @@ export default defineConfig({
                 base: '#4A4843',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#C9A8E0',
+                _nightdrive: '#8FB8CC',
+                _lemongrid: '#C4BE9E',
+                _keppel: '#8FC5BE',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#0B4D5C',
                 _contraste: '#93A4AD',
@@ -420,7 +508,9 @@ export default defineConfig({
                 base: '#5E5C55',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#C9A8E0',
+                _nightdrive: '#8FB8CC',
+                _lemongrid: '#C4BE9E',
+                _keppel: '#8FC5BE',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#0B4D5C',
                 _contraste: '#93A4AD',
@@ -431,7 +521,9 @@ export default defineConfig({
                 base: '#8C887E',
                 _dark: '#717A91',
                 _catppuccin: '#7F849C',
-                _cyberpunk: '#9B7BBF',
+                _nightdrive: '#6E9AB2',
+                _lemongrid: '#948F72',
+                _keppel: '#5F9A93',
                 _matrix: '#5C8A6B',
                 _sonicmania: '#6B5300',
                 _contraste: '#6B7C86',
@@ -446,7 +538,9 @@ export default defineConfig({
                 base: '#17171A',
                 _dark: '#ECEEF4',
                 _catppuccin: '#CDD6F4',
-                _cyberpunk: '#F5EDE9',
+                _nightdrive: '#E8F4F8',
+                _lemongrid: '#E9E2D8',
+                _keppel: '#E6F5F2',
                 _matrix: '#D7F5E0',
                 _sonicmania: '#E6FAFF',
                 _contraste: '#EDF2F4',
@@ -458,24 +552,28 @@ export default defineConfig({
                 base: '#5E5C55',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#C9A8E0',
+                _nightdrive: '#8FB8CC',
+                _lemongrid: '#C4BE9E',
+                _keppel: '#8FC5BE',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#8FD3E0',
                 _contraste: '#93A4AD',
               },
             },
             // Technical values set in the mono face — file sizes, CRCs,
-            // counts, pagination, "1401 / 1401". Six of the seven themes
+            // counts, pagination, "1401 / 1401". Six of the nine themes
             // define these as exactly their own fg.subtle / fg.faint, so
-            // nothing moves in them; the pair exists because the Overdrive
-            // comp gives Cyberpunk's data its own colour, a cyan that reads
-            // as a HUD readout against the violet chrome.
+            // nothing moves in them; the pair exists because the three
+            // palettes drawn from the Cyberpunk 2077 colours each give
+            // their data a colour of its own — yellow in Night Drive, cyan
+            // in Lemon Grid, Pale Silver in Keppel — so a technical value
+            // reads as a HUD readout rather than as dimmer body text.
             //
             // Two steps rather than one so those six themes keep the
             // contrast they already had: a mono value that was fg.subtle
             // becomes fg.data, one that was fg.faint becomes fg.dataFaint.
             // Collapsing them would have dimmed a dozen labels in every
-            // other theme to buy one theme's cyan.
+            // other theme to buy three themes their own mono colour.
             //
             // Not for mono text that already sits in a coloured context —
             // the dock (fg.onInverseMuted), a source id in accent.text, a
@@ -485,7 +583,9 @@ export default defineConfig({
                 base: '#5E5C55',
                 _dark: '#99A1B3',
                 _catppuccin: '#A6ADC8',
-                _cyberpunk: '#4FD6E0',
+                _nightdrive: '#FDF500',
+                _lemongrid: '#37EBF3',
+                _keppel: '#D1C5C0',
                 _matrix: '#7FAE8E',
                 _sonicmania: '#0B4D5C',
                 _contraste: '#93A4AD',
@@ -496,10 +596,60 @@ export default defineConfig({
                 base: '#8C887E',
                 _dark: '#717A91',
                 _catppuccin: '#7F849C',
-                _cyberpunk: '#4FD6E0',
+                _nightdrive: '#C9C200',
+                _lemongrid: '#37EBF3',
+                _keppel: '#A89C97',
                 _matrix: '#5C8A6B',
                 _sonicmania: '#6B5300',
                 _contraste: '#6B7C86',
+              },
+            },
+            // The three things written on bg.band: the console's name, the
+            // ownership counter beside it, and the owned half of that
+            // counter. Each is its ordinary token (fg.heading, fg.dataFaint,
+            // status.success.text) in eight themes, character for
+            // character, and only Lemon Grid moves — where the band is
+            // yellow, every one of them would otherwise fail: the teal of
+            // the owned count measures 1.89:1 on Rich Lemon.
+            //
+            // Keep each in step with the token it mirrors.
+            onBand: {
+              value: {
+                base: '#17171A',
+                _dark: '#ECEEF4',
+                _catppuccin: '#CDD6F4',
+                _nightdrive: '#37EBF3',
+                _lemongrid: '#14130A',
+                _keppel: '#FDF500',
+                _matrix: '#43F57B',
+                _sonicmania: '#052A33',
+                _contraste: '#FDF500',
+              },
+            },
+            onBandMuted: {
+              value: {
+                base: '#8C887E',
+                _dark: '#717A91',
+                _catppuccin: '#7F849C',
+                _nightdrive: '#C9C200',
+                _lemongrid: '#4A4607',
+                _keppel: '#A89C97',
+                _matrix: '#5C8A6B',
+                _sonicmania: '#6B5300',
+                _contraste: '#6B7C86',
+              },
+            },
+            onBandSuccess: {
+              value: {
+                base: '#0E6B46',
+                _dark: '#35D4A4',
+                _catppuccin: '#A6E3A1',
+                _nightdrive: '#2BE0C8',
+                _lemongrid: '#064F45',
+                _keppel: '#37EBF3',
+                _matrix: '#43F57B',
+                _sonicmania: '#063B2A',
+                _contraste: '#37EBF3',
               },
             },
           },
@@ -513,7 +663,9 @@ export default defineConfig({
                 base: '#2F5BD9',
                 _dark: '#6C8FFF',
                 _catppuccin: '#CBA6F7',
-                _cyberpunk: '#FDF500',
+                _nightdrive: '#37EBF3',
+                _lemongrid: '#FDF500',
+                _keppel: '#1AC5B0',
                 _matrix: '#43F57B',
                 _sonicmania: '#E01B55',
                 _contraste: '#FDF500',
@@ -527,7 +679,9 @@ export default defineConfig({
                 base: '#244AB5',
                 _dark: '#93AEFF',
                 _catppuccin: '#DDBFFA',
-                _cyberpunk: '#D6CF00',
+                _nightdrive: '#7BF4F9',
+                _lemongrid: '#D6CF00',
+                _keppel: '#4FDCC9',
                 _matrix: '#7CFAA5',
                 _sonicmania: '#C4134A',
                 _contraste: '#D6CF00',
@@ -541,7 +695,9 @@ export default defineConfig({
                 base: '#E8EEFD',
                 _dark: 'rgba(108, 143, 255, 0.13)',
                 _catppuccin: 'rgba(203, 166, 247, 0.14)',
-                _cyberpunk: 'rgba(253, 245, 0, 0.16)',
+                _nightdrive: 'rgba(55, 235, 243, 0.16)',
+                _lemongrid: 'rgba(253, 245, 0, 0.13)',
+                _keppel: 'rgba(26, 197, 176, 0.17)',
                 _matrix: 'rgba(67, 245, 123, 0.1)',
                 _sonicmania: '#FFD9E4',
                 _contraste: 'rgba(253, 245, 0, 0.1)',
@@ -553,7 +709,9 @@ export default defineConfig({
                 base: '#BBCCF7',
                 _dark: 'rgba(108, 143, 255, 0.45)',
                 _catppuccin: 'rgba(203, 166, 247, 0.45)',
-                _cyberpunk: 'rgba(253, 245, 0, 0.45)',
+                _nightdrive: 'rgba(55, 235, 243, 0.45)',
+                _lemongrid: 'rgba(253, 245, 0, 0.45)',
+                _keppel: 'rgba(26, 197, 176, 0.5)',
                 _matrix: 'rgba(67, 245, 123, 0.4)',
                 _sonicmania: '#F5A8C0',
                 _contraste: 'rgba(253, 245, 0, 0.4)',
@@ -564,7 +722,9 @@ export default defineConfig({
                 base: '#244AB5',
                 _dark: '#93AEFF',
                 _catppuccin: '#CBA6F7',
-                _cyberpunk: '#FDF500',
+                _nightdrive: '#37EBF3',
+                _lemongrid: '#FDF500',
+                _keppel: '#2BE0C8',
                 _matrix: '#43F57B',
                 _sonicmania: '#7A2238',
                 _contraste: '#FDF500',
@@ -575,7 +735,9 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#0B0E16',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#1A0B2E',
+                _nightdrive: '#06121C',
+                _lemongrid: '#14130A',
+                _keppel: '#04191A',
                 _matrix: '#04120A',
                 _sonicmania: '#FFFFFF',
                 _contraste: '#07080B',
@@ -595,7 +757,9 @@ export default defineConfig({
                   base: '#D8F0E4',
                   _dark: 'rgba(53, 212, 164, 0.14)',
                   _catppuccin: 'rgba(166, 227, 161, 0.15)',
-                  _cyberpunk: 'rgba(26, 197, 176, 0.18)',
+                  _nightdrive: 'rgba(26, 197, 176, 0.18)',
+                  _lemongrid: 'rgba(26, 197, 176, 0.18)',
+                  _keppel: 'rgba(55, 235, 243, 0.16)',
                   _matrix: 'rgba(67, 245, 123, 0.14)',
                   _sonicmania: '#8FE8C2',
                   _contraste: 'rgba(55, 235, 243, 0.13)',
@@ -606,7 +770,9 @@ export default defineConfig({
                   base: '#A8DCC4',
                   _dark: 'rgba(53, 212, 164, 0.45)',
                   _catppuccin: 'rgba(166, 227, 161, 0.45)',
-                  _cyberpunk: 'rgba(26, 197, 176, 0.5)',
+                  _nightdrive: 'rgba(26, 197, 176, 0.5)',
+                  _lemongrid: 'rgba(26, 197, 176, 0.5)',
+                  _keppel: 'rgba(55, 235, 243, 0.5)',
                   _matrix: 'rgba(67, 245, 123, 0.45)',
                   _sonicmania: '#4FBF8F',
                   _contraste: 'rgba(55, 235, 243, 0.45)',
@@ -617,10 +783,14 @@ export default defineConfig({
                   base: '#0E6B46',
                   _dark: '#35D4A4',
                   _catppuccin: '#A6E3A1',
-                  // Keppel, per the Overdrive comp — this theme's owned
-                  // status is a teal, and Contraste inherited the cyan the
-                  // old Cyberpunk theme used for the same role.
-                  _cyberpunk: '#2BE0C8',
+                  // The Keppel teal, which is what the owned status is in
+                  // the palette these three share — except in the Keppel
+                  // theme itself, where that teal is already the accent,
+                  // so owned moves up to the Electric Blue. Contraste
+                  // inherited the same cyan from the theme it replaced.
+                  _nightdrive: '#2BE0C8',
+                  _lemongrid: '#2BE0C8',
+                  _keppel: '#37EBF3',
                   _matrix: '#43F57B',
                   _sonicmania: '#063B2A',
                   _contraste: '#37EBF3',
@@ -636,11 +806,13 @@ export default defineConfig({
                   _dark: 'rgba(255, 128, 128, 0.14)',
                   _catppuccin: 'rgba(243, 139, 168, 0.15)',
                   // The one solid value in a field of washes: Blood Red
-                  // #710000 from the Coolors palette, which the Overdrive
-                  // comp fills its error panel and its "Introuvable" tag
-                  // with. A 14 % wash of it over the violet surface would
-                  // have been invisible.
-                  _cyberpunk: '#710000',
+                  // #710000 from the Coolors palette, which the canvas
+                  // fills the error panel and the "Introuvable" tag with
+                  // in all three of these themes. A 14 % wash of it over
+                  // their dark grounds would have been invisible.
+                  _nightdrive: '#710000',
+                  _lemongrid: '#710000',
+                  _keppel: '#710000',
                   _matrix: 'rgba(255, 92, 92, 0.14)',
                   _sonicmania: '#FFD2D6',
                   _contraste: 'rgba(255, 61, 61, 0.14)',
@@ -651,7 +823,9 @@ export default defineConfig({
                   base: '#F0BEB9',
                   _dark: 'rgba(255, 128, 128, 0.45)',
                   _catppuccin: 'rgba(243, 139, 168, 0.45)',
-                  _cyberpunk: 'rgba(255, 138, 122, 0.5)',
+                  _nightdrive: 'rgba(255, 138, 122, 0.5)',
+                  _lemongrid: 'rgba(255, 138, 122, 0.5)',
+                  _keppel: 'rgba(255, 138, 122, 0.5)',
                   _matrix: 'rgba(255, 92, 92, 0.45)',
                   _sonicmania: '#F09AA2',
                   _contraste: 'rgba(255, 61, 61, 0.5)',
@@ -662,7 +836,9 @@ export default defineConfig({
                   base: '#B3261E',
                   _dark: '#FF8080',
                   _catppuccin: '#F38BA8',
-                  _cyberpunk: '#FF8A7A',
+                  _nightdrive: '#FF8A7A',
+                  _lemongrid: '#FF8A7A',
+                  _keppel: '#FF8A7A',
                   _matrix: '#FF5C5C',
                   _sonicmania: '#8C1220',
                   _contraste: '#FF3D3D',
@@ -675,7 +851,9 @@ export default defineConfig({
                   base: '#FBE6CC',
                   _dark: 'rgba(255, 180, 84, 0.14)',
                   _catppuccin: 'rgba(250, 179, 135, 0.15)',
-                  _cyberpunk: 'rgba(228, 85, 174, 0.18)',
+                  _nightdrive: 'rgba(228, 85, 174, 0.18)',
+                  _lemongrid: 'rgba(228, 85, 174, 0.18)',
+                  _keppel: 'rgba(228, 85, 174, 0.18)',
                   _matrix: 'rgba(245, 197, 66, 0.14)',
                   _sonicmania: '#FFCE8A',
                   _contraste: 'rgba(255, 77, 157, 0.14)',
@@ -686,7 +864,9 @@ export default defineConfig({
                   base: '#F0CFA0',
                   _dark: 'rgba(255, 180, 84, 0.45)',
                   _catppuccin: 'rgba(250, 179, 135, 0.45)',
-                  _cyberpunk: 'rgba(228, 85, 174, 0.5)',
+                  _nightdrive: 'rgba(228, 85, 174, 0.5)',
+                  _lemongrid: 'rgba(228, 85, 174, 0.5)',
+                  _keppel: 'rgba(228, 85, 174, 0.5)',
                   _matrix: 'rgba(245, 197, 66, 0.45)',
                   _sonicmania: '#D69B47',
                   _contraste: 'rgba(255, 77, 157, 0.45)',
@@ -697,14 +877,17 @@ export default defineConfig({
                   base: '#8A4600',
                   _dark: '#FFB454',
                   _catppuccin: '#FAB387',
-                  // Pink, per both comps: these two themes' accent already
-                  // owns yellow, so their warning is not orange either.
-                  // Cyberpunk's is a step lighter than the Frostbite
-                  // #E455AE its comp fills the TAG with, because that hex
-                  // as text on the 18 % wash measures 3.92:1 against the
-                  // saturated violet surface. #E455AE stays where the comp
-                  // actually puts it: `solid` and `chip.warning.bg`.
-                  _cyberpunk: '#F285C6',
+                  // Pink, per the comps: warning is the Frostbite #E455AE
+                  // of the shared palette, and in Contraste the yellow is
+                  // the accent already, so nothing here is orange.
+                  //
+                  // The text step is lighter than the fill because #E455AE
+                  // as text on its own 18 % wash measured 3.92:1 on a dark
+                  // ground. #E455AE stays where the comps actually put it:
+                  // `solid` and `chip.warning.bg`.
+                  _nightdrive: '#F285C6',
+                  _lemongrid: '#F285C6',
+                  _keppel: '#F285C6',
                   _matrix: '#F5C542',
                   _sonicmania: '#613100',
                   _contraste: '#FF4D9D',
@@ -720,7 +903,9 @@ export default defineConfig({
                   base: '#D98A00',
                   _dark: '#E8963A',
                   _catppuccin: '#FAB387',
-                  _cyberpunk: '#E455AE',
+                  _nightdrive: '#E455AE',
+                  _lemongrid: '#E455AE',
+                  _keppel: '#E455AE',
                   _matrix: '#F5C542',
                   _sonicmania: '#D69B47',
                   _contraste: '#FF4D9D',
@@ -731,7 +916,9 @@ export default defineConfig({
                   base: '#B87400',
                   _dark: '#FFB454',
                   _catppuccin: '#F8C9A8',
-                  _cyberpunk: '#F285C6',
+                  _nightdrive: '#F285C6',
+                  _lemongrid: '#F285C6',
+                  _keppel: '#F285C6',
                   _matrix: '#FFD966',
                   _sonicmania: '#B87F2E',
                   _contraste: '#FF75B4',
@@ -748,7 +935,9 @@ export default defineConfig({
                   base: '#2B1400',
                   _dark: '#15100A',
                   _catppuccin: '#1E1E2E',
-                  _cyberpunk: '#2E0620',
+                  _nightdrive: '#2E0620',
+                  _lemongrid: '#2E0620',
+                  _keppel: '#2E0620',
                   _matrix: '#0F0C02',
                   _sonicmania: '#2B1A00',
                   _contraste: '#2B0618',
@@ -758,15 +947,21 @@ export default defineConfig({
             // All derived. Contraste shares its cyan with success, since
             // the comp it inherited spends its three hues on accent, owned
             // and warning and leaves none over; both are non-alarming
-            // states. Cyberpunk no longer has to: Overdrive gives owned the
-            // Keppel teal and leaves the Electric Blue free for info.
+            // states. The three Cyberpunk-palette themes do not have to
+            // share: Lemon Grid, whose accent is the yellow, keeps the
+            // Electric Blue free for info, and Night Drive and Keppel —
+            // whose accents take the cyan and the teal — reach instead for
+            // Blushing Purple, the one hue neither their accent nor their
+            // warning has claimed.
             info: {
               subtle: {
                 value: {
                   base: '#E8EEFD',
                   _dark: 'rgba(108, 143, 255, 0.13)',
                   _catppuccin: 'rgba(137, 180, 250, 0.15)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.16)',
+                  _nightdrive: 'rgba(147, 112, 219, 0.22)',
+                  _lemongrid: 'rgba(55, 235, 243, 0.16)',
+                  _keppel: 'rgba(147, 112, 219, 0.22)',
                   _matrix: 'rgba(57, 249, 255, 0.13)',
                   _sonicmania: '#E6FAFF',
                   _contraste: 'rgba(55, 235, 243, 0.13)',
@@ -777,7 +972,9 @@ export default defineConfig({
                   base: '#B9D3F0',
                   _dark: 'rgba(108, 143, 255, 0.45)',
                   _catppuccin: 'rgba(137, 180, 250, 0.45)',
-                  _cyberpunk: 'rgba(55, 235, 243, 0.5)',
+                  _nightdrive: 'rgba(147, 112, 219, 0.5)',
+                  _lemongrid: 'rgba(55, 235, 243, 0.5)',
+                  _keppel: 'rgba(147, 112, 219, 0.5)',
                   _matrix: 'rgba(57, 249, 255, 0.45)',
                   _sonicmania: '#8FD3E0',
                   _contraste: 'rgba(55, 235, 243, 0.45)',
@@ -788,7 +985,9 @@ export default defineConfig({
                   base: '#244AB5',
                   _dark: '#93AEFF',
                   _catppuccin: '#89B4FA',
-                  _cyberpunk: '#37EBF3',
+                  _nightdrive: '#B88BFF',
+                  _lemongrid: '#37EBF3',
+                  _keppel: '#B88BFF',
                   _matrix: '#39F9FF',
                   _sonicmania: '#0E6B7E',
                   _contraste: '#37EBF3',
@@ -805,16 +1004,21 @@ export default defineConfig({
           // Sonic Mania's is the gold its comp used on the download button
           // (the magenta family took accent.*), and Matrix's is its comp's
           // own warning gold, which is the only second hue that artboard
-          // has. Cyberpunk keeps Steel Pink from the Coolors palette its
-          // comp draws on: its comp's pink (#FF4D9D) is now the warning,
-          // and GameFilters' category-chip glow already hardcodes #CB1DCD.
+          // has. Night Drive and Keppel take Steel Pink from the Coolors
+          // palette, two steps lighter than the #CB1DCD the strip gives —
+          // that hex carries dark text at 4.18:1, which fails. Lemon Grid
+          // uses Blushing Purple here, because its info role already holds
+          // the cyan and a second magenta beside its Frostbite warning
+          // would read as the same tag twice.
           accent2: {
             solid: {
               value: {
                 base: '#6D44C8',
                 _dark: '#A78BFA',
                 _catppuccin: '#F5C2E7',
-                _cyberpunk: '#B88BFF',
+                _nightdrive: '#E86FE9',
+                _lemongrid: '#B88BFF',
+                _keppel: '#E86FE9',
                 _matrix: '#F5C542',
                 _sonicmania: '#F2A20C',
                 _contraste: '#CB1DCD',
@@ -825,7 +1029,9 @@ export default defineConfig({
                 base: '#5835A8',
                 _dark: '#BFA6FC',
                 _catppuccin: '#F8D4EE',
-                _cyberpunk: '#D0B4FF',
+                _nightdrive: '#F3A9F4',
+                _lemongrid: '#D0B4FF',
+                _keppel: '#F3A9F4',
                 _matrix: '#FFD966',
                 _sonicmania: '#D68B00',
                 _contraste: '#E455AE',
@@ -836,15 +1042,17 @@ export default defineConfig({
                 base: '#D5C8F2',
                 _dark: 'rgba(167, 139, 250, 0.45)',
                 _catppuccin: 'rgba(245, 194, 231, 0.45)',
-                _cyberpunk: 'rgba(184, 139, 255, 0.5)',
+                _nightdrive: 'rgba(203, 29, 205, 0.5)',
+                _lemongrid: 'rgba(147, 112, 219, 0.5)',
+                _keppel: 'rgba(203, 29, 205, 0.5)',
                 _matrix: 'rgba(245, 197, 66, 0.45)',
                 _sonicmania: '#6B5300',
                 _contraste: 'rgba(203, 29, 205, 0.5)',
               },
             },
             // The wash-and-text pair, mirroring accent.subtle /
-            // accent.text. Only Cyberpunk currently reads them (its
-            // Catégorie filter trigger, tinted by family), but every theme
+            // accent.text. Only the three Cyberpunk-palette themes read
+            // them (their Catégorie filter trigger), but every theme
             // carries a value: a token leaf that skips a theme falls back
             // to `base` with no error, which would put a light lavender
             // wash on a dark page the day another theme reaches for it.
@@ -853,7 +1061,9 @@ export default defineConfig({
                 base: '#EDE7FA',
                 _dark: 'rgba(167, 139, 250, 0.14)',
                 _catppuccin: 'rgba(245, 194, 231, 0.15)',
-                _cyberpunk: 'rgba(184, 139, 255, 0.2)',
+                _nightdrive: 'rgba(203, 29, 205, 0.22)',
+                _lemongrid: 'rgba(147, 112, 219, 0.22)',
+                _keppel: 'rgba(203, 29, 205, 0.22)',
                 _matrix: 'rgba(245, 197, 66, 0.14)',
                 _sonicmania: '#FFE9BF',
                 _contraste: 'rgba(203, 29, 205, 0.18)',
@@ -864,7 +1074,9 @@ export default defineConfig({
                 base: '#5835A8',
                 _dark: '#A78BFA',
                 _catppuccin: '#F5C2E7',
-                _cyberpunk: '#B88BFF',
+                _nightdrive: '#E86FE9',
+                _lemongrid: '#B88BFF',
+                _keppel: '#E86FE9',
                 _matrix: '#F5C542',
                 _sonicmania: '#6B5300',
                 _contraste: '#E455AE',
@@ -875,7 +1087,9 @@ export default defineConfig({
                 base: '#FFFFFF',
                 _dark: '#0B0E16',
                 _catppuccin: '#1E1E2E',
-                _cyberpunk: '#1A0B2E',
+                _nightdrive: '#06121C',
+                _lemongrid: '#14130A',
+                _keppel: '#04191A',
                 _matrix: '#0F0C02',
                 _sonicmania: '#2B1A00',
                 _contraste: '#FFFFFF',
@@ -886,22 +1100,23 @@ export default defineConfig({
           // opposed to the same status spoken as plain prose, which keeps
           // using status.*.text on whatever surface it sits on.
           //
-          // The two were one pair of tokens until Cyberpunk's Overdrive
-          // comp drew its tags as solid fills with dark text while every
+          // The two were one pair of tokens until the Cyberpunk-palette
+          // comps drew their tags as solid fills with dark text while every
           // other theme draws them as a tinted wash with the status colour
           // as text. Reusing status.*.subtle / status.*.text for both would
-          // have forced a choice: either Cyberpunk's tags stay washes, or
-          // its ~30 plain-text status messages turn dark-on-dark. So the
-          // tag gets its own pair.
+          // have forced a choice: either those tags stay washes, or the
+          // ~30 plain-text status messages turn dark-on-dark. So the tag
+          // gets its own pair.
           //
           // In the six wash themes these are character-for-character the
-          // status.*.subtle / status.*.text values. Only Cyberpunk differs.
-          // Keep them in step when a status colour changes.
+          // status.*.subtle / status.*.text values. Only Night Drive,
+          // Lemon Grid and Keppel differ. Keep them in step when a status
+          // colour changes.
           //
           // The neutral third role (Chip's `gray`, StatusTag's `missing`)
           // is not here: it is bg.muted + fg.muted/fg.subtle in every
-          // theme, Cyberpunk included, because a quiet tag repeated across
-          // 1500 unscanned rows must stay quiet.
+          // theme, those three included, because a quiet tag repeated
+          // across 1500 unscanned rows must stay quiet.
           chip: {
             success: {
               bg: {
@@ -909,7 +1124,9 @@ export default defineConfig({
                   base: '#D8F0E4',
                   _dark: 'rgba(53, 212, 164, 0.14)',
                   _catppuccin: 'rgba(166, 227, 161, 0.15)',
-                  _cyberpunk: '#1AC5B0',
+                  _nightdrive: '#1AC5B0',
+                  _lemongrid: '#1AC5B0',
+                  _keppel: '#37EBF3',
                   _matrix: 'rgba(67, 245, 123, 0.14)',
                   _sonicmania: '#8FE8C2',
                   _contraste: 'rgba(55, 235, 243, 0.13)',
@@ -920,7 +1137,9 @@ export default defineConfig({
                   base: '#0E6B46',
                   _dark: '#35D4A4',
                   _catppuccin: '#A6E3A1',
-                  _cyberpunk: '#06211D',
+                  _nightdrive: '#04231F',
+                  _lemongrid: '#04231F',
+                  _keppel: '#04282B',
                   _matrix: '#43F57B',
                   _sonicmania: '#063B2A',
                   _contraste: '#37EBF3',
@@ -933,7 +1152,9 @@ export default defineConfig({
                   base: '#FBE6CC',
                   _dark: 'rgba(255, 180, 84, 0.14)',
                   _catppuccin: 'rgba(250, 179, 135, 0.15)',
-                  _cyberpunk: '#E455AE',
+                  _nightdrive: '#E455AE',
+                  _lemongrid: '#E455AE',
+                  _keppel: '#E455AE',
                   _matrix: 'rgba(245, 197, 66, 0.14)',
                   _sonicmania: '#FFCE8A',
                   _contraste: 'rgba(255, 77, 157, 0.14)',
@@ -944,7 +1165,9 @@ export default defineConfig({
                   base: '#8A4600',
                   _dark: '#FFB454',
                   _catppuccin: '#FAB387',
-                  _cyberpunk: '#2E0620',
+                  _nightdrive: '#2E0620',
+                  _lemongrid: '#2E0620',
+                  _keppel: '#2E0620',
                   _matrix: '#F5C542',
                   _sonicmania: '#613100',
                   _contraste: '#FF4D9D',
@@ -952,8 +1175,9 @@ export default defineConfig({
               },
             },
             // LayoutBadge's "zip" half, and the comp's "En attente" tag.
-            // There is no chip.danger: Cyberpunk's status.danger.subtle is
-            // already the solid Blood Red the comp fills that tag with, so
+            // There is no chip.danger: in those three themes
+            // status.danger.subtle is already the solid Blood Red the
+            // comps fill that tag with, so
             // a danger tag built from status.* lands on the right shape in
             // every theme without a second pair.
             info: {
@@ -962,7 +1186,9 @@ export default defineConfig({
                   base: '#E8EEFD',
                   _dark: 'rgba(108, 143, 255, 0.13)',
                   _catppuccin: 'rgba(137, 180, 250, 0.15)',
-                  _cyberpunk: '#37EBF3',
+                  _nightdrive: '#B88BFF',
+                  _lemongrid: '#37EBF3',
+                  _keppel: '#B88BFF',
                   _matrix: 'rgba(57, 249, 255, 0.13)',
                   _sonicmania: '#E6FAFF',
                   _contraste: 'rgba(55, 235, 243, 0.13)',
@@ -973,7 +1199,9 @@ export default defineConfig({
                   base: '#244AB5',
                   _dark: '#93AEFF',
                   _catppuccin: '#89B4FA',
-                  _cyberpunk: '#04282B',
+                  _nightdrive: '#0E0620',
+                  _lemongrid: '#04282B',
+                  _keppel: '#0E0620',
                   _matrix: '#39F9FF',
                   _sonicmania: '#0E6B7E',
                   _contraste: '#37EBF3',
@@ -1011,16 +1239,16 @@ export default defineConfig({
                 color: 'accent.fg',
                 shadow: 'sm',
                 _hover: { bg: 'accent.hover' },
-                _cyberpunk: { boxShadow: '0 0 26px rgba(253, 245, 0, 0.55)' },
+                _nightdrive: { boxShadow: '0 0 26px rgba(55, 235, 243, 0.5)' },
                 _matrix: { boxShadow: '0 0 18px rgba(67, 245, 123, 0.35)' },
                 _contraste: { boxShadow: '0 0 18px rgba(253, 245, 0, 0.4)' },
               },
               // A filled tone rather than an outline, for the same reason
               // the card lost its border: a screen full of 1px-outlined
-              // buttons reads as a wireframe. The cyan outline and the
-              // magenta hover glow that used to be here for Cyberpunk were
-              // mine; its comp draws this button as a plain filled tone
-              // like every other theme.
+              // buttons reads as a wireframe. A cyan outline and a magenta
+              // hover glow used to sit here for one theme; they were mine,
+              // and no comp has ever drawn this button as anything but a
+              // plain filled tone.
               secondary: {
                 bg: 'bg.muted',
                 color: 'fg.default',
@@ -1069,21 +1297,23 @@ export default defineConfig({
             // with the text size turns cards into lozenges at 24px.
             borderRadius: '16px',
             // The comps' own card shadows: a plain black drop shadow,
-            // deeper in the darker themes. Cyberpunk used to get a
-            // standing magenta neon edge here with a cyan inner glow —
-            // that was my invention, and its artboard shows nothing of the
-            // kind, just the shadow below. The theme's neon now comes only
-            // from where its comp actually puts it: the yellow page title,
-            // the glow behind the primary button, and the cyan icons.
+            // deeper in the darker themes. A standing magenta neon edge
+            // with a cyan inner glow used to sit here for one theme — that
+            // was my invention, and no artboard has ever shown anything of
+            // the kind, just the shadow below. A theme's neon comes only
+            // from where its comp puts it: the page title, the glow behind
+            // the primary button, and the icons.
             boxShadow: '0 4px 14px rgba(23, 23, 26, 0.08)',
             _dark: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
             _catppuccin: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)' },
-            // The Overdrive comp lit these from a magenta source. Dropped
-            // on sight (Camille, 2026-11-17): a coloured shadow under every
-            // card muddied the violet page. The depth is black like
-            // everywhere else; the theme's colour comes from the surfaces,
-            // the tags and the accent, not from the shadows.
-            _cyberpunk: { boxShadow: '0 8px 28px rgba(0, 0, 0, 0.5)' },
+            // A coloured shadow under every card was tried here once and
+            // dropped on sight (Camille, 2026-11-17): it muddied the page.
+            // The depth is black in all three, like everywhere else; their
+            // colour comes from the surfaces, the tags and the accent, not
+            // from the shadows.
+            _nightdrive: { boxShadow: '0 8px 28px rgba(0, 0, 0, 0.5)' },
+            _lemongrid: { boxShadow: '0 8px 28px rgba(0, 0, 0, 0.5)' },
+            _keppel: { boxShadow: '0 8px 28px rgba(0, 0, 0, 0.5)' },
             _matrix: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
             _sonicmania: { boxShadow: '0 6px 18px rgba(10, 34, 41, 0.25)' },
             _contraste: { boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)' },
