@@ -4,6 +4,20 @@ export default defineConfig({
   preflight: true,
   include: ['./src/**/*.{ts,tsx}'],
   exclude: [],
+  // The button recipe is only ever called from inside the <Button> wrapper
+  // (src/components/Button.tsx), as `button({ variant, size })` with two
+  // runtime arguments. Panda's extractor cannot resolve those, and it never
+  // sees the `<Button variant="secondary" size="strip">` call sites either,
+  // because this project has no `jsxFramework` set — so it emitted the
+  // default combination alone, `variant_primary` + `size_md`, and NOTHING
+  // for secondary, danger, ghost, sm or strip. Every such button has been
+  // rendering with the recipe's base styles and no padding or height at
+  // all; that, not the numbers in the size scale, is why the header buttons
+  // kept looking squashed through three attempts to fix them.
+  // Found 2026-11-18 by grepping the built CSS for `button--`.
+  staticCss: {
+    recipes: { button: ['*'] },
+  },
   outdir: 'src/styled-system',
   // Seven self-contained themes selected via a single `data-theme` attribute
   // on <html> (apps/web/src/lib/use-theme.ts) — not a theme × light/dark
