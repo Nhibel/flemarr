@@ -34,8 +34,26 @@ import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 // The controls that sit ON the Jeux header. They inherit bg.muted and
 // fg.subtle, which are a dark violet-grey in every theme — fine on
 // bg.surface, wrong on Lemon Grid's yellow band, where they read as dirt.
-// There they become dark pills instead, which is what the canvas draws.
-// Empty in the other eight themes, so this adds one class and no rule.
+// Both classes are empty in the other eight themes, so they add a class
+// and no rule there.
+//
+// The two text buttons lose their fill entirely and are written in the
+// band's own ink (Camille, 2026-11-18: a dark slab behind "Charger un
+// autre DAT" was the one thing that looked wrong on the yellow). Not the
+// accent, which she also offered: Lemon Grid's accent IS the Rich Lemon
+// of the band, so accent-on-band would be yellow on yellow. Hover still
+// has to answer, so it darkens the band under the label rather than
+// bringing the slab back.
+const bandButtonClass = css({
+  _lemongrid: {
+    bg: 'transparent',
+    color: 'fg.onBand',
+    _hover: { bg: 'rgba(20, 19, 10, 0.12)', color: 'fg.onBand' },
+  },
+});
+
+// The icon buttons keep a fill: they are square targets with no label to
+// carry the colour, and they read correctly as dark pills on the yellow.
 const bandControlClass = css({
   _lemongrid: {
     bg: 'bg.inset',
@@ -666,7 +684,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             <Button
               variant="secondary"
               size="sm"
-              className={bandControlClass}
+              className={bandButtonClass}
               onClick={() => setTab('scanner')}
             >
               {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
@@ -691,7 +709,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         />
 
         <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
-          <Button variant="secondary" size="sm" className={bandControlClass} onClick={onReset}>
+          <Button variant="secondary" size="sm" className={bandButtonClass} onClick={onReset}>
             Charger un autre DAT
           </Button>
           <button
