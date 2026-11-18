@@ -31,24 +31,25 @@ import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
-// The controls that sit ON the Jeux header — two text buttons and two
-// icon buttons. They inherit bg.muted and fg.subtle, which are a dark
-// violet-grey in every theme: fine on bg.surface, wrong on Lemon Grid's
-// yellow band, where they read as dirt. There they are dark pills on the
-// yellow instead. Empty in the other eight themes, so it adds a class and
-// no rule there.
+// The two text buttons that sit ON the Jeux header, given the fill the
+// icon buttons beside them already have (iconBtnClass): bg.inset, one
+// step deeper than the surface they sit on.
 //
-// The text buttons were flat for half a day (Camille, 2026-11-18: the
-// slab behind "Charger un autre DAT" looked wrong), then filled again on
-// seeing it — without a boundary they read as text, not as buttons. What
-// was actually too big was the button itself, which is now size xs here
-// rather than sm, in every theme.
+// The secondary variant's own bg.muted is a single tone off bg.surface —
+// in the dark themes #232936 against #1B1F28 — which at this size made
+// the button invisible (Camille, 2026-11-18: "le fond n'est pas présent
+// dans les autres thèmes"). bg.inset is the tone the header already uses
+// for a control, so this is the header agreeing with itself rather than a
+// new idea.
+//
+// It applies in all nine themes, Lemon Grid included: there bg.inset is a
+// near-black on the yellow band, which is what that band needs anyway.
+// The text buttons were flat there for half a day — the slab looked wrong
+// — but what was wrong was the geometry, now fixed by the `strip` size.
 const bandControlClass = css({
-  _lemongrid: {
-    bg: 'bg.inset',
-    color: 'fg.default',
-    _hover: { bg: 'bg.muted', color: 'fg.default' },
-  },
+  bg: 'bg.inset',
+  color: 'fg.default',
+  _hover: { bg: 'bg.muted', color: 'fg.default' },
 });
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
@@ -672,7 +673,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           <span className={css({ flexShrink: '0' })}>
             <Button
               variant="secondary"
-              size="xs"
+              size="strip"
               className={bandControlClass}
               onClick={() => setTab('scanner')}
             >
@@ -698,7 +699,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         />
 
         <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
-          <Button variant="secondary" size="xs" className={bandControlClass} onClick={onReset}>
+          <Button variant="secondary" size="strip" className={bandControlClass} onClick={onReset}>
             Mes systèmes
           </Button>
           <button

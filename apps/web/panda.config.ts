@@ -1274,19 +1274,25 @@ export default defineConfig({
             // (the app is used on a Steam Deck), so they must not shrink
             // when the live font-size control is turned down.
             size: {
-              // For a button inside a dense strip rather than in a panel of
-              // its own — today the two in the Jeux header, which read as
-              // oversized beside a title and a mono counter (Camille,
-              // 2026-11-18).
+              // Not a step on the xs/sm/md scale — a copy. These are the
+              // tab strip's own numbers (the Sources tab above the game
+              // list), chosen by Camille on 2026-11-18 after two attempts
+              // at a smaller size both read as squashed rather than small.
+              // Hence the name: this is for a button that has to sit beside
+              // the tabs without looking like a different species.
               //
-              // It is shorter than sm, NOT tighter: its horizontal padding
-              // is md's, because that is what makes a label read as a
-              // button at all. Squeezing px as well was the first attempt
-              // and it looked like a bruise — the reference she gave is the
-              // tab strip above the game list, which pairs px 4 with a 34px
-              // box. 30px of target here, against the Steam Deck's
-              // touchscreen.
-              xs: { px: '4', py: '1', fontSize: 'xs', minH: '30px' },
+              // It is TALLER than sm, which is the point — what made the
+              // Jeux header's buttons look wrong was never the height, it
+              // was the missing air beside the label. borderRadius is here
+              // rather than inherited because the strip rounds to 10px, not
+              // to the recipe's 12px.
+              strip: {
+                px: '4',
+                py: '1',
+                fontSize: 'sm',
+                minH: '34px',
+                borderRadius: '10px',
+              },
               sm: { px: '2.5', py: '1', fontSize: 'xs', minH: '32px' },
               md: { px: '4', py: '2', fontSize: 'sm', minH: '40px' },
             },
