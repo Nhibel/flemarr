@@ -41,14 +41,18 @@ import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 // band's own ink (Camille, 2026-11-18: a dark slab behind "Charger un
 // autre DAT" was the one thing that looked wrong on the yellow). Not the
 // accent, which she also offered: Lemon Grid's accent IS the Rich Lemon
-// of the band, so accent-on-band would be yellow on yellow. Hover still
-// has to answer, so it darkens the band under the label rather than
-// bringing the slab back.
+// of the band, so accent-on-band would be yellow on yellow.
+//
+// Hover is transparent too, by her second call the same day. The
+// secondary recipe fills on hover (bg.muted to bg.surface), so the
+// override has to name `transparent` twice or the slab comes back under
+// the pointer. These two buttons are therefore the one place in the app
+// where a button answers the pointer with nothing but the cursor.
 const bandButtonClass = css({
   _lemongrid: {
     bg: 'transparent',
     color: 'fg.onBand',
-    _hover: { bg: 'rgba(20, 19, 10, 0.12)', color: 'fg.onBand' },
+    _hover: { bg: 'transparent', color: 'fg.onBand' },
   },
 });
 
