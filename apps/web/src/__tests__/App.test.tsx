@@ -52,7 +52,11 @@ describe('App', () => {
     // rather than behind the "+ Ajouter un système" button — a first run
     // would otherwise be an empty screen whose only content is a button.
     expect(await screen.findByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /rom-curator/i })).toBeInTheDocument();
+    // The home title is the Flemarr wordmark since 2026-11-18, so the
+    // heading's accessible name is the image's alt text. Asserting the
+    // name rather than just the role is what catches a logo that ships
+    // with no alt at all.
+    expect(screen.getByRole('heading', { name: /flemarr/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /importer un \.dat/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /ajouter un système/i })).not.toBeInTheDocument();
   });
@@ -124,9 +128,7 @@ describe('App — the systems screen', () => {
   it('keeps the catalogue behind a button once a system exists', async () => {
     render(<App />, { wrapper });
 
-    expect(
-      await screen.findByRole('button', { name: /ajouter un système/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /ajouter un système/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fresh1g1r/i })).not.toBeInTheDocument();
   });
 
