@@ -573,6 +573,60 @@ themes, no accepted exceptions), typecheck and lint clean, built CSS
 greps confirm both palettes. **Not looked at in a browser** — same
 constraint as the rest of this phase.
 
+### Revision — Overdrive dropped, three themes in its place (2026-11-18)
+
+Overdrive shipped, Camille lived with it, and it did not convince her. She
+asked instead for several arrangements of the **same nine colours**, each
+with a different dominant, and picked three out of six:
+<https://claude.ai/artifact/MYqQctFayQR4HjmmcgYemo>.
+
+`cyberpunk` is **gone**, not renamed. The app carries nine themes now.
+
+- **Night Drive** — Electric Blue runs the chrome: ground, page title,
+  accent, focus rings and the title glow (the only one of the three to
+  keep a glow). Rich Lemon drops from the accent down to the technical
+  values, so the yellow leaves the button and spreads through the list.
+- **Lemon Grid** — Rich Lemon stops being an accent and becomes a
+  **surface**: the Jeux header is a solid yellow band over a black warmed
+  with the same hue. Data goes cyan.
+- **Keppel** — the quiet one. Teal ground and action, yellow kept for the
+  title alone, and the only theme of the nine whose technical values are
+  not coloured at all: its mono is Pale Silver.
+
+Three things came out of it beyond the palettes:
+
+- **`bg.band` and `fg.onBand` / `onBandMuted` / `onBandSuccess`.** The
+  yellow band is a token group, not a `_lemongrid` override in `App.tsx`:
+  everything written on the band has to flip with it, and a colour written
+  into a `.tsx` is invisible to the contrast test, which reads
+  `panda.config.ts`. In the other eight themes the four tokens repeat
+  `bg.surface`, `fg.heading`, `fg.dataFaint` and `status.success.text`
+  character for character. The band covers the **Jeux header only** — the
+  home screen, the folder bar and Réglages keep `bg.surface`, so the band
+  marks the console you have open and nothing else.
+- **The controls on the band go dark in Lemon Grid.** Two secondary
+  buttons, two icon buttons and the divider inherit `bg.muted` and
+  `fg.subtle`, which read as dirt on yellow. One class, empty in the other
+  eight themes.
+- **The accepted cost of phase 14 now applies to three themes**, not one:
+  all three tint their filter triggers by family. Which hues they spend
+  differs per theme, because the accent takes one of the nine colours
+  first — Night Drive's accent is the cyan and Keppel's is the teal, so
+  both push info onto Blushing Purple; Lemon Grid, accent yellow, leaves
+  info on the cyan.
+
+Verified: 226 web tests (the contrast test now measures **26 pairs × 9
+themes**, still with no accepted exceptions — all three palettes cleared
+it on the first run, so no value had to depart from its artboard),
+typecheck and lint clean, built CSS confirms the three new `data-theme`
+selectors and no trace of `cyberpunk`, and the four band tokens were
+checked against the tokens they mirror in the eight other themes. **Not
+looked at in a browser.**
+
+A `cyberpunk` left in a browser's localStorage needs no migration:
+`getInitialTheme()` already drops an unknown theme and falls back, as it
+did for `nintendo` and `megadrive`.
+
 ---
 
 ## Phase 15 — System icons beside the system name
