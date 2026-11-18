@@ -202,7 +202,7 @@ All of this lives in `apps/web/panda.config.ts`. It is written down here
 because several of the rules look like oversights from inside a single
 component, and undoing one of them re-breaks something that was fixed.
 
-- **Seven themes, one `data-theme` attribute** on `<html>`, not a theme ×
+- **Nine themes, one `data-theme` attribute** on `<html>`, not a theme ×
   light/dark matrix. `base` in the semantic tokens _is_ the light theme, so
   there is no `light` condition. Adding a theme means a condition in
   `conditions.extend`, a value under **every** token leaf, and an entry in
@@ -227,20 +227,31 @@ component, and undoing one of them re-breaks something that was fixed.
   `@fontsource*`, never a Google Fonts `<link>`: this runs on a homelab
   that may have no outbound internet.
 - **A status tag reads from `chip.*`, not `status.*`.** Six themes draw a
-  tag as a tinted wash with the status colour as text; Cyberpunk draws it
-  as a solid fill with dark text. Both shapes live in the tokens, so
+  tag as a tinted wash with the status colour as text; the three drawn
+  from the Cyberpunk 2077 palette draw it as a solid fill with dark text.
+  Both shapes live in the tokens, so
   `Chip`, `StatusTag` and `LayoutBadge` never branch on the theme. The
   same status spoken as _prose_ keeps `status.*.text` on whatever surface
   it sits on — that is why the two pairs exist. Keep `chip.*` in step when
   a status colour changes.
 - **Mono values read from `fg.data` / `fg.dataFaint`.** Technical values in
-  the mono face get their own colour role, so Cyberpunk can put them in
-  cyan while the other six keep exactly the `fg.subtle` / `fg.faint` they
-  had. Two steps, not one, so those six do not lose contrast to buy one
-  theme's cyan. Not for mono text already inside a coloured container (the
-  dock, a `Chip`'s own count, a source id in `accent.text`).
+  the mono face get their own colour role, so Night Drive, Lemon Grid and
+  Keppel can colour them — yellow, cyan and Pale Silver respectively —
+  while the other six keep exactly the `fg.subtle` / `fg.faint` they had.
+  Two steps, not one, so those six do not lose contrast to buy three
+  themes a mono colour. Not for mono text already inside a coloured
+  container (the dock, a `Chip`'s own count, a source id in
+  `accent.text`).
+- **The Jeux header reads from `bg.band` / `fg.onBand*`.** Lemon Grid
+  makes that one header a solid Rich Lemon band; the other eight define
+  `bg.band` as their own `bg.surface`, so nothing moves in them. The
+  tokens exist rather than a `_lemongrid` override in `App.tsx` for two
+  reasons: everything written on the band has to flip with it, and a
+  colour written into a `.tsx` is invisible to the contrast test, which
+  reads `panda.config.ts`. The band covers the Jeux header only — the home
+  screen, the folder bar and Réglages keep `bg.surface`.
 - **Contrast is a test**, not a promise: `theme-contrast.test.ts` measures
-  23 pairs across the 7 themes, compositing translucent washes over their
+  26 pairs across the 9 themes, compositing translucent washes over their
   surface first. No exceptions are currently accepted. Anything not on
   that list has to clear 4.5:1 (3:1 for the two decorative `faint` roles).
 
@@ -250,15 +261,28 @@ near-black page under a yellow-green accent — and seven of the nine
 colours in the supplied Cyberpunk 2077 palette were unused, its own black
 among them (Raisin Black `#272932`, which is violet, not neutral).
 Contraste now carries, value for value, the palette that used to be
-Cyberpunk's; Cyberpunk is the canvas's "Overdrive" artboard: saturated
-violet ground, solid status tags, cyan technical values, all nine palette
-colours in use. Its card shadows are **black like every other theme's**:
-the artboard lit them from a magenta source, which muddied the violet
-page and was dropped on sight. One rule is deliberately broken
-there and only there — Cyberpunk's filter triggers are tinted by family
-(Région cyan, Catégorie violet), which spends a vivid hue on something
-that is neither the primary action nor the selection. It is on the
-artboard and the cost was named before it shipped.
+Cyberpunk's. Cyberpunk itself became the canvas's "Overdrive" artboard, on
+a saturated violet ground; it shipped, and was dropped on 2026-11-18.
+
+**Night Drive, Lemon Grid and Keppel replaced it on 2026-11-18**, from a
+fourth canvas: three arrangements of the same nine colours, one dominant
+each, chosen out of six proposals. What Overdrive introduced and the three
+inherit: solid status tags, a mono colour of their own, Blood Red
+`#710000` as the danger surface, and black card shadows — the Overdrive
+artboard lit those from a magenta source, which muddied the page and was
+dropped on sight. Night Drive runs on Electric Blue and sends the yellow
+down to the technical values; Lemon Grid turns the yellow into a surface
+(the header band above); Keppel is the quiet one, teal-grounded, and the
+only theme of the nine whose technical values are not coloured.
+
+One rule is deliberately broken in those three and nowhere else: their
+filter triggers are tinted by family (Région in the info hue, Catégorie in
+the second accent's), which spends a vivid hue on something that is
+neither the primary action nor the selection. It is on the artboards and
+the cost was named before it shipped. Which hues those are differs per
+theme because the accent takes one of the nine first: Night Drive's accent
+is the cyan and Keppel's is the teal, so both push info onto Blushing
+Purple, while Lemon Grid — accent yellow — leaves info on the cyan.
 
 The design canvases these came from are private Artifacts; their working
 files are gitignored under `.rom-curator-data/`. ROADMAP.md's Phase 14

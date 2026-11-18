@@ -291,7 +291,7 @@ export function DownloadManager({
   if (jobs.length === 0) {
     return (
       <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-        Aucun téléchargement en cours. Lancez-en un depuis l'onglet Sources.
+        Aucun téléchargement en cours. Lance-en un depuis l'onglet Sources.
       </p>
     );
   }
@@ -436,98 +436,109 @@ function JobCard({
     error: 'Erreur',
   }[state.status];
 
-  return (
-    <Card className={css({ overflow: 'hidden' })}>
-      {/* Job header */}
-      <div
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '3',
-          px: '4',
-          py: '3',
-          bg: 'bg.muted',
-        })}
-      >
-        <div className={css({ flex: 1, minW: 0 })}>
-          <p
-            className={css({
-              fontSize: 'xs',
-              color: 'fg.dataFaint',
-              fontFamily: 'mono',
-              truncate: true,
-            })}
-          >
-            →{' '}
-            {state.target === 'browser'
-              ? 'Mon navigateur'
-              : displayPath(state.destinationDir ?? '', romsRoot)}
-          </p>
-          <p className={css({ fontSize: 'sm', fontWeight: 'medium', color: statusColor })}>
-            {statusLabel}
-          </p>
-        </div>
-        {state.status === 'running' && (
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => void handleCancel()}
-            disabled={cancelling}
-          >
-            {cancelling ? 'Annulation…' : 'Annuler'}
-          </Button>
-        )}
-      </div>
+  // The note under the card, not inside it. Both explanations used to be
+  // the card's last child with no horizontal padding of their own, so on a
+  // 16px radius the first and last characters of the closing line
+  // disappeared into the bottom corners (Camille, 2026-11-18). They are
+  // about downloading in general rather than about THIS job, so under the
+  // card is also where they belong.
+  const note =
+    state.target === 'browser' ? (
+      <p className={css({ fontSize: 'xs', color: 'status.info.text', lineHeight: '1.5' })}>
+        Vérifiés côté serveur <strong>avant</strong> l&apos;envoi, les fichiers arrivent dans les
+        téléchargements de ton navigateur : rom-curator ne les touche plus ensuite.
+      </p>
+    ) : hasConversion ? (
+      <p className={css({ fontSize: 'xs', color: 'fg.subtle', lineHeight: '1.5' })}>
+        Les jeux sur disque sont regroupés en un seul fichier <code>.chd</code>, plus compact et lu
+        par la plupart des émulateurs. Les fichiers d&apos;origine ne sont supprimés qu&apos;une
+        fois la copie vérifiée.
+      </p>
+    ) : null;
 
-      {/* What the job is doing, in one line, as the comps show it. Counted
+  return (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+      <Card className={css({ overflow: 'hidden' })}>
+        {/* Job header */}
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3',
+            px: '4',
+            py: '3',
+            bg: 'bg.muted',
+          })}
+        >
+          <div className={css({ flex: 1, minW: 0 })}>
+            <p
+              className={css({
+                fontSize: 'xs',
+                color: 'fg.dataFaint',
+                fontFamily: 'mono',
+                truncate: true,
+              })}
+            >
+              →{' '}
+              {state.target === 'browser'
+                ? 'Mon navigateur'
+                : displayPath(state.destinationDir ?? '', romsRoot)}
+            </p>
+            <p className={css({ fontSize: 'sm', fontWeight: 'medium', color: statusColor })}>
+              {statusLabel}
+            </p>
+          </div>
+          {state.status === 'running' && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => void handleCancel()}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Annulation…' : 'Annuler'}
+            </Button>
+          )}
+        </div>
+
+        {/* What the job is doing, in one line, as the comps show it. Counted
           per game rather than per file: a three-disc game is one thing the
           user asked for, not three. */}
-      <p className={css({ fontSize: 'xs', color: 'fg.data', fontFamily: 'mono' })}>
-        {[
-          `${summary.done} terminé${summary.done > 1 ? 's' : ''}`,
-          `${summary.running} en cours`,
-          `${summary.queued} en attente`,
-          ...(summary.failed > 0 ? [`${summary.failed} en échec`] : []),
-        ].join(' · ')}
-        {eta !== undefined && ` — ${formatEta(eta)}`}
-      </p>
-
-      {/* One row per game. The conversion step used to be a separate list
-          below, which split a single game across two places on screen. */}
-      <div className={css({ display: 'flex', flexDirection: 'column' })}>
-        {games.map((game) => (
-          <GameRow
-            key={game.gameId}
-            jobId={state.jobId}
-            game={game}
-            target={state.target}
-            rate={rates.get(game.gameId)}
-            running={state.status === 'running'}
-            onRetry={onRetry}
-          />
-        ))}
-      </div>
-
-      {/* The two explanations the comps attach to the list. The browser one
-          is a warning, not a note: once the bytes are in the browser's
-          downloads, the app cannot reach them again. */}
-      {state.target === 'browser' ? (
-        <p className={css({ fontSize: 'xs', color: 'status.info.text', lineHeight: '1.5' })}>
-          Chaque jeu est téléchargé et vérifié côté serveur <strong>avant</strong> de t&apos;être
-          envoyé — une fois les octets partis vers ton navigateur, impossible de les rappeler.
-          Retrouve-les dans la liste de téléchargements de ton navigateur, puis range-les où tu veux
-          ; rom-curator ne les touche plus après l&apos;envoi.
+        <p
+          className={css({
+            px: '4',
+            pt: '3',
+            fontSize: 'xs',
+            color: 'fg.data',
+            fontFamily: 'mono',
+          })}
+        >
+          {[
+            `${summary.done} terminé${summary.done > 1 ? 's' : ''}`,
+            `${summary.running} en cours`,
+            `${summary.queued} en attente`,
+            ...(summary.failed > 0 ? [`${summary.failed} en échec`] : []),
+          ].join(' · ')}
+          {eta !== undefined && ` — ${formatEta(eta)}`}
         </p>
-      ) : (
-        hasConversion && (
-          <p className={css({ fontSize: 'xs', color: 'fg.subtle', lineHeight: '1.5' })}>
-            Les jeux sur disque sont regroupés en un seul fichier <code>.chd</code>, plus compact et
-            lu par la plupart des émulateurs. Les fichiers d&apos;origine ne sont supprimés
-            qu&apos;une fois la copie vérifiée.
-          </p>
-        )
-      )}
-    </Card>
+
+        {/* One row per game. The conversion step used to be a separate list
+          below, which split a single game across two places on screen. */}
+        <div className={css({ display: 'flex', flexDirection: 'column', px: '4', pb: '3' })}>
+          {games.map((game) => (
+            <GameRow
+              key={game.gameId}
+              jobId={state.jobId}
+              game={game}
+              target={state.target}
+              rate={rates.get(game.gameId)}
+              running={state.status === 'running'}
+              onRetry={onRetry}
+            />
+          ))}
+        </div>
+      </Card>
+      {note}
+    </div>
   );
 }
 
@@ -590,7 +601,7 @@ function GameRow({
   };
 
   return (
-    <div className={css({ py: '2.5', px: '1' })}>
+    <div className={css({ py: '2.5' })}>
       <div className={css({ display: 'flex', alignItems: 'baseline', gap: '3' })}>
         <span className={css({ flex: '1', minW: '0', fontSize: 'sm', truncate: true })}>
           {game.label}

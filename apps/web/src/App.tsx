@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { css } from '@/styled-system/css';
+import { css, cx } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
 import { Dialog } from '@/components/Dialog.js';
@@ -30,6 +30,27 @@ import { useFontScale } from '@/lib/use-font-scale.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
+
+// The two text buttons that sit ON the Jeux header, given the fill the
+// icon buttons beside them already have (iconBtnClass): bg.inset, one
+// step deeper than the surface they sit on.
+//
+// The secondary variant's own bg.muted is a single tone off bg.surface —
+// in the dark themes #232936 against #1B1F28 — which at this size made
+// the button invisible (Camille, 2026-11-18: "le fond n'est pas présent
+// dans les autres thèmes"). bg.inset is the tone the header already uses
+// for a control, so this is the header agreeing with itself rather than a
+// new idea.
+//
+// It applies in all nine themes, Lemon Grid included: there bg.inset is a
+// near-black on the yellow band, which is what that band needs anyway.
+// The text buttons were flat there for half a day — the slab looked wrong
+// — but what was wrong was the geometry, now fixed by the `strip` size.
+const bandControlClass = css({
+  bg: 'bg.inset',
+  color: 'fg.default',
+  _hover: { bg: 'bg.muted', color: 'fg.default' },
+});
 
 type Tab = 'games' | 'scanner' | 'sources' | 'downloads';
 type LoaderMode = 'manual' | 'fresh1g1r';
@@ -170,12 +191,14 @@ function LoaderView({
             fontWeight: 'bold',
             color: 'fg.heading',
             flex: 1,
-            _cyberpunk: {
-              // The comps' own title glow strength. Cyberpunk and Matrix
+            _nightdrive: {
+              // The comps' own title glow strength. Night Drive and Matrix
               // are the two themes whose artboard lights the page title;
               // both read the colour from fg.heading, which is their
-              // accent.
-              textShadow: '0 0 14px rgba(253, 245, 0, 0.3)',
+              // accent. Lemon Grid and Keppel, drawn from the same palette
+              // as Night Drive, deliberately have none — Camille's call,
+              // 2026-11-18.
+              textShadow: '0 0 14px rgba(55, 235, 243, 0.3)',
             },
             _matrix: {
               textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
@@ -559,7 +582,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           mb: '4',
           px: '4',
           py: '3',
-          bg: 'bg.surface',
+          // Not bg.surface: in Lemon Grid this one header is a solid
+          // yellow band, and everything written on it reads from the
+          // matching fg.onBand* tokens. The other eight themes define
+          // bg.band as their own bg.surface, so nothing moves in them.
+          bg: 'bg.band',
           borderRadius: '16px',
           shadow: 'md',
           flexShrink: '0',
@@ -579,11 +606,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             className={css({
               fontSize: 'xl',
               fontWeight: 'bold',
-              color: 'fg.heading',
+              color: 'fg.onBand',
               minWidth: '0',
               truncate: true,
-              _cyberpunk: {
-                textShadow: '0 0 12px rgba(253, 245, 0, 0.3)',
+              _nightdrive: {
+                textShadow: '0 0 12px rgba(55, 235, 243, 0.3)',
               },
               _matrix: {
                 textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
@@ -609,14 +636,14 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 fontSize: '2xs',
               })}
             >
-              <span className={css({ color: 'status.success.text' })}>
+              <span className={css({ color: 'fg.onBandSuccess' })}>
                 {ownedCount} sur ton disque
               </span>
-              <span className={css({ color: 'fg.dataFaint' })}>
+              <span className={css({ color: 'fg.onBandMuted' })}>
                 {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
               </span>
               {lastScanAt && (
-                <span className={css({ color: 'fg.dataFaint' })}>
+                <span className={css({ color: 'fg.onBandMuted' })}>
                   vérifié à {lastScanAt.toLocaleTimeString()}
                 </span>
               )}
@@ -628,7 +655,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
                 mt: '0.5',
                 fontFamily: 'mono',
                 fontSize: '2xs',
-                color: 'fg.dataFaint',
+                color: 'fg.onBandMuted',
                 truncate: true,
               })}
             >
@@ -644,8 +671,13 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             with this change. */}
         {showScanner && (
           <span className={css({ flexShrink: '0' })}>
-            <Button variant="secondary" size="sm" onClick={() => setTab('scanner')}>
-              {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
+            <Button
+              variant="secondary"
+              size="strip"
+              className={bandControlClass}
+              onClick={() => setTab('scanner')}
+            >
+              {ownedCount !== null ? 'Rescanner mon dossier' : 'Scanner mon dossier'}
             </Button>
           </span>
         )}
@@ -662,21 +694,27 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
             alignSelf: 'stretch',
             my: '1',
             bg: 'bd.default',
+            _lemongrid: { bg: 'bg.inset' },
           })}
         />
 
         <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
-          <Button variant="secondary" size="sm" onClick={onReset}>
-            Charger un autre DAT
+          <Button variant="secondary" size="strip" className={bandControlClass} onClick={onReset}>
+            Mes systèmes
           </Button>
-          <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
+          <button
+            onClick={onLexique}
+            title="Lexique"
+            aria-label="Lexique"
+            className={cx(iconBtnClass, bandControlClass)}
+          >
             <BookIcon />
           </button>
           <button
             onClick={onSettings}
             title="Paramètres"
             aria-label="Paramètres"
-            className={iconBtnClass}
+            className={cx(iconBtnClass, bandControlClass)}
           >
             <GearIcon />
           </button>

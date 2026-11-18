@@ -63,8 +63,8 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
       <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>
-        Charger un système l'ajoute à « Reprendre un DAT chargé » ci-dessus — cliquez-y pour
-        l'ouvrir. Vous pouvez en charger plusieurs à la suite.
+        Charger un système l'ajoute à « Mes systèmes » ci-dessus — clique dessus pour l'ouvrir. Tu
+        peux en charger plusieurs à la suite.
       </p>
 
       {/* Preset + refresh */}
@@ -129,7 +129,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           _focusVisible: {
             ring: '2px',
             ringColor: 'accent.subtleBorder',
-            _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
+            _nightdrive: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
             _contraste: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
           },
         })}
@@ -157,7 +157,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
       {/* System list */}
       {!isLoading && filtered.length === 0 && !listError && (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          {search ? 'Aucun système trouvé.' : 'Aucun DAT disponible pour ce preset.'}
+          {search ? 'Aucun système trouvé.' : 'Aucun système disponible pour ce preset.'}
         </p>
       )}
 

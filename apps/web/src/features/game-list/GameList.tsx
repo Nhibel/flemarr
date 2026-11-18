@@ -162,7 +162,7 @@ export function GameList({
           borderRadius: '12px',
           color: 'fg.subtle',
           _focusWithin: {
-            _cyberpunk: { boxShadow: '0 0 0 1px #37EBF3' },
+            _nightdrive: { boxShadow: '0 0 0 1px #37EBF3' },
             _contraste: { boxShadow: '0 0 0 1px #37EBF3' },
           },
         })}
@@ -331,7 +331,7 @@ export function GameList({
             ring: '2px',
             ringColor: 'accent.subtleBorder',
             ringOffset: '2px',
-            _cyberpunk: { ringColor: '#37EBF3' },
+            _nightdrive: { ringColor: '#37EBF3' },
             _contraste: { ringColor: '#37EBF3' },
           },
         })}
