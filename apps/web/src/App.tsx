@@ -691,7 +691,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
               className={bandButtonClass}
               onClick={() => setTab('scanner')}
             >
-              {ownedCount !== null ? 'Revérifier mon dossier' : 'Vérifier un dossier'}
+              {ownedCount !== null ? 'Rescanner mon dossier' : 'Scanner mon dossier'}
             </Button>
           </span>
         )}
@@ -714,7 +714,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
 
         <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
           <Button variant="secondary" size="sm" className={bandButtonClass} onClick={onReset}>
-            Charger un autre DAT
+            Mes systèmes
           </Button>
           <button
             onClick={onLexique}

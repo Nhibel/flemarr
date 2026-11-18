@@ -1,7 +1,11 @@
 import { css } from '@/styled-system/css';
 import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { sectionClass } from './styles.js';
-import { TOPOLOGY_OPTIONS, TOPOLOGY_PATCHES, inferTopology } from '@/features/onboarding/topology.js';
+import {
+  TOPOLOGY_OPTIONS,
+  TOPOLOGY_PATCHES,
+  inferTopology,
+} from '@/features/onboarding/topology.js';
 
 /**
  * The same question the install flow asks, as the place to change the
@@ -32,7 +36,7 @@ export function TopologySection({
           mb: '1',
         })}
       >
-        Où vivent tes jeux
+        Où vivent tes jeux ?
       </h2>
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
         Décide où arrivent les téléchargements et si rom-curator peut reconnaître ce que tu possèdes
@@ -72,7 +76,9 @@ export function TopologySection({
               >
                 {o.title}
               </span>
-              <span className={css({ display: 'block', mt: '0.5', fontSize: 'xs', color: 'fg.muted' })}>
+              <span
+                className={css({ display: 'block', mt: '0.5', fontSize: 'xs', color: 'fg.muted' })}
+              >
                 {o.body}
               </span>
             </button>

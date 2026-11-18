@@ -68,10 +68,10 @@ export function DatUpload({ onSuccess }: Props) {
       />
 
       <p className={css({ fontSize: 'lg', fontWeight: 'semibold', color: 'fg.default' })}>
-        {mutation.isPending ? 'Analyse…' : 'Déposez un fichier DAT ici'}
+        {mutation.isPending ? 'Analyse…' : 'Dépose ton fichier .dat ici'}
       </p>
       <p className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
-        ou cliquez pour parcourir — .dat ou .xml
+        ou clique pour parcourir — .dat ou .xml
       </p>
 
       {mutation.isError && (

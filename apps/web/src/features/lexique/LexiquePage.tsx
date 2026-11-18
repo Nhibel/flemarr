@@ -140,7 +140,7 @@ const SECTIONS: Section[] = [
       {
         term: 'Collection access-restricted',
         definition:
-          'Collection qui exige un compte archive.org (identifiants dans Réglages) pour être téléchargée.',
+          'Collection qui exige un compte archive.org (identifiants dans Paramètres) pour être téléchargée.',
       },
       {
         term: 'BIN/CUE vs CHD',
