@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
-import logoUrl from '@/assets/logo.png';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
 import { Dialog } from '@/components/Dialog.js';
@@ -186,35 +185,27 @@ function LoaderView({
       })}
     >
       <div className={css({ display: 'flex', alignItems: 'center', gap: '1', mb: '6' })}>
-        {/* Integration test of the Flemarr wordmark (Camille, 2026-11-18).
-            The rest of the app still says rom-curator — the name has not
-            been changed, only this one mark put on screen to be judged.
-            Revert by restoring the text <h1> kept in git history.
-
-            The asset is the capture trimmed to its alpha box, scaled to
-            192px tall and quantised to 256 colours: 2169x725 and 933 KB
-            down to 629x192 and 11 KB, for a mark that renders 40px tall.
-            Its alpha arrived at 253 everywhere, which would have ghosted
-            the page tone through the glyphs; that was snapped back to 255.
-
-            Height in rem, not px: this is a title, so it follows the live
-            font-size control like the 3xl text it replaces — the opposite
-            of the buttons and corners, which are px precisely so they do
-            not. */}
-        <h1 className={css({ flex: 1, display: 'flex', alignItems: 'center' })}>
-          <img
-            src={logoUrl}
-            alt="Flemarr"
-            className={css({
-              h: '2.5rem',
-              w: 'auto',
-              // The h1 carried a title glow in these two themes. On an
-              // image textShadow does nothing, so the same strengths move
-              // to drop-shadow, which follows the alpha outline.
-              _nightdrive: { filter: 'drop-shadow(0 0 14px rgba(55, 235, 243, 0.3))' },
-              _matrix: { filter: 'drop-shadow(0 0 12px rgba(67, 245, 123, 0.28))' },
-            })}
-          />
+        <h1
+          className={css({
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            color: 'fg.heading',
+            flex: 1,
+            _nightdrive: {
+              // The comps' own title glow strength. Night Drive and Matrix
+              // are the two themes whose artboard lights the page title;
+              // both read the colour from fg.heading, which is their
+              // accent. Lemon Grid and Keppel, drawn from the same palette
+              // as Night Drive, deliberately have none — Camille's call,
+              // 2026-11-18.
+              textShadow: '0 0 14px rgba(55, 235, 243, 0.3)',
+            },
+            _matrix: {
+              textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
+            },
+          })}
+        >
+          rom-curator
         </h1>
         <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
           <BookIcon />
