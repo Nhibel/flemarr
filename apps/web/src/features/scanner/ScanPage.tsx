@@ -131,7 +131,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
         ) : (
           loaded && (
             <span className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
-              Définissez le dossier du système (bandeau en haut de page) pour lancer un scan.
+              Définis le dossier du système (bandeau en haut de page) pour lancer un scan.
             </span>
           )
         )}

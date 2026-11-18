@@ -173,13 +173,13 @@ export function ResolvePanel({
 
       {!hasSources && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
-          Ajoutez au moins une source ci-dessus avant de lancer la résolution.
+          Ajoute au moins une source ci-dessus avant de lancer la résolution.
         </p>
       )}
 
       {selectedGameIds.length === 0 && hasSources && (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          Sélectionnez des jeux dans l'onglet Games pour lancer la résolution.
+          Sélectionne des jeux dans l'onglet Jeux pour lancer la résolution.
         </p>
       )}
 
@@ -191,8 +191,8 @@ export function ResolvePanel({
 
       {noFolder && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
-          Aucun dossier défini pour ce système : les téléchargements seront refusés. Choisissez-le
-          dans le bandeau en haut de page.
+          Aucun dossier défini pour ce système : les téléchargements seront refusés. Choisis-le dans
+          le bandeau en haut de page.
         </p>
       )}
 
@@ -204,7 +204,7 @@ export function ResolvePanel({
 
       {stale && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text', mb: '3' })}>
-          Les sources ont changé depuis cette résolution : relancez la recherche avant de
+          Les sources ont changé depuis cette résolution : relance la recherche avant de
           télécharger.
         </p>
       )}

@@ -148,13 +148,15 @@ export function SourcesManager({
             setShowAdd(false);
             void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
           }}
-          onAdded={() => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] })}
+          onAdded={() =>
+            void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] })
+          }
         />
       )}
 
       {sources.length === 0 && !showAdd ? (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-          Aucune source configurée. Ajoutez une collection archive.org pour commencer.
+          Aucune source configurée. Ajoute une collection archive.org pour commencer.
         </p>
       ) : (
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>

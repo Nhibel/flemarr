@@ -291,7 +291,7 @@ export function DownloadManager({
   if (jobs.length === 0) {
     return (
       <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
-        Aucun téléchargement en cours. Lancez-en un depuis l'onglet Sources.
+        Aucun téléchargement en cours. Lance-en un depuis l'onglet Sources.
       </p>
     );
   }

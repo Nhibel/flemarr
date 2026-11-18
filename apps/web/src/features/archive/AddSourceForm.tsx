@@ -142,7 +142,7 @@ export function AddSourceForm({
       // all for this identifier (unreachable or doesn't exist) — true
       // whether the layout was auto-detected or chosen by hand, so the
       // message doesn't steer toward "pick it manually" anymore.
-      setError(`${message} — vérifiez que l'identifiant existe bien sur archive.org`);
+      setError(`${message} — vérifie que l'identifiant existe bien sur archive.org`);
       setSaving(false);
     }
   };
@@ -252,8 +252,8 @@ export function AddSourceForm({
 
         {searchResults !== null && searchResults.length === 0 && !searching && (
           <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '2' })}>
-            Aucune collection trouvée pour « {searchQ.trim()} ». Essayez un autre libellé, ou
-            utilisez « Je connais déjà l’identifiant » ci-dessous.
+            Aucune collection trouvée pour « {searchQ.trim()} ». Essaie un autre libellé, ou utilise
+            « Je connais déjà l’identifiant » ci-dessous.
           </p>
         )}
 
@@ -319,8 +319,8 @@ export function AddSourceForm({
               <p className={css({ fontSize: 'xs', color: 'fg.subtle' })}>
                 L’identifiant de la collection, c’est-à-dire la fin de son URL :
                 archive.org/details/
-                <strong>sony_playstation_part1</strong>. Ce n’est pas votre compte archive.org, qui
-                se règle dans Paramètres.
+                <strong>sony_playstation_part1</strong>. Ce n’est pas ton compte archive.org, qui se
+                règle dans Paramètres.
               </p>
               <div className={css({ display: 'flex', gap: '2' })}>
                 <input

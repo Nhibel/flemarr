@@ -165,7 +165,7 @@ export function ArchiveAccountSection({
       </div>
 
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '4', mb: '2' })}>
-        Cookies de session (fallback si la connexion ci-dessus ne débloque pas un item : copiez les
+        Cookies de session (fallback si la connexion ci-dessus ne débloque pas un item : copie les
         cookies <code>logged-in-user</code> et <code>logged-in-sig</code> depuis les DevTools du
         navigateur, onglet Application → Cookies → archive.org) :
       </p>
