@@ -16,11 +16,22 @@ describe('useTheme', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 
-  it('honors a previously stored theme, including catppuccin/cyberpunk', () => {
+  it('honors a previously stored theme, including the newest ones', () => {
+    localStorage.setItem(STORAGE_KEY, 'nightdrive');
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.theme).toBe('nightdrive');
+    expect(document.documentElement.dataset.theme).toBe('nightdrive');
+  });
+
+  // A theme that was removed, not a typo: `cyberpunk` shipped and was
+  // dropped on 2026-11-18, so a browser that was using it still has the
+  // string in localStorage. The same guard covers `nintendo` and
+  // `megadrive`, removed on 2026-11-15.
+  it('falls back when the stored theme no longer exists', () => {
     localStorage.setItem(STORAGE_KEY, 'cyberpunk');
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('cyberpunk');
-    expect(document.documentElement.dataset.theme).toBe('cyberpunk');
+    expect(result.current.theme).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('honors the matrix and contraste themes', () => {

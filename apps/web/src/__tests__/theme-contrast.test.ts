@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
  * The palette rules the design canvas settled on include "body text clears
  * 4.5:1 on its own background, muted metadata included, and a bright accent
  * always carries dark text". That was a promise nothing checked: there is no
- * browser in these sessions, so the only way to hold the seven themes to it
+ * browser in these sessions, so the only way to hold the nine themes to it
  * is to compute it.
  *
  * This reads panda.config.ts rather than the generated tokens, because the
@@ -23,7 +23,9 @@ const THEMES = [
   'base',
   '_dark',
   '_catppuccin',
-  '_cyberpunk',
+  '_nightdrive',
+  '_lemongrid',
+  '_keppel',
   '_matrix',
   '_sonicmania',
   '_contraste',
@@ -185,7 +187,7 @@ const PAIRS: Pair[] = [
     min: 4.5,
   },
   // The status TAGS, which are a wash in six themes and a solid fill in
-  // Cyberpunk. Measured separately from status.*.text precisely because
+  // the three drawn from the Cyberpunk palette. Measured separately from status.*.text precisely because
   // the two shapes diverge: a tag that passed as a wash says nothing
   // about the same role drawn as an opaque fill with dark text.
   {
@@ -209,12 +211,26 @@ const PAIRS: Pair[] = [
     backdrop: 'bg.surface',
     min: 4.5,
   },
-  // Cyberpunk's Catégorie filter trigger, tinted by family.
+  // The Catégorie filter trigger, tinted by family in the three
+  // Cyberpunk-palette themes.
   {
     label: 'accent2.text on accent2.subtle',
     fg: 'accent2.text',
     bg: 'accent2.subtle',
     backdrop: 'bg.surface',
+    min: 4.5,
+  },
+  // The Jeux header band. Eight themes draw it on bg.surface and these
+  // three pairs repeat what fg.heading, fg.dataFaint and
+  // status.success.text already measure; Lemon Grid draws it on solid
+  // Rich Lemon, which is the only reason the tokens exist. onBandMuted
+  // keeps fg.faint's 3:1, being the same decorative role.
+  { label: 'fg.onBand on bg.band', fg: 'fg.onBand', bg: 'bg.band', min: 4.5 },
+  { label: 'fg.onBandMuted on bg.band', fg: 'fg.onBandMuted', bg: 'bg.band', min: 3 },
+  {
+    label: 'fg.onBandSuccess on bg.band',
+    fg: 'fg.onBandSuccess',
+    bg: 'bg.band',
     min: 4.5,
   },
 ];
@@ -225,7 +241,7 @@ const PAIRS: Pair[] = [
  * Empty, and meant to stay that way. It held one entry — Sonic Mania's
  * white on the #E8215C its artboard specified, measuring 4.37:1 — until
  * Camille chose the rule over the comp and the magenta was darkened to
- * #E01B55. Every pair now clears its threshold in all seven themes.
+ * #E01B55. Every pair now clears its threshold in all nine themes.
  */
 const ACCEPTED: Record<string, string[]> = {};
 
