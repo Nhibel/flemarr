@@ -87,19 +87,27 @@ const chipBase = css.raw({
   transition: 'background-color 0.1s, color 0.1s, box-shadow 0.1s',
 });
 
-// Cyberpunk only: a menu that is filtering something tints its own
-// trigger by family — Région in the info cyan, Catégorie in the second
-// accent's violet. This is the one place that theme spends a vivid hue on
-// something that is neither the primary action nor the selection, which
-// the phase-14 palette rules otherwise forbid; it is on the Overdrive
-// artboard and was accepted with that cost named. The other six themes
-// keep a filtering trigger in bg.muted like an idle one — there, the
-// active count alone says it.
+// The three themes drawn from the Cyberpunk 2077 palette only: a menu
+// that is filtering something tints its own trigger by family — Région in
+// the info hue, Catégorie in the second accent's. This is the one place
+// those themes spend a vivid hue on something that is neither the primary
+// action nor the selection, which the phase-14 palette rules otherwise
+// forbid; it is on their artboards and was accepted with that cost named.
+// The other six themes keep a filtering trigger in bg.muted like an idle
+// one — there, the active count alone says it.
+//
+// Which hues those are differs per theme, and deliberately: the tint reads
+// from status.info and accent2, so each theme supplies its own. See the
+// info and accent2 comments in panda.config.ts.
 const triggerTintRegion = css.raw({
-  _cyberpunk: { bg: 'status.info.subtle', color: 'status.info.text' },
+  _nightdrive: { bg: 'status.info.subtle', color: 'status.info.text' },
+  _lemongrid: { bg: 'status.info.subtle', color: 'status.info.text' },
+  _keppel: { bg: 'status.info.subtle', color: 'status.info.text' },
 });
 const triggerTintCategory = css.raw({
-  _cyberpunk: { bg: 'accent2.subtle', color: 'accent2.text' },
+  _nightdrive: { bg: 'accent2.subtle', color: 'accent2.text' },
+  _lemongrid: { bg: 'accent2.subtle', color: 'accent2.text' },
+  _keppel: { bg: 'accent2.subtle', color: 'accent2.text' },
 });
 
 /** Count of active values, shown on a closed menu so nothing hides. */

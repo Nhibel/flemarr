@@ -14,7 +14,7 @@ export const inputClass = css({
   _focusVisible: {
     ring: '2px',
     ringColor: 'accent.subtleBorder',
-    _cyberpunk: { ringColor: '#37EBF3' },
+    _nightdrive: { ringColor: '#37EBF3' },
     _contraste: { ringColor: '#37EBF3' },
   },
 });

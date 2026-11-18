@@ -213,7 +213,7 @@ export function AddSourceForm({
               bg: 'bg.surface',
               outline: 'none',
               _focusVisible: {
-                _cyberpunk: {
+                _nightdrive: {
                   boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
                 },
                 _contraste: {
@@ -338,7 +338,7 @@ export function AddSourceForm({
                     outline: 'none',
                     fontFamily: 'mono',
                     _focusVisible: {
-                      _cyberpunk: {
+                      _nightdrive: {
                         boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
                       },
                       _contraste: {
@@ -377,7 +377,7 @@ export function AddSourceForm({
                   bg: 'bg.surface',
                   outline: 'none',
                   _focusVisible: {
-                    _cyberpunk: {
+                    _nightdrive: {
                       boxShadow: '0 0 8px #37EBF3, 0 0 16px rgba(55, 235, 243, 0.3)',
                     },
                     _contraste: {

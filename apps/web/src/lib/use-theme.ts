@@ -1,18 +1,30 @@
 import { useState } from 'react';
 
 export type Theme =
-  'light' | 'dark' | 'catppuccin' | 'cyberpunk' | 'matrix' | 'sonicmania' | 'contraste';
+  | 'light'
+  | 'dark'
+  | 'catppuccin'
+  | 'nightdrive'
+  | 'lemongrid'
+  | 'keppel'
+  | 'matrix'
+  | 'sonicmania'
+  | 'contraste';
 
 // Must stay in sync with the `conditions.extend` keys in
 // apps/web/panda.config.ts (minus `light`, which is the `base` value there)
 // and with the label/description maps in the Apparence settings section.
-// `nintendo` and `megadrive` were removed on 2026-11-15; anyone who had one
-// of them selected is handled by getInitialTheme()'s fallback below.
+// `nintendo` and `megadrive` were removed on 2026-11-15, `cyberpunk` on
+// 2026-11-18; anyone who had one of them selected is handled by
+// getInitialTheme()'s fallback below, which is why no migration is needed
+// when a theme leaves.
 const THEMES: Theme[] = [
   'light',
   'dark',
   'catppuccin',
-  'cyberpunk',
+  'nightdrive',
+  'lemongrid',
+  'keppel',
   'matrix',
   'sonicmania',
   'contraste',

@@ -129,7 +129,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
           _focusVisible: {
             ring: '2px',
             ringColor: 'accent.subtleBorder',
-            _cyberpunk: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
+            _nightdrive: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
             _contraste: { borderColor: '#37EBF3', ringColor: '#37EBF3' },
           },
         })}

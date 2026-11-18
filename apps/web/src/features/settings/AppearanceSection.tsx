@@ -3,13 +3,16 @@ import type { Theme } from '@/lib/use-theme.js';
 import { inputClass, sectionClass } from './styles.js';
 
 // Display order, not the same as the Theme union's order: the two neutral
-// themes first (what most people want), then the three stylized ones, then
-// Contraste last as the high-legibility option.
+// themes first (what most people want), then the stylized ones, with the
+// three that share the Cyberpunk palette kept side by side so they can be
+// compared, then Contraste last as the high-legibility option.
 const THEMES: Theme[] = [
   'light',
   'dark',
   'catppuccin',
-  'cyberpunk',
+  'nightdrive',
+  'lemongrid',
+  'keppel',
   'matrix',
   'sonicmania',
   'contraste',
@@ -18,7 +21,9 @@ const THEME_LABELS: Record<Theme, string> = {
   light: 'Clair',
   dark: 'Sombre',
   catppuccin: 'Catppuccin',
-  cyberpunk: 'Cyberpunk',
+  nightdrive: 'Night Drive',
+  lemongrid: 'Lemon Grid',
+  keppel: 'Keppel',
   matrix: 'Matrix',
   sonicmania: 'Sonic Mania',
   contraste: 'Contraste',
@@ -27,7 +32,9 @@ const THEME_DESCRIPTIONS: Record<Theme, string> = {
   light: 'Fond papier chaud, cartes blanches, accent bleu.',
   dark: 'Encre bleutée, texte clair, accent bleu vif.',
   catppuccin: 'Mocha — pastel sur fond bleu-nuit.',
-  cyberpunk: 'Violet saturé, titre jaune néon, étiquettes pleines, données en cyan.',
+  nightdrive: 'Bleu de nuit, titre et action en cyan, valeurs techniques en jaune.',
+  lemongrid: 'Noir réchauffé, bandeau jaune plein sur l’en-tête, données en cyan.',
+  keppel: 'Turquoise sombre, titre jaune, valeurs techniques en gris chaud.',
   matrix: 'Néon vert sur fond quasi noir.',
   sonicmania: 'Fond jaune vif, cartes cyan, accent magenta et or.',
   contraste:
@@ -37,7 +44,7 @@ const THEME_DESCRIPTIONS: Record<Theme, string> = {
 // Unlike the other sections here, this isn't a server-persisted setting —
 // it's local/client state (localStorage) straight from useTheme(), so no
 // settings/onSave/saving props. A <select> rather than the usual button
-// list (still used elsewhere, e.g. PresetSection) once there were 7 themes
+// list (still used elsewhere, e.g. PresetSection) once there were 9 themes
 // to scroll through instead of 2-3.
 export function AppearanceSection({
   theme,
