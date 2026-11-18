@@ -31,33 +31,18 @@ import { FontScaleControl } from '@/components/FontScaleControl.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 
-// The controls that sit ON the Jeux header. They inherit bg.muted and
-// fg.subtle, which are a dark violet-grey in every theme — fine on
-// bg.surface, wrong on Lemon Grid's yellow band, where they read as dirt.
-// Both classes are empty in the other eight themes, so they add a class
-// and no rule there.
+// The controls that sit ON the Jeux header — two text buttons and two
+// icon buttons. They inherit bg.muted and fg.subtle, which are a dark
+// violet-grey in every theme: fine on bg.surface, wrong on Lemon Grid's
+// yellow band, where they read as dirt. There they are dark pills on the
+// yellow instead. Empty in the other eight themes, so it adds a class and
+// no rule there.
 //
-// The two text buttons lose their fill entirely and are written in the
-// band's own ink (Camille, 2026-11-18: a dark slab behind "Charger un
-// autre DAT" was the one thing that looked wrong on the yellow). Not the
-// accent, which she also offered: Lemon Grid's accent IS the Rich Lemon
-// of the band, so accent-on-band would be yellow on yellow.
-//
-// Hover is transparent too, by her second call the same day. The
-// secondary recipe fills on hover (bg.muted to bg.surface), so the
-// override has to name `transparent` twice or the slab comes back under
-// the pointer. These two buttons are therefore the one place in the app
-// where a button answers the pointer with nothing but the cursor.
-const bandButtonClass = css({
-  _lemongrid: {
-    bg: 'transparent',
-    color: 'fg.onBand',
-    _hover: { bg: 'transparent', color: 'fg.onBand' },
-  },
-});
-
-// The icon buttons keep a fill: they are square targets with no label to
-// carry the colour, and they read correctly as dark pills on the yellow.
+// The text buttons were flat for half a day (Camille, 2026-11-18: the
+// slab behind "Charger un autre DAT" looked wrong), then filled again on
+// seeing it — without a boundary they read as text, not as buttons. What
+// was actually too big was the button itself, which is now size xs here
+// rather than sm, in every theme.
 const bandControlClass = css({
   _lemongrid: {
     bg: 'bg.inset',
@@ -687,8 +672,8 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
           <span className={css({ flexShrink: '0' })}>
             <Button
               variant="secondary"
-              size="sm"
-              className={bandButtonClass}
+              size="xs"
+              className={bandControlClass}
               onClick={() => setTab('scanner')}
             >
               {ownedCount !== null ? 'Rescanner mon dossier' : 'Scanner mon dossier'}
@@ -713,7 +698,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
         />
 
         <span className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: '0' })}>
-          <Button variant="secondary" size="sm" className={bandButtonClass} onClick={onReset}>
+          <Button variant="secondary" size="xs" className={bandControlClass} onClick={onReset}>
             Mes systèmes
           </Button>
           <button

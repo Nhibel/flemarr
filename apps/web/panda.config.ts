@@ -1274,6 +1274,12 @@ export default defineConfig({
             // (the app is used on a Steam Deck), so they must not shrink
             // when the live font-size control is turned down.
             size: {
+              // One notch under sm, for a button that sits inside a dense
+              // strip rather than in a panel of its own — today the two in
+              // the Jeux header, which read as oversized beside a title and
+              // a mono counter (Camille, 2026-11-18). Still 28px of target,
+              // which is the floor this scale goes to.
+              xs: { px: '2', py: '0.5', fontSize: '2xs', minH: '28px' },
               sm: { px: '2.5', py: '1', fontSize: 'xs', minH: '32px' },
               md: { px: '4', py: '2', fontSize: 'sm', minH: '40px' },
             },
