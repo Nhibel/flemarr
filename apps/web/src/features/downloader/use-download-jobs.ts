@@ -67,12 +67,13 @@ export function useDownloadJobs({ jobs, onGamesDownloaded, onAllDone }: Options)
         stream.close();
       };
     }
-
-    return () => {
-      // Cleanup on unmount
-      streams.current.forEach((stream) => stream.close());
-    };
   }, [jobs, applyEvent]);
+
+  // Close every stream on unmount.
+  useEffect(() => {
+    const openStreams = streams.current;
+    return () => openStreams.forEach((stream) => stream.close());
+  }, []);
 
   // Report each game once it is fully downloaded, not once the whole job is:
   // the selection empties as the queue drains. Keyed by jobId so re-downloading

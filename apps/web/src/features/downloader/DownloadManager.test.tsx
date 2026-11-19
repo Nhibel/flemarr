@@ -111,6 +111,29 @@ describe('DownloadManager — clear completed', () => {
 
     expect(screen.getByRole('button', { name: /vider/i })).not.toBeDisabled();
   });
+
+  it('keeps following a running job when another one is queued', () => {
+    const jobA = makeJob('job-a', 'g1', 'Game A.sfc');
+    const jobB = makeJob('job-b', 'g2', 'Game B.sfc');
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { rerender } = render(
+      <QueryClientProvider client={client}>
+        <DownloadManager jobs={[jobA]} onClearCompleted={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    rerender(
+      <QueryClientProvider client={client}>
+        <DownloadManager jobs={[jobA, jobB]} onClearCompleted={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    // Queueing job-b used to close job-a's stream: its progress froze
+    // while the server kept downloading.
+    expect(sources.get('job-a')!.close).not.toHaveBeenCalled();
+    emit('job-a', { type: 'complete' });
+    expect(screen.getByRole('button', { name: /vider/i })).not.toBeDisabled();
+  });
 });
 
 describe('DownloadManager — one row per game', () => {
