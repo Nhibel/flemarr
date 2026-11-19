@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DatUpload } from './DatUpload.js';
 import * as api from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 
 vi.mock('@/lib/api.js');
 
@@ -59,6 +60,27 @@ describe('DatUpload', () => {
     await userEvent.upload(input, file);
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(summary));
+  });
+
+  it('refreshes the systems list itself once the upload succeeds', async () => {
+    vi.mocked(api.uploadDat).mockResolvedValue({
+      id: 'abc',
+      system: 'Test System',
+      gameCount: 3,
+      source: 'no-intro',
+    });
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    client.setQueryData(queryKeys.dats(), []);
+
+    render(
+      <QueryClientProvider client={client}>
+        <DatUpload onSuccess={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(['<datafile/>'], 'test.dat'));
+
+    await waitFor(() => expect(client.getQueryState(queryKeys.dats())?.isInvalidated).toBe(true));
   });
 
   it('shows error message on upload failure', async () => {

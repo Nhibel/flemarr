@@ -355,7 +355,6 @@ function LoaderView({
             <AddSystem
               loaderMode={loaderMode}
               onSetLoaderMode={onSetLoaderMode}
-              onAdded={() => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() })}
               onUploaded={onLoaded}
             />
           </Dialog>
@@ -364,7 +363,6 @@ function LoaderView({
         <AddSystem
           loaderMode={loaderMode}
           onSetLoaderMode={onSetLoaderMode}
-          onAdded={() => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() })}
           onUploaded={onLoaded}
         />
       )}
@@ -382,12 +380,10 @@ function LoaderView({
 function AddSystem({
   loaderMode,
   onSetLoaderMode,
-  onAdded,
   onUploaded,
 }: {
   loaderMode: LoaderMode;
   onSetLoaderMode: (m: LoaderMode) => void;
-  onAdded: () => void;
   onUploaded: (dat: DatUploadResponse) => void;
 }) {
   return (
@@ -429,7 +425,7 @@ function AddSystem({
         // Loading a preset just adds it to the cards above — no
         // auto-navigation, so loading several systems in a row doesn't
         // bounce to the game view each time.
-        <Fresh1g1rBrowser onSuccess={onAdded} />
+        <Fresh1g1rBrowser />
       ) : (
         <DatUpload onSuccess={onUploaded} />
       )}
@@ -471,6 +467,11 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   } = useQuery({
     queryKey: queryKeys.games(dat.id),
     queryFn: () => fetchGames(dat.id),
+    // Immutable: reloading a DAT stores it under a new id (randomUUID in
+    // the server's dat store), so a given id's games never change. Without
+    // this, reopening a system refetched its whole catalogue every time.
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   // In "browser" mode the app never places files in a server-side folder it

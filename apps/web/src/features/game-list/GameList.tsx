@@ -84,6 +84,9 @@ export function GameList({
     },
     enabled: pageIds.length > 0 && mode !== 'compact',
     staleTime: Infinity,
+    // gcTime >= staleTime: otherwise a page left alone for 5 minutes is
+    // purged and refetched despite being "fresh forever".
+    gcTime: Infinity,
   });
 
   // -2 is "focus the last row once the previous page rendered": its length

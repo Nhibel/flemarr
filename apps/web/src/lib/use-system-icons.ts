@@ -21,6 +21,7 @@ export function useSystemIcons(systems: string[]): Map<string, SystemIconStyle |
     queryFn: () => fetchSystemIcons(wanted),
     enabled: wanted.length > 0,
     staleTime: Infinity,
+    gcTime: Infinity,
     // An icon is decoration: a provider outage must not retry in a loop
     // behind every system name on the screen.
     retry: false,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { listDatSources, fetchDatFromFresh1g1r } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
@@ -16,7 +16,7 @@ const PRESET_DESCRIPTIONS: Record<Fresh1g1rPreset, string> = {
 };
 
 interface Props {
-  onSuccess: (dat: DatUploadResponse) => void;
+  onSuccess?: (dat: DatUploadResponse) => void;
 }
 
 export function Fresh1g1rBrowser({ onSuccess }: Props) {
@@ -41,10 +41,16 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
     staleTime: 5 * 60 * 1000, // 5 min — GitHub contents don't change that fast
   });
 
+  const queryClient = useQueryClient();
   const loadMutation = useMutation({
     mutationFn: (entry: ListSourcesResponse['sources'][number]) =>
       fetchDatFromFresh1g1r({ preset: resolvedPreset, path: entry.path, sha: entry.sha }),
-    onSuccess: (dat) => onSuccess(dat),
+    onSuccess: (dat) => {
+      // The new DAT joins the systems list here, not in the caller: a write
+      // resyncs its own queries.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dats() });
+      onSuccess?.(dat);
+    },
     onError: (err) => setLoadError(err instanceof Error ? err.message : 'Erreur'),
   });
 
