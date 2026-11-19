@@ -4,6 +4,7 @@ import { SystemIcon } from '@/components/SystemIcon.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 import type { SystemIconStyle } from '@shared/system-icon.js';
 import type { DatUploadResponse } from '@shared/api.js';
+import { plural } from '@/lib/plural.js';
 
 // The two text buttons that sit ON the Jeux header, given the fill the
 // icon buttons beside them already have (iconBtnClass): bg.inset, one
@@ -192,10 +193,12 @@ function OwnershipCounter({
           truncate: true,
         })}
       >
-        {dat.source} · {dat.gameCount} jeux · possession inconnue
+        {dat.source} · {dat.gameCount} {plural(dat.gameCount, 'jeu', 'jeux')} · possession inconnue
       </span>
     );
   }
+
+  const missingCount = dat.gameCount - ownedCount;
 
   return (
     <span
@@ -211,7 +214,7 @@ function OwnershipCounter({
     >
       <span className={css({ color: 'fg.onBandSuccess' })}>{ownedCount} sur ton disque</span>
       <span className={css({ color: 'fg.onBandMuted' })}>
-        {dat.gameCount - ownedCount} manquants sur {dat.gameCount}
+        {missingCount} {plural(missingCount, 'manquant')} sur {dat.gameCount}
       </span>
       {lastScanAt && (
         <span className={css({ color: 'fg.onBandMuted' })}>

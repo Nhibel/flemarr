@@ -10,6 +10,7 @@ import { queryKeys } from '@/lib/query-keys.js';
 import { SearchIcon } from '@/components/icons.js';
 import type { Game } from '@shared/dat.js';
 import type { Ownership } from '@/lib/missing-games.js';
+import { plural } from '@/lib/plural.js';
 
 const MODE_LABELS = { compact: 'Compact', normal: 'Normal' } as const;
 
@@ -175,7 +176,7 @@ export function GameList({
         <span className={css({ srOnly: true })}>Rechercher un jeu</span>
         <input
           type="search"
-          placeholder={`Rechercher parmi ${totalGames} jeux…`}
+          placeholder={`Rechercher parmi ${totalGames} ${plural(totalGames, 'jeu', 'jeux')}…`}
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           className={css({

@@ -3,6 +3,7 @@ import { Card } from '@/components/Card.js';
 import { SystemIcon } from '@/components/SystemIcon.js';
 import type { SystemIconStyle } from '@shared/system-icon.js';
 import type { DatUploadResponse } from '@shared/api.js';
+import { plural } from '@/lib/plural.js';
 
 interface Props {
   dat: DatUploadResponse;
@@ -68,7 +69,7 @@ export function SystemCard({ dat, iconStyle, removing, onOpen, onRemove }: Props
               color: 'fg.dataFaint',
             })}
           >
-            {dat.source} · {dat.gameCount} jeux
+            {dat.source} · {dat.gameCount} {plural(dat.gameCount, 'jeu', 'jeux')}
           </span>
         </span>
       </button>

@@ -5,6 +5,7 @@ import type { ArchiveSource } from '@/lib/api.js';
 import { LayoutBadge } from './LayoutBadge.js';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
+import { plural } from '@/lib/plural.js';
 
 export function SourceRow({
   source,
@@ -55,7 +56,8 @@ export function SourceRow({
         {source.note && <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>{source.note}</p>}
         {preview && (
           <p className={css({ fontSize: 'xs', color: 'status.success.text', mt: '1' })}>
-            ✓ {preview.fileCount} fichiers trouvés
+            ✓ {preview.fileCount} {plural(preview.fileCount, 'fichier')}{' '}
+            {plural(preview.fileCount, 'trouvé')}
           </p>
         )}
         {testError && (

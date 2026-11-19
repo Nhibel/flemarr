@@ -8,6 +8,7 @@ import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult, ScanEvent } from '@shared/scan.js';
 import { scanEventSchema } from '@shared/scan.js';
 import { ScanResults } from './ScanResults.js';
+import { plural } from '@/lib/plural.js';
 
 interface Props {
   datId: string;
@@ -141,7 +142,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
       {scan.phase === 'scanning' && (
         <div className={css({ fontSize: 'sm', color: 'fg.subtle' })}>
           {scan.total > 0
-            ? `${scan.scanned} / ${scan.total} fichiers hachés…`
+            ? `${scan.scanned} / ${scan.total} ${plural(scan.total, 'fichier')} ${plural(scan.total, 'haché')}…`
             : 'Collecte des fichiers…'}
         </div>
       )}

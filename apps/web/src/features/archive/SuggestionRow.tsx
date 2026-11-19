@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { css } from '@/styled-system/css';
 import type { SuggestResponse } from '@/lib/api.js';
 import { LayoutBadge } from './LayoutBadge.js';
+import { plural } from '@/lib/plural.js';
 
 /**
  * Colored on the CRC-verified fraction, not the blended one: a source
@@ -74,8 +75,8 @@ export function SuggestionRow({
           {nameOnlyPct > 0 && (
             <span className={css({ color: 'fg.subtle' })}> + {nameOnlyPct} % nom seul</span>
           )}{' '}
-          (échantillon de {suggestion.sampleSize} jeux) · {suggestion.fileCount} fichiers dans
-          l’item
+          (échantillon de {suggestion.sampleSize} {plural(suggestion.sampleSize, 'jeu', 'jeux')}) ·{' '}
+          {suggestion.fileCount} {plural(suggestion.fileCount, 'fichier')} dans l’item
         </p>
         {error && (
           <p role="alert" className={css({ fontSize: 'xs', color: 'status.danger.text', mt: '1' })}>

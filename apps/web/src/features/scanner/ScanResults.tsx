@@ -35,7 +35,7 @@ export function ScanResults({
         <Chip label="mal nommés" count={result.wrongName.length} color="amber" />
         <Chip label="introuvables" count={result.unmatched.length} color="gray" />
         <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
-          {total} fichiers scannés
+          {total} {plural(total, 'fichier')} {plural(total, 'scanné')}
         </span>
       </div>
 
