@@ -23,6 +23,17 @@ export default tseslint.config(
     },
   },
   {
+    // .claude/rules/readability.md: early returns over deep nesting, and a
+    // function that branches this much gets split. Tests are exempt: a
+    // table-driven fake server legitimately branches on every request.
+    files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.ts'],
+    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**'],
+    rules: {
+      complexity: ['warn', 15],
+      'max-depth': ['warn', 4],
+    },
+  },
+  {
     // .claude/rules/frontend.md — the server isn't held to these.
     files: ['apps/web/src/**/*.{ts,tsx}'],
     rules: {

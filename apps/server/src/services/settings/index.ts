@@ -86,6 +86,10 @@ export function toSettingsResponse(s: Settings, romsRoot: string | null): Settin
   };
 }
 
+// One flat `if (patch.x !== undefined)` per field: the complexity score
+// counts fields, not tangled logic, and a lookup table would be harder to
+// read for the two fields with special writes (topology, systemPaths).
+// eslint-disable-next-line complexity
 export function updateSettings(patch: UpdateSettings, db: Database = getDb()): Settings {
   const upsert = db.prepare(
     `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
