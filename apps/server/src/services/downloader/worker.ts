@@ -195,14 +195,23 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerResult> {
-  const { url, tempPath, expectedCrc, signal, onProgress, extractFromZip } = opts;
+/**
+ * Seconds to wait before retrying a 429/503: the server's Retry-After when
+ * it's a number (capped, so a hostile value can't stall a job), otherwise a
+ * linear backoff of 5 s, 10 s…
+ */
+export function retryDelaySeconds(retryAfter: string | null, attempt: number): number {
+  if (retryAfter !== null && Number.isFinite(Number(retryAfter))) {
+    return Math.min(Number(retryAfter), MAX_RETRY_WAIT_S);
+  }
+  return (attempt + 1) * 5;
+}
 
-  await mkdir(dirname(tempPath), { recursive: true });
-
-  let res: Response;
-  let attempt = 0;
-  for (;;) {
+// Fetches `url`, retrying rate-limit responses up to MAX_RETRIES times. The
+// last response is returned as is, ok or not — the caller decides.
+async function fetchWithRetry(url: string, signal: AbortSignal): Promise<Response | 'cancelled'> {
+  for (let attempt = 0; ; attempt++) {
+    let res: Response;
     try {
       res = await archiveFetch(url, { signal });
     } catch (err) {
@@ -210,21 +219,18 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
       throw err;
     }
 
-    if (!RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) break;
+    if (!RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) return res;
 
-    const retryAfter = res.headers.get('retry-after');
-    const waitSeconds =
-      retryAfter !== null && Number.isFinite(Number(retryAfter))
-        ? Math.min(Number(retryAfter), MAX_RETRY_WAIT_S)
-        : (attempt + 1) * 5;
+    const waitSeconds = retryDelaySeconds(res.headers.get('retry-after'), attempt);
     try {
       await abortableSleep(waitSeconds * 1000, signal);
     } catch {
       return 'cancelled';
     }
-    attempt++;
   }
+}
 
+function responseBody(res: Response, url: string): ReadableStream<Uint8Array> {
   if (!res.ok) {
     // 403 on a restricted item means the archive.org session expired — the
     // message steers the user to reconnect rather than blaming the source.
@@ -238,15 +244,25 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
   if (!res.body) {
     throw new Error(`No response body from ${url}`);
   }
+  return res.body;
+}
 
-  const totalBytes = Number(res.headers.get('content-length') ?? 0);
+// Streams the body to tempPath, CRC-ing it on the way. Returns the CRC, or
+// 'cancelled' (the partial file deleted) when the signal aborts mid-stream.
+async function streamToFile(
+  body: ReadableStream<Uint8Array>,
+  tempPath: string,
+  totalBytes: number,
+  signal: AbortSignal,
+  onProgress: DownloadFileOptions['onProgress'],
+): Promise<string | 'cancelled'> {
   const acc = new Crc32Accumulator();
   let bytesDownloaded = 0;
 
   const writer = createWriteStream(tempPath);
 
   try {
-    const reader = res.body.getReader();
+    const reader = body.getReader();
 
     await new Promise<void>((resolve, reject) => {
       writer.on('error', reject);
@@ -289,20 +305,23 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
     throw err;
   }
 
-  // A plain whole-file fetch with nothing to validate yet (the
-  // archive-container fast path fetches the container itself this way,
-  // before extractContainerEntry pulls out and CRC-checks the actual ROM).
-  if (expectedCrc === undefined) {
-    return 'done';
-  }
+  return acc.digest();
+}
 
+// Checks the file now at tempPath against the DAT's CRC; deletes it on a
+// mismatch.
+async function checkCrc(
+  tempPath: string,
+  expectedCrc: string,
+  streamedCrc: string,
+  extractFromZip: boolean | undefined,
+): Promise<WorkerResult> {
   // The streamed bytes are a ZIP wrapper — validate the ROM inside it instead.
   if (extractFromZip) {
     return extractAndValidate(tempPath, expectedCrc);
   }
 
-  const actualCrc = acc.digest();
-  if (actualCrc === expectedCrc.toLowerCase()) {
+  if (streamedCrc === expectedCrc.toLowerCase()) {
     return 'done';
   }
 
@@ -318,4 +337,27 @@ export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerRes
 
   await deleteFile(tempPath);
   return 'crc-mismatch';
+}
+
+export async function downloadFile(opts: DownloadFileOptions): Promise<WorkerResult> {
+  const { url, tempPath, expectedCrc, signal, onProgress, extractFromZip } = opts;
+
+  await mkdir(dirname(tempPath), { recursive: true });
+
+  const res = await fetchWithRetry(url, signal);
+  if (res === 'cancelled') return 'cancelled';
+
+  const body = responseBody(res, url);
+  const totalBytes = Number(res.headers.get('content-length') ?? 0);
+  const streamedCrc = await streamToFile(body, tempPath, totalBytes, signal, onProgress);
+  if (streamedCrc === 'cancelled') return 'cancelled';
+
+  // A plain whole-file fetch with nothing to validate yet (the
+  // archive-container fast path fetches the container itself this way,
+  // before extractContainerEntry pulls out and CRC-checks the actual ROM).
+  if (expectedCrc === undefined) {
+    return 'done';
+  }
+
+  return checkCrc(tempPath, expectedCrc, streamedCrc, extractFromZip);
 }
