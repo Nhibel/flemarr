@@ -8,6 +8,7 @@ import { ResolveNotices } from './ResolveNotices.js';
 import { ResolveSummary } from './ResolveSummary.js';
 import { destinationLabel } from './destination-label.js';
 import { useResolvePanel } from './use-resolve-panel.js';
+import { plural } from '@/lib/plural.js';
 
 export function ResolvePanel({
   datId,
@@ -32,7 +33,7 @@ export function ResolvePanel({
   const romsRoot = useRomsRoot();
 
   const toResolveCount = panel.effectiveGameIds.length;
-  const resolveLabel = `Chercher les sources (${toResolveCount} jeu${toResolveCount !== 1 ? 'x' : ''})`;
+  const resolveLabel = `Chercher les sources (${toResolveCount} ${plural(toResolveCount, 'jeu', 'jeux')})`;
 
   return (
     <section>

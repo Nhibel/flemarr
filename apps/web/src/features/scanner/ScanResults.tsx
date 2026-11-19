@@ -4,6 +4,7 @@ import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult } from '@shared/scan.js';
 import { RenameRow } from './RenameRow.js';
+import { plural } from '@/lib/plural.js';
 
 interface ScanResultsProps {
   result: ScanResult;
@@ -94,7 +95,7 @@ export function ScanResults({
             >
               {renaming
                 ? 'Renommage…'
-                : `Renommer ${selected.size} fichier${selected.size !== 1 ? 's' : ''}`}
+                : `Renommer ${selected.size} ${plural(selected.size, 'fichier')}`}
             </button>
             {renameResult && (
               <span
@@ -103,8 +104,10 @@ export function ScanResults({
                   color: renameResult.failed > 0 ? 'status.danger.text' : 'status.success.text',
                 })}
               >
-                {renameResult.done} renommé{renameResult.done !== 1 ? 's' : ''}
-                {renameResult.failed > 0 ? `, ${renameResult.failed} échoué(s)` : ''}
+                {renameResult.done} {plural(renameResult.done, 'renommé')}
+                {renameResult.failed > 0
+                  ? `, ${renameResult.failed} ${plural(renameResult.failed, 'échoué')}`
+                  : ''}
               </span>
             )}
           </div>
@@ -115,8 +118,8 @@ export function ScanResults({
       {result.unmatched.length > 0 && (
         <details className={css({ fontSize: 'sm' })}>
           <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            {result.unmatched.length} fichier{result.unmatched.length !== 1 ? 's' : ''} non trouvé
-            {result.unmatched.length !== 1 ? 's' : ''}
+            {result.unmatched.length} {plural(result.unmatched.length, 'fichier')} non{' '}
+            {plural(result.unmatched.length, 'trouvé')}
           </summary>
           <ul
             className={css({

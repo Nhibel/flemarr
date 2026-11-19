@@ -2,6 +2,7 @@ import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
 import type { ResolveSummary as Summary } from './resolve-summary.js';
+import { plural } from '@/lib/plural.js';
 
 /**
  * The resolve outcome at a glance: how many games are complete, partial or
@@ -24,7 +25,7 @@ export function ResolveSummary({
 }) {
   const fileCount = summary.downloadableCount;
   const hasDownloadable = fileCount > 0;
-  const downloadLabel = `Télécharger (${fileCount} fichier${fileCount !== 1 ? 's' : ''})`;
+  const downloadLabel = `Télécharger (${fileCount} ${plural(fileCount, 'fichier')})`;
 
   return (
     <>

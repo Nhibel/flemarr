@@ -1,10 +1,6 @@
 import type { JobSummary } from './game-status.js';
 import type { JobStatus } from './job-state.js';
-
-/** "2" + "jeu" → "2 jeux": French plural for the counts on this card. */
-function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
-  return count > 1 ? pluralForm : singular;
-}
+import { plural } from '@/lib/plural.js';
 
 /**
  * The job's status line. Counted in games, like the summary line and the

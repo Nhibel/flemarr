@@ -1,4 +1,5 @@
 import { css } from '@/styled-system/css';
+import { plural } from '@/lib/plural.js';
 
 /** Shown only once a scan ran: without one, nothing is known to be owned. */
 export function ExcludeOwnedToggle({
@@ -26,7 +27,7 @@ export function ExcludeOwnedToggle({
     >
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       Exclure les jeux déjà possédés d'après le dernier scan ({ownedCount} sur {selectedCount}{' '}
-      possédé{ownedCount !== 1 ? 's' : ''})
+      {plural(ownedCount, 'possédé')})
     </label>
   );
 }

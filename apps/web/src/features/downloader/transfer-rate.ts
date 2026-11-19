@@ -1,3 +1,5 @@
+import { plural } from '@/lib/plural.js';
+
 /**
  * Transfer rate and time-remaining, computed from successive byte totals.
  *
@@ -82,8 +84,8 @@ export function formatEta(seconds: number): string {
   if (seconds < 45) return 'moins d’une minute restante';
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) {
-    return `environ ${minutes} minute${minutes > 1 ? 's' : ''} restante${minutes > 1 ? 's' : ''}`;
+    return `environ ${minutes} ${plural(minutes, 'minute')} ${plural(minutes, 'restante')}`;
   }
   const hours = Math.round(seconds / 3600);
-  return `environ ${hours} heure${hours > 1 ? 's' : ''} restante${hours > 1 ? 's' : ''}`;
+  return `environ ${hours} ${plural(hours, 'heure')} ${plural(hours, 'restante')}`;
 }

@@ -1,6 +1,7 @@
 import { css } from '@/styled-system/css';
 import type { Game } from '@shared/dat.js';
 import { formatSize } from '@/lib/format.js';
+import { plural } from '@/lib/plural.js';
 
 interface Props {
   games: Game[];
@@ -34,8 +35,8 @@ export function SelectionSummary({ games, selected, target }: Props) {
   return (
     <p className={css({ display: 'flex', alignItems: 'baseline', gap: '2', fontSize: 'sm' })}>
       <span className={css({ fontWeight: 'bold', color: 'fg.onInverse' })}>
-        {selected.size} jeu{selected.size !== 1 ? 'x' : ''} sélectionné
-        {selected.size !== 1 ? 's' : ''}
+        {selected.size} {plural(selected.size, 'jeu', 'jeux')}{' '}
+        {plural(selected.size, 'sélectionné')}
       </span>
       {/* The total is technical data, hence the mono face — and it is the
           number that decides whether a download is worth starting, so it

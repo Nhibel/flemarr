@@ -4,6 +4,7 @@ import { displayPath, absolutePath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 import { pathBasename } from './folder-paths.js';
 import { useDirListing } from './use-dir-listing.js';
+import { plural } from '@/lib/plural.js';
 
 function FolderIcon() {
   return (
@@ -165,7 +166,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
                     color: 'fg.dataFaint',
                   })}
                 >
-                  {dir.fileCount} fichier{dir.fileCount > 1 ? 's' : ''}
+                  {dir.fileCount} {plural(dir.fileCount, 'fichier')}
                 </span>
               )}
             </button>
