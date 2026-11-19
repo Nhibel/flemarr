@@ -8,6 +8,7 @@ import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { buildDownloadItems } from './build-items.js';
+import { sourceKeyOf, summarizeResolve } from './resolve-summary.js';
 import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
@@ -61,12 +62,7 @@ export function ResolvePanel({
   const romsRoot = useRomsRoot();
 
   const hasSources = (sourcesData?.sources.length ?? 0) > 0;
-  // Layout included: correcting a wrongly-detected layout changes which URLs
-  // resolve, not just which sources exist.
-  const sourceKey = (sourcesData?.sources ?? [])
-    .map((src) => `${src.identifier}:${src.layout}`)
-    .sort()
-    .join('|');
+  const sourceKey = sourceKeyOf(sourcesData?.sources ?? []);
   const result = resolved?.result ?? null;
   const stale = resolved !== null && resolved.sourceKey !== sourceKey;
   const noFolder = downloadTarget === 'server' && settingsLoaded && destinationDir === '';
@@ -74,11 +70,8 @@ export function ResolvePanel({
   const effectiveGameIds =
     excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
 
-  const downloadableCount =
-    result?.results.reduce(
-      (n, r) => n + r.roms.filter((rom) => rom.sources.length > 0).length,
-      0,
-    ) ?? 0;
+  const summary = result ? summarizeResolve(result) : null;
+  const downloadableCount = summary?.downloadableCount ?? 0;
 
   const handleResolve = useCallback(async () => {
     if (effectiveGameIds.length === 0) return;
@@ -214,36 +207,12 @@ export function ResolvePanel({
       {result && (
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
           <div className={css({ display: 'flex', gap: '3' })}>
-            <Chip
-              label="Complets"
-              count={
-                result.results.filter(
-                  (r) => r.roms.length > 0 && r.roms.every((rom) => rom.sources.length > 0),
-                ).length
-              }
-              color="green"
-            />
-            <Chip
-              label="Partiels"
-              count={
-                result.results.filter(
-                  (r) =>
-                    r.roms.some((rom) => rom.sources.length > 0) &&
-                    r.roms.some((rom) => rom.sources.length === 0),
-                ).length
-              }
-              color="gray"
-            />
-            <Chip
-              label="Introuvables"
-              count={
-                result.results.filter((r) => r.roms.every((rom) => rom.sources.length === 0)).length
-              }
-              color="gray"
-            />
+            <Chip label="Complets" count={summary?.complete ?? 0} color="green" />
+            <Chip label="Partiels" count={summary?.partial ?? 0} color="gray" />
+            <Chip label="Introuvables" count={summary?.notFound ?? 0} color="gray" />
           </div>
 
-          {result.results.some((r) => r.roms.some((rom) => rom.sources.length > 0)) && (
+          {downloadableCount > 0 && (
             <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
               <Button
                 onClick={() => void handleDownload()}
