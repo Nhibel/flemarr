@@ -1,6 +1,20 @@
 import { css } from '@/styled-system/css';
 import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
 
+type ChipColor = 'green' | 'amber' | 'gray';
+
+const CHIP_COLOR_STYLE = {
+  green: css.raw({ bg: 'chip.success.bg', color: 'chip.success.fg' }),
+  amber: css.raw({ bg: 'chip.warning.bg', color: 'chip.warning.fg' }),
+  gray: css.raw({ bg: 'bg.muted', color: 'fg.muted' }),
+} satisfies Record<ChipColor, unknown>;
+
+const CHIP_ICON = {
+  green: CheckIcon,
+  amber: WarningIcon,
+  gray: PlusIcon,
+} satisfies Record<ChipColor, unknown>;
+
 /**
  * A status tag: pictogram, count, label.
  *
@@ -25,24 +39,9 @@ import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
  * component does not branch on the theme. See the `chip` block in
  * panda.config.ts.
  */
-export function Chip({
-  label,
-  count,
-  color,
-}: {
-  label: string;
-  count: number;
-  color: 'green' | 'amber' | 'gray';
-}) {
-  const colorStyle = css.raw(
-    color === 'green'
-      ? { bg: 'chip.success.bg', color: 'chip.success.fg' }
-      : color === 'amber'
-        ? { bg: 'chip.warning.bg', color: 'chip.warning.fg' }
-        : { bg: 'bg.muted', color: 'fg.muted' },
-  );
-
-  const Icon = color === 'green' ? CheckIcon : color === 'amber' ? WarningIcon : PlusIcon;
+export function Chip({ label, count, color }: { label: string; count: number; color: ChipColor }) {
+  const colorStyle = CHIP_COLOR_STYLE[color];
+  const Icon = CHIP_ICON[color];
 
   return (
     <span

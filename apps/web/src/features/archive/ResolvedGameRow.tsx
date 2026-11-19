@@ -1,8 +1,50 @@
 import { css } from '@/styled-system/css';
 import type { ResolveResponse } from '@/lib/api.js';
 
+type ResolvedGame = ResolveResponse['results'][number];
+type ResolvedSource = ResolvedGame['roms'][number]['sources'][number];
+
+/** How many of the game's ROMs some source has: all, none, or some. */
+type Coverage = 'all' | 'none' | 'partial';
+
+function coverageOf(foundCount: number, romCount: number): Coverage {
+  if (romCount > 0 && foundCount === romCount) return 'all';
+  if (foundCount === 0) return 'none';
+  return 'partial';
+}
+
+// The state is carried by the tinted fill alone, as everywhere else since
+// the redesign — the 1px outline that used to repeat each of these hues
+// added nothing the fill did not already say.
+const COVERAGE_FILL = {
+  all: css.raw({ bg: 'status.success.subtle', color: 'status.success.text' }),
+  none: css.raw({ bg: 'bg.muted' }),
+  partial: css.raw({ bg: 'status.warning.subtle', color: 'status.warning.text' }),
+} satisfies Record<Coverage, unknown>;
+
+const COVERAGE_MARK = {
+  all: { glyph: '✓', style: css.raw({ color: 'status.success.text' }) },
+  none: { glyph: '—', style: css.raw({ color: 'fg.faint' }) },
+  partial: { glyph: '◐', style: css.raw({ color: 'status.warning.text' }) },
+} satisfies Record<Coverage, unknown>;
+
+/** The line under a ROM: which source it will come from, and how sure that match is. */
+function describeSource(romName: string, source: ResolvedSource | undefined) {
+  if (source == null) {
+    return { text: `— ${romName} — introuvable`, style: css.raw({ color: 'fg.dataFaint' }) };
+  }
+  const where = `[${source.container}] ${source.identifier}`;
+  if (source.verified) {
+    return { text: `✓ ${romName} — ${where}`, style: css.raw({ color: 'fg.data' }) };
+  }
+  return {
+    text: `⚠ ${romName} — ${where} (nom seul, CRC non confirmé)`,
+    style: css.raw({ color: 'status.warning.text' }),
+  };
+}
+
 interface Props {
-  game: ResolveResponse['results'][number];
+  game: ResolvedGame;
   // Keyed by `${gameId}/${romName}` — absent means "use the first source",
   // same default as before this picker existed.
   selectedSourceIndex: Map<string, number>;
@@ -11,36 +53,14 @@ interface Props {
 
 export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: Props) {
   const foundCount = game.roms.filter((rom) => rom.sources.length > 0).length;
-  const allFound = game.roms.length > 0 && foundCount === game.roms.length;
-  const noneFound = foundCount === 0;
-
-  // The state is carried by the tinted fill alone, as everywhere else since
-  // the redesign — the 1px outline that used to repeat each of these hues
-  // added nothing the fill did not already say.
-  const containerStyle = css.raw(
-    allFound
-      ? { bg: 'status.success.subtle', color: 'status.success.text' }
-      : noneFound
-        ? { bg: 'bg.muted' }
-        : { bg: 'status.warning.subtle', color: 'status.warning.text' },
-  );
+  const coverage = coverageOf(foundCount, game.roms.length);
+  const noneFound = coverage === 'none';
+  const mark = COVERAGE_MARK[coverage];
 
   return (
-    <div className={css({ p: '3', borderRadius: '14px' }, containerStyle)}>
+    <div className={css({ p: '3', borderRadius: '14px' }, COVERAGE_FILL[coverage])}>
       <div className={css({ display: 'flex', alignItems: 'flex-start', gap: '2' })}>
-        <span
-          className={css({
-            fontSize: 'sm',
-            color: allFound
-              ? 'status.success.text'
-              : noneFound
-                ? 'fg.faint'
-                : 'status.warning.text',
-            mt: '0.5',
-          })}
-        >
-          {allFound ? '✓' : noneFound ? '—' : '◐'}
-        </span>
+        <span className={css({ fontSize: 'sm', mt: '0.5' }, mark.style)}>{mark.glyph}</span>
         <div className={css({ flex: 1, minW: 0 })}>
           <p className={css({ fontSize: 'sm', color: 'fg.heading', fontWeight: 'medium' })}>
             {game.gameName || game.gameId}
@@ -61,26 +81,16 @@ export function ResolvedGameRow({ game, selectedSourceIndex, onSelectSource }: P
                 const key = `${game.gameId}/${rom.romName}`;
                 const chosenIndex = selectedSourceIndex.get(key) ?? 0;
                 const source = rom.sources[chosenIndex] ?? rom.sources[0];
+                const sourceLine = describeSource(rom.romName, source);
                 return (
                   <div key={rom.romName}>
                     <p
-                      className={css({
-                        fontSize: 'xs',
-                        color:
-                          source == null
-                            ? 'fg.dataFaint'
-                            : source.verified
-                              ? 'fg.data'
-                              : 'status.warning.text',
-                        fontFamily: 'mono',
-                        truncate: true,
-                      })}
+                      className={css(
+                        { fontSize: 'xs', fontFamily: 'mono', truncate: true },
+                        sourceLine.style,
+                      )}
                     >
-                      {source == null
-                        ? `— ${rom.romName} — introuvable`
-                        : source.verified
-                          ? `✓ ${rom.romName} — [${source.container}] ${source.identifier}`
-                          : `⚠ ${rom.romName} — [${source.container}] ${source.identifier} (nom seul, CRC non confirmé)`}
+                      {sourceLine.text}
                     </p>
                     {/* Only shown when there's an actual choice to make — a
                         single-source rom looks exactly like it did before

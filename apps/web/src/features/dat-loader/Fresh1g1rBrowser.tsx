@@ -15,6 +15,12 @@ const PRESET_DESCRIPTIONS: Record<Fresh1g1rPreset, string> = {
   Hearto: 'Le plus large · toutes langues, démos, non-licenciés, proto/bêta/alpha.',
 };
 
+function loadButtonLabel(isLoading: boolean, isLoaded: boolean): string {
+  if (isLoading) return 'Chargement…';
+  if (isLoaded) return '✓ Chargé';
+  return 'Charger';
+}
+
 interface Props {
   onSuccess?: (dat: DatUploadResponse) => void;
 }
@@ -218,7 +224,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
                     _disabled: { opacity: 0.5, cursor: 'not-allowed' },
                   })}
                 >
-                  {isLoading ? 'Chargement…' : isLoaded ? '✓ Chargé' : 'Charger'}
+                  {loadButtonLabel(isLoading, isLoaded)}
                 </button>
               </div>
             );

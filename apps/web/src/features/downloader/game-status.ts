@@ -114,14 +114,13 @@ export function deriveGameStatus(
     return { ...base, kind: 'converting', progress: 100 };
   }
 
-  const progress =
-    totalBytes > 0
-      ? Math.min(100, Math.round((bytesDownloaded / totalBytes) * 100))
-      : items.every((i) => i.status === 'done')
-        ? 100
-        : -1;
+  const allDone = items.every((i) => i.status === 'done');
+  if (allDone) return { ...base, kind: 'done', progress: 100 };
 
-  if (items.every((i) => i.status === 'done')) return { ...base, kind: 'done', progress: 100 };
+  // -1 when no total is known yet: rendered as an indeterminate bar.
+  const progress =
+    totalBytes > 0 ? Math.min(100, Math.round((bytesDownloaded / totalBytes) * 100)) : -1;
+
   if (items.some((i) => i.status === 'extracting'))
     return { ...base, kind: 'extracting', progress };
   if (items.some((i) => i.status === 'downloading')) {

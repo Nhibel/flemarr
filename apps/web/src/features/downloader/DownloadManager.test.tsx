@@ -5,9 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DownloadManager } from './DownloadManager.js';
 import type { QueuedDownload } from './job-state.js';
+import type * as ApiModule from '@/lib/api.js';
 
 vi.mock('@/lib/api.js', async (orig) => {
-  const actual = await orig<typeof import('@/lib/api.js')>();
+  const actual = await orig<typeof ApiModule>();
   return {
     ...actual,
     openDownloadEvents: vi.fn(),

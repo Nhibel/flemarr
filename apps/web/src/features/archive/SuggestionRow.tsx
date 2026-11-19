@@ -3,6 +3,16 @@ import { css } from '@/styled-system/css';
 import type { SuggestResponse } from '@/lib/api.js';
 import { LayoutBadge } from './LayoutBadge.js';
 
+/**
+ * Colored on the CRC-verified fraction, not the blended one: a source
+ * that's mostly name-only guesses shouldn't look reassuringly green.
+ */
+function crcCoverageColor(crcPct: number) {
+  if (crcPct >= 80) return css.raw({ color: 'status.success.text' });
+  if (crcPct >= 40) return css.raw({ color: 'status.warning.text' });
+  return css.raw({ color: 'status.danger.text' });
+}
+
 export function SuggestionRow({
   suggestion,
   onAdopt,
@@ -18,14 +28,6 @@ export function SuggestionRow({
   const crcPct = Math.round(suggestion.crcCoverage * 100);
   // coverage includes crcCoverage — the remainder is the name-only subset.
   const nameOnlyPct = Math.round((suggestion.coverage - suggestion.crcCoverage) * 100);
-  // Colored on the CRC-verified fraction, not the blended one: a source
-  // that's mostly name-only guesses shouldn't look reassuringly green.
-  const pctColor =
-    crcPct >= 80
-      ? 'status.success.text'
-      : crcPct >= 40
-        ? 'status.warning.text'
-        : 'status.danger.text';
 
   const handleAdopt = async () => {
     setAdopting(true);
@@ -66,7 +68,7 @@ export function SuggestionRow({
           <LayoutBadge layout={suggestion.layout} />
         </div>
         <p className={css({ fontSize: 'xs', color: 'fg.faint' })}>
-          <span className={css({ fontWeight: 'semibold', color: pctColor })}>
+          <span className={css({ fontWeight: 'semibold' }, crcCoverageColor(crcPct))}>
             {crcPct} % CRC vérifié
           </span>
           {nameOnlyPct > 0 && (

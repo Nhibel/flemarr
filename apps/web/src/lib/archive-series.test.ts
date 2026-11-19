@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { seriesBase } from './archive-series.js';
+import { describe, it, expect, vi } from 'vitest';
+import { seriesBase, withSeriesSiblings } from './archive-series.js';
 
 describe('seriesBase', () => {
   it('detects a "_partN" suffix', () => {
@@ -34,5 +34,29 @@ describe('seriesBase', () => {
     // "cd" inside "cdrom" must not be read as the series keyword — the real
     // suffix is "_disc1".
     expect(seriesBase('deluxe_cdrom_disc1')).toBe('deluxe_cdrom');
+  });
+});
+
+describe('withSeriesSiblings', () => {
+  it('returns the results untouched when none is part of a series', async () => {
+    const search = vi.fn();
+    const results = [{ identifier: 'no-intro_snes' }];
+    expect(await withSeriesSiblings(results, search)).toBe(results);
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it('adds the missing parts of a split collection, once each', async () => {
+    const search = vi
+      .fn()
+      .mockResolvedValue([
+        { identifier: 'sony_playstation_part1' },
+        { identifier: 'sony_playstation_part2' },
+      ]);
+    const merged = await withSeriesSiblings([{ identifier: 'sony_playstation_part1' }], search);
+    expect(search).toHaveBeenCalledWith('sony_playstation*');
+    expect(merged.map((r) => r.identifier)).toEqual([
+      'sony_playstation_part1',
+      'sony_playstation_part2',
+    ]);
   });
 });

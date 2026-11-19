@@ -288,8 +288,11 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   // then candidates whose identifier/title mention the system (or an alias)
   // — a dedicated "no-intro_snes" item beats a generic mega-pack — then
   // bigger items first (a full set weighs GBs, a single game doesn't).
-  const relevant = (c: SearchResult): number =>
-    seeded.has(c.identifier) ? 2 : mentionsSystem(`${c.identifier} ${c.title}`, dat.system) ? 1 : 0;
+  const relevant = (c: SearchResult): number => {
+    if (seeded.has(c.identifier)) return 2;
+    if (mentionsSystem(`${c.identifier} ${c.title}`, dat.system)) return 1;
+    return 0;
+  };
   const ordered = [...candidates.values()].sort(
     (a, b) => relevant(b) - relevant(a) || (b.itemSize ?? 0) - (a.itemSize ?? 0),
   );

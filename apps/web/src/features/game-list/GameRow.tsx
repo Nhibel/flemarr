@@ -33,6 +33,19 @@ interface Props {
   style?: React.CSSProperties;
 }
 
+// Selection wins over keyboard focus: a focused selected row stays tinted.
+const ROW_FILL = {
+  selected: css.raw({ bg: 'accent.subtle' }),
+  focused: css.raw({ bg: 'bg.muted' }),
+  plain: css.raw({ bg: 'transparent' }),
+} as const;
+
+function rowFillState(isSelected: boolean, isFocused: boolean): keyof typeof ROW_FILL {
+  if (isSelected) return 'selected';
+  if (isFocused) return 'focused';
+  return 'plain';
+}
+
 export function GameRow({
   game,
   isSelected,
@@ -55,30 +68,32 @@ export function GameRow({
       aria-selected={isSelected}
       data-focused={isFocused || undefined}
       style={style}
-      className={css({
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3',
-        px: '3',
-        py: '1.5',
-        // 56px of rhythm per row (44px art + breathing room), as a floor
-        // rather than a fixed height so a long name that wraps, or a large
-        // font-scale setting, can still grow the row instead of clipping.
-        minH: mode === 'compact' ? '40px' : '56px',
-        // The selection/hover highlight is an inset rounded block, not a
-        // band running edge to edge: the list is a rounded card now, and a
-        // full-bleed highlight on the first or last row would square off
-        // its corners. mx + a literal radius keep it clear of them.
-        mx: '1.5',
-        borderRadius: '12px',
-        bg: isSelected ? 'accent.subtle' : isFocused ? 'bg.muted' : 'transparent',
-        // Inset, so the keyboard focus ring also stays inside the card.
-        outline: isFocused ? '2px solid token(colors.accent.solid)' : 'none',
-        outlineOffset: '-2px',
-        cursor: 'pointer',
-        userSelect: 'none',
-        _hover: { bg: isSelected ? 'accent.subtle' : 'bg.muted' },
-      })}
+      className={css(
+        {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3',
+          px: '3',
+          py: '1.5',
+          // 56px of rhythm per row (44px art + breathing room), as a floor
+          // rather than a fixed height so a long name that wraps, or a large
+          // font-scale setting, can still grow the row instead of clipping.
+          minH: mode === 'compact' ? '40px' : '56px',
+          // The selection/hover highlight is an inset rounded block, not a
+          // band running edge to edge: the list is a rounded card now, and a
+          // full-bleed highlight on the first or last row would square off
+          // its corners. mx + a literal radius keep it clear of them.
+          mx: '1.5',
+          borderRadius: '12px',
+          // Inset, so the keyboard focus ring also stays inside the card.
+          outline: isFocused ? '2px solid token(colors.accent.solid)' : 'none',
+          outlineOffset: '-2px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          _hover: { bg: isSelected ? 'accent.subtle' : 'bg.muted' },
+        },
+        ROW_FILL[rowFillState(isSelected, isFocused)],
+      )}
       onPointerDown={onPointerDown}
       onClick={() => onToggle(game.id)}
     >

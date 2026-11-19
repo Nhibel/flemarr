@@ -5,9 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from '../App.js';
 import { getSettings, listDats } from '@/lib/api.js';
 import type { SettingsResponse } from '@/lib/api.js';
+import type * as ApiModule from '@/lib/api.js';
 
 vi.mock('@/lib/api.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/api.js')>();
+  const actual = await importOriginal<typeof ApiModule>();
   return { ...actual, getSettings: vi.fn(), listDats: vi.fn() };
 });
 
@@ -124,9 +125,7 @@ describe('App — the systems screen', () => {
   it('keeps the catalogue behind a button once a system exists', async () => {
     render(<App />, { wrapper });
 
-    expect(
-      await screen.findByRole('button', { name: /ajouter un système/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /ajouter un système/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /fresh1g1r/i })).not.toBeInTheDocument();
   });
 

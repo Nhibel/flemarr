@@ -5,7 +5,7 @@ import type { ArchiveLayout, SearchResponse } from '@/lib/api.js';
 import type { DatSource } from './SourcesPanel.js';
 import { Button } from '@/components/Button.js';
 import { SearchResultRow } from './SearchResultRow.js';
-import { seriesBase } from '@/lib/archive-series.js';
+import { withSeriesSiblings } from '@/lib/archive-series.js';
 
 // "Nintendo - Super Nintendo Entertainment System (Retool)" → "Super Nintendo
 // Entertainment System" — vendor prefix and trailing tags pollute the search
@@ -68,31 +68,13 @@ export function AddSourceForm({
     setSearching(true);
     setError(null);
     try {
-      const res = await searchArchive(query);
-      let results = res.results;
-
-      // A collection can be split across several items with no fixed naming
-      // convention ("sony_playstation_part1".."part5" on archive.org) — the
-      // normal text search surfaces an arbitrary subset of them. Once one
-      // sibling is found, a prefix search for the rest (a trailing "*" is
-      // already plain archive.org query syntax, verified directly against
-      // advancedsearch.php) finds the others without the user having to know
-      // the naming pattern or type a wildcard by hand.
-      if (seriesMode) {
-        const bases = new Set(
-          results.map((r) => seriesBase(r.identifier)).filter((b): b is string => b !== null),
-        );
-        if (bases.size > 0) {
-          const extraBatches = await Promise.all([...bases].map((b) => searchArchive(`${b}*`)));
-          const merged = new Map(results.map((r) => [r.identifier, r]));
-          for (const batch of extraBatches) {
-            for (const r of batch.results) merged.set(r.identifier, r);
-          }
-          results = [...merged.values()];
-        }
-      }
-
-      setSearchResults(results);
+      const { results } = await searchArchive(query);
+      // A collection split across several items surfaces only partly in a
+      // text search; series mode fetches its other parts too.
+      const completed = seriesMode
+        ? await withSeriesSiblings(results, async (q) => (await searchArchive(q)).results)
+        : results;
+      setSearchResults(completed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Recherche échouée');
       // Keeping the previous hits under an error message would suggest they
