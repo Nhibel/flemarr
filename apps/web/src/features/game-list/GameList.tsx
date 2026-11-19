@@ -6,6 +6,7 @@ import { usePagination } from './use-pagination.js';
 import { useDisplayMode, DISPLAY_MODES } from './use-display-mode.js';
 import { usePageSize, PAGE_SIZES, resolvePageSize } from './use-page-size.js';
 import { fetchGameDetails, gameBoxartUrl } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import { SearchIcon } from '@/components/icons.js';
 import type { Game } from '@shared/dat.js';
 import type { Ownership } from '@/lib/missing-games.js';
@@ -76,7 +77,7 @@ export function GameList({
   // no details at all, so it doesn't ask for any.
   const pageIds = pageItems.map((g) => g.id);
   const { data: details } = useQuery({
-    queryKey: ['game-details', datId, pageIds],
+    queryKey: queryKeys.gameDetails(datId, pageIds),
     queryFn: async () => {
       const res = await fetchGameDetails(datId, pageIds);
       return new Map(res.details.map((d) => [d.gameId, d]));
@@ -203,7 +204,11 @@ export function GameList({
         Par page
         <select
           value={String(pageSize)}
-          onChange={(e) => setPageSize(e.target.value === 'all' ? 'all' : (Number(e.target.value) as 20 | 50 | 100))}
+          onChange={(e) =>
+            setPageSize(
+              e.target.value === 'all' ? 'all' : (Number(e.target.value) as 20 | 50 | 100),
+            )
+          }
           className={css({
             px: '2',
             minH: '28px',

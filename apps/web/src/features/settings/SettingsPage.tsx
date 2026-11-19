@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
-import { getSettings, updateSettings } from '@/lib/api.js';
+import { updateSettings } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
+import { useSettings } from '@/lib/use-settings.js';
 import type { Theme } from '@/lib/use-theme.js';
 import { PresetSection } from './PresetSection.js';
 import { ArchiveAccountSection } from './ArchiveAccountSection.js';
@@ -18,19 +20,12 @@ interface Props {
 
 export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
   const queryClient = useQueryClient();
-  const {
-    data: settings,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['settings'],
-    queryFn: getSettings,
-  });
+  const { data: settings, isLoading, error } = useSettings();
 
   const mutation = useMutation({
     mutationFn: updateSettings,
     onSuccess: (updated) => {
-      queryClient.setQueryData(['settings'], updated);
+      queryClient.setQueryData(queryKeys.settings(), updated);
     },
   });
 
@@ -96,11 +91,7 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
         saving={mutation.isPending}
         onSave={mutation.mutate}
       />
-      <TopologySection
-        settings={settings}
-        saving={mutation.isPending}
-        onSave={mutation.mutate}
-      />
+      <TopologySection settings={settings} saving={mutation.isPending} onSave={mutation.mutate} />
       <AutoConvertChdSection
         settings={settings}
         saving={mutation.isPending}

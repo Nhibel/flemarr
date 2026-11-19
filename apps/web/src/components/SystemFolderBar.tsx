@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { getSettings, updateSettings, validateDir } from '@/lib/api.js';
+import { updateSettings, validateDir } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
+import { useSettings } from '@/lib/use-settings.js';
 import { PathInput } from '@/components/PathInput.js';
 import { SystemIcon } from '@/components/SystemIcon.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
@@ -17,7 +19,7 @@ import { displayPath } from '@/lib/paths.js';
  */
 export function SystemFolderBar({ system }: { system: string }) {
   const queryClient = useQueryClient();
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: settings } = useSettings();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const systemIcons = useSystemIcons([system]);
@@ -30,7 +32,7 @@ export function SystemFolderBar({ system }: { system: string }) {
       return updateSettings({ systemPaths: { [system]: path } });
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData(['settings'], updated);
+      queryClient.setQueryData(queryKeys.settings(), updated);
       setEditing(false);
     },
   });

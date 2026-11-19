@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { listDatSources, fetchDatFromFresh1g1r, getSettings } from '@/lib/api.js';
+import { listDatSources, fetchDatFromFresh1g1r } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
+import { useSettings } from '@/lib/use-settings.js';
 import type { Fresh1g1rPreset, ListSourcesResponse } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
@@ -18,7 +20,7 @@ interface Props {
 }
 
 export function Fresh1g1rBrowser({ onSuccess }: Props) {
-  const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: settingsData } = useSettings();
   const [preset, setPreset] = useState<Fresh1g1rPreset | null>(null);
   const resolvedPreset: Fresh1g1rPreset = preset ?? settingsData?.fresh1g1rPreset ?? 'PropeR';
   const [search, setSearch] = useState('');
@@ -34,7 +36,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
     error: listError,
     refetch,
   } = useQuery({
-    queryKey: ['dat-sources', resolvedPreset],
+    queryKey: queryKeys.datSources(resolvedPreset),
     queryFn: () => listDatSources(resolvedPreset),
     staleTime: 5 * 60 * 1000, // 5 min — GitHub contents don't change that fast
   });

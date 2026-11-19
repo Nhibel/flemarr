@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { fetchSources, resolveGames, startDownload, getSettings } from '@/lib/api.js';
+import { fetchSources, resolveGames, startDownload } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
+import { useSettings } from '@/lib/use-settings.js';
 import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
@@ -42,14 +44,14 @@ export function ResolvePanel({
   const [selectedSourceIndex, setSelectedSourceIndex] = useState<Map<string, number>>(new Map());
 
   const { data: sourcesData } = useQuery({
-    queryKey: ['archive-sources', system],
+    queryKey: queryKeys.archiveSources(system),
     queryFn: () => fetchSources(system),
   });
 
   // Picked once in Settings for the whole session — no reason to mix
   // server and browser destinations across downloads (the choice lives in
   // Réglages' topology section, which writes downloadTarget).
-  const { data: settingsData } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: settingsData } = useSettings();
   const downloadTarget = settingsData?.downloadTarget ?? 'server';
 
   // The system's folder, chosen once in SystemFolderBar — the server

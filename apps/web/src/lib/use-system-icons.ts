@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { SystemIconStyle } from '@shared/system-icon.js';
 import { fetchSystemIcons } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 
 /**
  * Which icon set covers each of these systems, in one request for the whole
@@ -16,7 +17,7 @@ import { fetchSystemIcons } from '@/lib/api.js';
 export function useSystemIcons(systems: string[]): Map<string, SystemIconStyle | null> {
   const wanted = [...new Set(systems)].sort();
   const { data } = useQuery({
-    queryKey: ['system-icons', wanted.join('\u0000')],
+    queryKey: queryKeys.systemIcons(wanted),
     queryFn: () => fetchSystemIcons(wanted),
     enabled: wanted.length > 0,
     staleTime: Infinity,

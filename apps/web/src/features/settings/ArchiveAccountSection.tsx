@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { archiveLogin } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import type { SettingsResponse, UpdateSettings } from '@/lib/api.js';
 import { inputClass, sectionClass } from './styles.js';
 import { Button } from '@/components/Button.js';
@@ -44,7 +45,7 @@ export function ArchiveAccountSection({
       await archiveLogin(loginEmail.trim(), loginPassword);
       setLoginState('done');
       setLoginPassword('');
-      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.settings() });
     } catch (err) {
       setLoginState('error');
       setLoginError(err instanceof Error ? err.message : 'Erreur de connexion');

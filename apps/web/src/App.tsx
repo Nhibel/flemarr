@@ -19,7 +19,9 @@ import { SystemIcon } from '@/components/SystemIcon.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
-import { fetchGames, listDats, deleteDat, getSettings, updateSettings } from '@/lib/api.js';
+import { fetchGames, listDats, deleteDat, updateSettings } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
+import { useSettings } from '@/lib/use-settings.js';
 import { computeMissingGameIds, computeOwnership } from '@/lib/missing-games.js';
 import type { ScanResult } from '@shared/scan.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
@@ -69,12 +71,12 @@ export function App() {
   const [view, setView] = useState<AppView>('loader');
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
-  const { data: rootSettings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
-  const { data: knownDats } = useQuery({ queryKey: ['dats'], queryFn: listDats });
+  const { data: rootSettings } = useSettings();
+  const { data: knownDats } = useQuery({ queryKey: queryKeys.dats(), queryFn: listDats });
 
   const chooseTopology = useMutation({
     mutationFn: updateSettings,
-    onSuccess: (updated) => queryClient.setQueryData(['settings'], updated),
+    onSuccess: (updated) => queryClient.setQueryData(queryKeys.settings(), updated),
   });
 
   // The install question runs only on an install that has never been used:
@@ -166,12 +168,12 @@ function LoaderView({
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const { data: existingDats = [] } = useQuery({
-    queryKey: ['dats'],
+    queryKey: queryKeys.dats(),
     queryFn: listDats,
   });
   const removeDat = useMutation({
     mutationFn: deleteDat,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['dats'] }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() }),
   });
   const systemIcons = useSystemIcons(existingDats.map((d) => d.system));
 
@@ -353,7 +355,7 @@ function LoaderView({
             <AddSystem
               loaderMode={loaderMode}
               onSetLoaderMode={onSetLoaderMode}
-              onAdded={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
+              onAdded={() => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() })}
               onUploaded={onLoaded}
             />
           </Dialog>
@@ -362,7 +364,7 @@ function LoaderView({
         <AddSystem
           loaderMode={loaderMode}
           onSetLoaderMode={onSetLoaderMode}
-          onAdded={() => void queryClient.invalidateQueries({ queryKey: ['dats'] })}
+          onAdded={() => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() })}
           onUploaded={onLoaded}
         />
       )}
@@ -467,7 +469,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['games', dat.id],
+    queryKey: queryKeys.games(dat.id),
     queryFn: () => fetchGames(dat.id),
   });
 
@@ -476,7 +478,7 @@ function GameView({ dat, onReset, onSettings, onLexique }: GameViewProps) {
   // settings.systemPaths[system]) to check against — hide it and the folder
   // bar that exists to configure it, instead of nagging for a folder nobody
   // needs in that workflow.
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: settings } = useSettings();
   const showScanner = (settings?.downloadTarget ?? 'server') !== 'browser';
   const tabs: Tab[] = showScanner
     ? ['games', 'scanner', 'sources', 'downloads']

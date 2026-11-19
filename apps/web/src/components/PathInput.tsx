@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
 import { listDirs, createDir } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import { displayPath, absolutePath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 
@@ -54,7 +55,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
   }, [value]);
 
   const { data } = useQuery({
-    queryKey: ['list-dirs', debouncedValue],
+    queryKey: queryKeys.listDirs(debouncedValue),
     queryFn: () => listDirs(debouncedValue),
     enabled: open,
     staleTime: 30_000,
@@ -85,7 +86,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     try {
       const { path } = await createDir(joinPath(base, name));
       setNewFolder('');
-      await queryClient.invalidateQueries({ queryKey: ['list-dirs'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.listDirs() });
       navigate(path);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Création impossible');

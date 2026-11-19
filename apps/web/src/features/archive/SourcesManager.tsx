@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { fetchSources, addSource, deleteSource, suggestSources } from '@/lib/api.js';
 import type { SuggestResponse } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import type { DatSource } from './SourcesPanel.js';
 import { SuggestionRow } from './SuggestionRow.js';
 import { SourceRow } from './SourceRow.js';
@@ -25,7 +26,7 @@ export function SourcesManager({
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
   const { data } = useQuery({
-    queryKey: ['archive-sources', system],
+    queryKey: queryKeys.archiveSources(system),
     queryFn: () => fetchSources(system),
   });
 
@@ -34,7 +35,8 @@ export function SourcesManager({
   // failed delete used to disappear entirely (no onError, no feedback).
   const removeMutation = useMutation({
     mutationFn: (identifier: string) => deleteSource(identifier, system),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] }),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) }),
   });
 
   const removeErrorFor = (identifier: string): string | null =>
@@ -57,7 +59,7 @@ export function SourcesManager({
 
   const handleAdopt = async (s: SuggestResponse['suggestions'][number]) => {
     await addSource(system, { identifier: s.identifier, layout: s.layout, note: s.title });
-    await queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) });
   };
 
   const sources = data?.sources ?? [];
@@ -146,10 +148,10 @@ export function SourcesManager({
           configured={configured}
           onDone={() => {
             setShowAdd(false);
-            void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) });
           }}
           onAdded={() =>
-            void queryClient.invalidateQueries({ queryKey: ['archive-sources', system] })
+            void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) })
           }
         />
       )}

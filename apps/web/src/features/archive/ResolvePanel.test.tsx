@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ResolvePanel } from './ResolvePanel.js';
 import * as api from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 
 vi.mock('@/lib/api.js');
 
@@ -93,7 +94,7 @@ describe('ResolvePanel — results vs. source changes', () => {
     const downloadBtn = await resolveOnce();
 
     vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [] });
-    await client.invalidateQueries({ queryKey: ['archive-sources', SYSTEM] });
+    await client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) });
 
     expect(await screen.findByText(/les sources ont changé/i)).toBeInTheDocument();
     await waitFor(() => expect(downloadBtn).toBeDisabled());
@@ -108,7 +109,7 @@ describe('ResolvePanel — results vs. source changes', () => {
       system: SYSTEM,
       sources: [{ ...SOURCE, layout: 'direct' }],
     });
-    await client.invalidateQueries({ queryKey: ['archive-sources', SYSTEM] });
+    await client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) });
 
     expect(await screen.findByText(/les sources ont changé/i)).toBeInTheDocument();
   });
@@ -118,11 +119,11 @@ describe('ResolvePanel — results vs. source changes', () => {
     await resolveOnce();
 
     vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [] });
-    await client.invalidateQueries({ queryKey: ['archive-sources', SYSTEM] });
+    await client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) });
     expect(await screen.findByText(/les sources ont changé/i)).toBeInTheDocument();
 
     vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [SOURCE] });
-    await client.invalidateQueries({ queryKey: ['archive-sources', SYSTEM] });
+    await client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) });
     await userEvent.click(await screen.findByRole('button', { name: /chercher les sources/i }));
 
     await waitFor(() =>

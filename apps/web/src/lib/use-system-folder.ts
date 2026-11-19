@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { getSettings } from '@/lib/api.js';
+import { useSettings } from '@/lib/use-settings.js';
 
 /**
  * The folder configured for a system (settings.systemPaths[system]).
@@ -7,6 +6,6 @@ import { getSettings } from '@/lib/api.js';
  * written only by SystemFolderBar. `folder` is '' while loading or unset.
  */
 export function useSystemFolder(system: string): { folder: string; loaded: boolean } {
-  const { data } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data } = useSettings();
   return { folder: data?.systemPaths[system] ?? '', loaded: data !== undefined };
 }
