@@ -1,17 +1,9 @@
-import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { fetchSources, resolveGames, startDownload } from '@/lib/api.js';
-import { queryKeys } from '@/lib/query-keys.js';
-import { useSettings } from '@/lib/use-settings.js';
-import type { ResolveResponse } from '@/lib/api.js';
 import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
-import { buildDownloadItems } from './build-items.js';
-import { sourceKeyOf, summarizeResolve } from './resolve-summary.js';
+import { useResolvePanel } from './use-resolve-panel.js';
 import { Button } from '@/components/Button.js';
 import { Chip } from '@/components/Chip.js';
-import { useSystemFolder } from '@/lib/use-system-folder.js';
 import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 
@@ -28,97 +20,16 @@ export function ResolvePanel({
   missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
 }) {
-  // Stored with the source list it was resolved against: the server drops its
-  // resolver cache when sources change, but these results are client state and
-  // would otherwise keep offering download URLs from a source just removed.
-  const [resolved, setResolved] = useState<{ result: ResolveResponse; sourceKey: string } | null>(
-    null,
-  );
-  const [resolving, setResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [excludeOwned, setExcludeOwned] = useState(true);
-  const [queuing, setQueuing] = useState(false);
-  // Keyed by `${gameId}/${romName}` — which of a rom's matching sources to
-  // actually download from, when more than one configured source has it.
-  // Absent means "use the first" (today's behavior, unchanged when there's
-  // only one match anyway).
-  const [selectedSourceIndex, setSelectedSourceIndex] = useState<Map<string, number>>(new Map());
-
-  const { data: sourcesData } = useQuery({
-    queryKey: queryKeys.archiveSources(system),
-    queryFn: () => fetchSources(system),
+  const panel = useResolvePanel({
+    datId,
+    system,
+    selectedGameIds,
+    missingGameIds,
+    onQueueDownload,
   });
-
-  // Picked once in Settings for the whole session — no reason to mix
-  // server and browser destinations across downloads (the choice lives in
-  // Réglages' topology section, which writes downloadTarget).
-  const { data: settingsData } = useSettings();
-  const downloadTarget = settingsData?.downloadTarget ?? 'server';
-
-  // The system's folder, chosen once in SystemFolderBar — the server
-  // download's actual destination, or (in browser mode) just the folder the
-  // scanner checks once the files are moved there by hand.
-  const { folder: destinationDir, loaded: settingsLoaded } = useSystemFolder(system);
   const romsRoot = useRomsRoot();
-
-  const hasSources = (sourcesData?.sources.length ?? 0) > 0;
-  const sourceKey = sourceKeyOf(sourcesData?.sources ?? []);
-  const result = resolved?.result ?? null;
-  const stale = resolved !== null && resolved.sourceKey !== sourceKey;
-  const noFolder = downloadTarget === 'server' && settingsLoaded && destinationDir === '';
-
-  const effectiveGameIds =
-    excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
-
-  const summary = result ? summarizeResolve(result) : null;
+  const { effectiveGameIds, result, summary, downloadTarget, destinationDir } = panel;
   const downloadableCount = summary?.downloadableCount ?? 0;
-
-  const handleResolve = useCallback(async () => {
-    if (effectiveGameIds.length === 0) return;
-    setResolving(true);
-    setError(null);
-    try {
-      const res = await resolveGames(datId, effectiveGameIds);
-      setResolved({ result: res, sourceKey });
-      // A fresh resolve invalidates any earlier per-rom source choice — the
-      // set of matching sources (and their order) may have changed.
-      setSelectedSourceIndex(new Map());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur');
-    } finally {
-      setResolving(false);
-    }
-  }, [datId, effectiveGameIds, sourceKey]);
-
-  // Item building lives in build-items.ts so the retry path in
-  // DownloadManager produces identical items, fallbacks included.
-  const buildItems = useCallback(
-    () => (result ? buildDownloadItems(result, selectedSourceIndex) : []),
-    [result, selectedSourceIndex],
-  );
-
-  const handleDownload = useCallback(async () => {
-    if (stale) return;
-    if (downloadTarget === 'server' && !destinationDir) return;
-    const items = buildItems();
-    if (items.length === 0) return;
-    setQueuing(true);
-    try {
-      const jobId =
-        downloadTarget === 'server'
-          ? await startDownload({ datId, items, target: 'server', destinationDir })
-          : await startDownload({ datId, items, target: 'browser' });
-      onQueueDownload(
-        downloadTarget === 'server'
-          ? { jobId, datId, items, target: 'server', destinationDir }
-          : { jobId, datId, items, target: 'browser' },
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur au lancement');
-    } finally {
-      setQueuing(false);
-    }
-  }, [buildItems, datId, destinationDir, downloadTarget, onQueueDownload, stale]);
 
   return (
     <section>
@@ -133,11 +44,8 @@ export function ResolvePanel({
         >
           Résolution des sources
         </h2>
-        <Button
-          onClick={() => void handleResolve()}
-          disabled={resolving || effectiveGameIds.length === 0 || !hasSources}
-        >
-          {resolving
+        <Button onClick={() => void panel.resolve()} disabled={!panel.canResolve}>
+          {panel.resolving
             ? 'Recherche…'
             : `Chercher les sources (${effectiveGameIds.length} jeu${effectiveGameIds.length !== 1 ? 'x' : ''})`}
         </Button>
@@ -157,8 +65,8 @@ export function ResolvePanel({
         >
           <input
             type="checkbox"
-            checked={excludeOwned}
-            onChange={(e) => setExcludeOwned(e.target.checked)}
+            checked={panel.excludeOwned}
+            onChange={(e) => panel.setExcludeOwned(e.target.checked)}
           />
           Exclure les jeux déjà possédés d'après le dernier scan (
           {selectedGameIds.length - missingGameIds.length} sur {selectedGameIds.length} possédé
@@ -166,38 +74,38 @@ export function ResolvePanel({
         </label>
       )}
 
-      {!hasSources && (
+      {!panel.hasSources && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
           Ajoute au moins une source ci-dessus avant de lancer la résolution.
         </p>
       )}
 
-      {selectedGameIds.length === 0 && hasSources && (
+      {selectedGameIds.length === 0 && panel.hasSources && (
         <p className={css({ fontSize: 'sm', color: 'fg.faint' })}>
           Sélectionne des jeux dans l'onglet Jeux pour lancer la résolution.
         </p>
       )}
 
-      {selectedGameIds.length > 0 && effectiveGameIds.length === 0 && hasSources && (
+      {selectedGameIds.length > 0 && effectiveGameIds.length === 0 && panel.hasSources && (
         <p className={css({ fontSize: 'sm', color: 'status.success.text' })}>
           Tous les jeux sélectionnés sont déjà présents sur le disque — rien à télécharger.
         </p>
       )}
 
-      {noFolder && (
+      {panel.hasNoFolder && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
           Aucun dossier défini pour ce système : les téléchargements seront refusés. Choisis-le dans
           le bandeau en haut de page.
         </p>
       )}
 
-      {error && (
+      {panel.error && (
         <p role="alert" className={css({ fontSize: 'sm', color: 'status.danger.text' })}>
-          {error}
+          {panel.error}
         </p>
       )}
 
-      {stale && (
+      {panel.isStale && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text', mb: '3' })}>
           Les sources ont changé depuis cette résolution : relance la recherche avant de
           télécharger.
@@ -215,11 +123,11 @@ export function ResolvePanel({
           {downloadableCount > 0 && (
             <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
               <Button
-                onClick={() => void handleDownload()}
-                disabled={queuing || stale || (downloadTarget === 'server' && !destinationDir)}
+                onClick={() => void panel.download()}
+                disabled={!panel.canDownload}
                 className={css({ flexShrink: 0 })}
               >
-                {queuing
+                {panel.queuing
                   ? 'Lancement…'
                   : `Télécharger (${downloadableCount} fichier${downloadableCount !== 1 ? 's' : ''})`}
               </Button>
@@ -244,14 +152,8 @@ export function ResolvePanel({
               <ResolvedGameRow
                 key={r.gameId}
                 game={r}
-                selectedSourceIndex={selectedSourceIndex}
-                onSelectSource={(gameId, romName, index) =>
-                  setSelectedSourceIndex((prev) => {
-                    const next = new Map(prev);
-                    next.set(`${gameId}/${romName}`, index);
-                    return next;
-                  })
-                }
+                selectedSourceIndex={panel.selectedSourceIndex}
+                onSelectSource={panel.selectSource}
               />
             ))}
           </div>
