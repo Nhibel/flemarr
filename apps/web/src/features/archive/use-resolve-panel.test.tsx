@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { SettingsResponse } from '@shared/settings.js';
 import * as api from '@/lib/api.js';
 import { useResolvePanel } from './use-resolve-panel.js';
 
@@ -36,7 +37,7 @@ const RESOLVED: api.ResolveResponse = {
   ],
 };
 
-function settings(over: Partial<api.Settings> = {}): api.Settings {
+function settings(over: Partial<SettingsResponse> = {}): SettingsResponse {
   return {
     fresh1g1rPreset: 'PropeR',
     downloaderConcurrency: 2,
