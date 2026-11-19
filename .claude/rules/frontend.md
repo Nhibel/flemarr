@@ -22,7 +22,7 @@ There is no router: screens are switched in `App.tsx`. Responsibilities split by
 
 - Components orchestrate UI; they don't compute. Business rules, formatting and non-trivial state derivations go into pure, unit-tested functions.
 - **Co-location:** a helper used by a single component lives next to it in its own kebab-case file (e.g. `build-items.ts` beside `ResolvePanel.tsx`). Move it to `src/lib/` only once a second feature needs it.
-- **No god files:** split helpers by responsibility. A file over ~500 lines must be split **when you create or substantially modify it**. Known existing debt, not to refactor unprompted: `App.tsx` (~940 lines), `features/downloader/DownloadManager.tsx` (~710 lines).
+- **No god files:** split helpers by responsibility, one component per file. A file over 500 lines (blank lines and comments excluded) must be split; eslint warns via `max-lines`.
 
 ## TanStack Query
 
