@@ -18,6 +18,16 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // .claude/rules/readability.md: one level of ternary at most.
+      'no-nested-ternary': 'error',
+    },
+  },
+  {
+    // .claude/rules/frontend.md — the server isn't held to these.
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+      'max-lines': ['warn', { max: 500, skipBlankLines: true, skipComments: true }],
     },
   },
 );
