@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeMissingGameIds, computeOwnership } from './missing-games.js';
+import { computeMissingGameIds, computeOwnership, countOwned } from './missing-games.js';
 import type { Game } from '@shared/dat.js';
 import type { ScanResult } from '@shared/scan.js';
 
@@ -89,7 +89,11 @@ describe('computeMissingGameIds', () => {
 
 describe('computeOwnership', () => {
   it('reports the three states a row can show', () => {
-    const games = [game('owned', ['0000aaaa']), game('bad', ['0000bbbb']), game('gone', ['0000cccc'])];
+    const games = [
+      game('owned', ['0000aaaa']),
+      game('bad', ['0000bbbb']),
+      game('gone', ['0000cccc']),
+    ];
     const result = computeOwnership(games, scan(['0000aaaa'], ['0000bbbb']));
 
     expect(result.get('owned')).toBe('owned');
@@ -129,5 +133,20 @@ describe('computeOwnership', () => {
     };
     const result = computeOwnership([undumped], scan([]));
     expect(result.has('undumped')).toBe(false);
+  });
+});
+
+describe('countOwned', () => {
+  it('counts owned and misnamed games, not missing ones', () => {
+    const ownership = new Map([
+      ['a', 'owned'],
+      ['b', 'wrongName'],
+      ['c', 'missing'],
+    ] as const);
+    expect(countOwned(new Map(ownership))).toBe(2);
+  });
+
+  it('is zero for an empty scan', () => {
+    expect(countOwned(new Map())).toBe(0);
   });
 });

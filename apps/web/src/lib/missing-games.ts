@@ -73,3 +73,15 @@ export function computeOwnership(games: Game[], scan: ScanResult): Map<string, O
   }
   return out;
 }
+
+/**
+ * How many games the scan found on disk, misnamed ones included — a
+ * misnamed file is still owned, it only needs a rename.
+ */
+export function countOwned(ownership: Map<string, Ownership>): number {
+  let owned = 0;
+  for (const state of ownership.values()) {
+    if (state !== 'missing') owned += 1;
+  }
+  return owned;
+}

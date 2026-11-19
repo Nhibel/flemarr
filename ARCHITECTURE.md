@@ -245,7 +245,7 @@ component, and undoing one of them re-breaks something that was fixed.
 - **The Jeux header reads from `bg.band` / `fg.onBand*`.** Lemon Grid
   makes that one header a solid Rich Lemon band; the other eight define
   `bg.band` as their own `bg.surface`, so nothing moves in them. The
-  tokens exist rather than a `_lemongrid` override in `App.tsx` for two
+  tokens exist rather than a `_lemongrid` override in the game header for two
   reasons: everything written on the band has to flip with it, and a
   colour written into a `.tsx` is invisible to the contrast test, which
   reads `panda.config.ts`. The band covers the Jeux header only — the home

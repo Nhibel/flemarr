@@ -596,7 +596,7 @@ with a different dominant, and picked three out of six:
 Three things came out of it beyond the palettes:
 
 - **`bg.band` and `fg.onBand` / `onBandMuted` / `onBandSuccess`.** The
-  yellow band is a token group, not a `_lemongrid` override in `App.tsx`:
+  yellow band is a token group, not a `_lemongrid` override in the game header:
   everything written on the band has to flip with it, and a colour written
   into a `.tsx` is invisible to the contrast test, which reads
   `panda.config.ts`. In the other eight themes the four tokens repeat
