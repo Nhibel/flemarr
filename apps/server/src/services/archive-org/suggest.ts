@@ -245,16 +245,10 @@ async function scoreCandidate(
   };
 }
 
-/**
- * Search archive.org with several query variants, prioritize big items
- * (a full set weighs GBs, a single-game upload doesn't), score the best
- * candidates against a sample of the DAT and return them ranked by coverage.
- */
-export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> {
-  const sample = sampleGames(dat);
-  const queries = buildSearchQueries(dat.system, dat.source);
-  logger.info({ system: dat.system, queries }, 'suggestion run started');
-
+// Runs every query, merging results by identifier (first seen wins). A
+// failing query only loses its own results — the run fails only when every
+// query failed and nothing was found.
+async function gatherCandidates(queries: string[]): Promise<Map<string, SearchResult>> {
   const candidates = new Map<string, SearchResult>();
   let lastError: unknown = null;
   for (const query of queries) {
@@ -271,6 +265,50 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
     }
   }
   if (candidates.size === 0 && lastError !== null) throw lastError;
+  return candidates;
+}
+
+// The budget counts candidates worth keeping, not candidates looked at: a
+// zero-coverage result is as useless as an unreachable one, and counting it
+// stopped the search before it ever reached the real sets. (A PS1 run spent
+// its ten slots on No-Intro seeds and on PS2/PSP items that merely rank
+// bigger, and surfaced nothing usable.) MAX_ATTEMPTS still bounds the cost.
+async function scoreWithinBudget(
+  ordered: SearchResult[],
+  sample: SampledGame[],
+  system: string,
+): Promise<{ suggestions: SourceSuggestion[]; attempts: number }> {
+  const suggestions: SourceSuggestion[] = [];
+  let attempts = 0;
+  let kept = 0;
+  for (
+    let i = 0;
+    i < ordered.length && kept < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
+    i += SCORING_CONCURRENCY
+  ) {
+    const chunk = ordered.slice(i, i + SCORING_CONCURRENCY);
+    attempts += chunk.length;
+    const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample, system)));
+    for (const s of scored) {
+      if (s === null) continue;
+      suggestions.push(s);
+      if (s.coverage >= MIN_COVERAGE) kept++;
+    }
+  }
+  return { suggestions, attempts };
+}
+
+/**
+ * Search archive.org with several query variants, prioritize big items
+ * (a full set weighs GBs, a single-game upload doesn't), score the best
+ * candidates against a sample of the DAT and return them ranked by coverage.
+ */
+export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> {
+  const sample = sampleGames(dat);
+  const queries = buildSearchQueries(dat.system, dat.source);
+  logger.info({ system: dat.system, queries }, 'suggestion run started');
+
+  const candidates = await gatherCandidates(queries);
 
   // Known multi-system collections never match a per-system search query —
   // inject them as candidates; scoring validates them like the others. They
@@ -298,28 +336,7 @@ export async function suggestSources(dat: DatFile): Promise<SourceSuggestion[]> 
   );
   logger.info({ candidates: candidates.size }, 'candidates gathered');
 
-  // The budget counts candidates worth keeping, not candidates looked at: a
-  // zero-coverage result is as useless as an unreachable one, and counting it
-  // stopped the search before it ever reached the real sets. (A PS1 run spent
-  // its ten slots on No-Intro seeds and on PS2/PSP items that merely rank
-  // bigger, and surfaced nothing usable.) MAX_ATTEMPTS still bounds the cost.
-  const suggestions: SourceSuggestion[] = [];
-  let attempts = 0;
-  let kept = 0;
-  for (
-    let i = 0;
-    i < ordered.length && kept < MAX_SCORED_CANDIDATES && attempts < MAX_ATTEMPTS;
-    i += SCORING_CONCURRENCY
-  ) {
-    const chunk = ordered.slice(i, i + SCORING_CONCURRENCY);
-    attempts += chunk.length;
-    const scored = await Promise.all(chunk.map((c) => scoreCandidate(c, sample, dat.system)));
-    for (const s of scored) {
-      if (s === null) continue;
-      suggestions.push(s);
-      if (s.coverage >= MIN_COVERAGE) kept++;
-    }
-  }
+  const { suggestions, attempts } = await scoreWithinBudget(ordered, sample, dat.system);
 
   const results = suggestions
     .filter((s) => s.coverage >= MIN_COVERAGE)
