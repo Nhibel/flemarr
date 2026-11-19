@@ -90,6 +90,13 @@ describe('JobCard', () => {
     await waitFor(() => expect(api.cancelDownload).toHaveBeenCalledWith('job1'));
   });
 
+  it('says why the job could not be cancelled', async () => {
+    vi.mocked(api.cancelDownload).mockRejectedValue(new Error('Job job1 not found'));
+    renderCard(job());
+    await userEvent.click(screen.getAllByRole('button', { name: 'Annuler' })[0]!);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Job job1 not found');
+  });
+
   it('offers no cancel once the job is over', () => {
     renderCard(
       job({

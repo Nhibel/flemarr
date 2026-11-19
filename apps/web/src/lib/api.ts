@@ -188,7 +188,10 @@ export function openDownloadEvents(jobId: string): EventSource {
 }
 
 export async function cancelDownload(jobId: string): Promise<void> {
-  await fetch(`/api/downloads/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+  const res = await fetch(`/api/downloads/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+  });
+  await ensureOk(res);
 }
 
 export async function cancelDownloadItem(
@@ -196,10 +199,11 @@ export async function cancelDownloadItem(
   gameId: string,
   romName: string,
 ): Promise<void> {
-  await fetch(
+  const res = await fetch(
     `/api/downloads/${encodeURIComponent(jobId)}/items/${encodeURIComponent(gameId)}/${encodeURIComponent(romName)}/cancel`,
     { method: 'POST' },
   );
+  await ensureOk(res);
 }
 
 // Re-export schema for use in components

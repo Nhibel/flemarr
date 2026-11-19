@@ -44,6 +44,7 @@ interface Props {
  */
 export function DownloadGameRow({ jobId, game, target, rate, running, onRetry }: Props) {
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const isSentToBrowser = game.kind === 'done' && target === 'browser';
   const label = isSentToBrowser ? 'Envoyé à ton navigateur' : KIND_LABELS[game.kind];
@@ -53,15 +54,20 @@ export function DownloadGameRow({ jobId, game, target, rate, running, onRetry }:
 
   const handleCancel = async () => {
     setCancelling(true);
-    try {
-      // Cancels every file of the game — the user asked for the game, so
-      // that is the thing they can take back.
-      await Promise.all(
-        game.files.map((romName) => cancelDownloadItem(jobId, game.gameId, romName)),
-      );
-    } finally {
-      setCancelling(false);
-    }
+    setCancelError(null);
+    // Cancels every file of the game — the user asked for the game, so
+    // that is the thing they can take back. A file that already finished
+    // answers 404 while its siblings do get cancelled, so only a cancel
+    // that failed for every file is reported.
+    const outcomes = await Promise.allSettled(
+      game.files.map((romName) => cancelDownloadItem(jobId, game.gameId, romName)),
+    );
+    const firstFailure = outcomes.find(
+      (outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected',
+    );
+    const allFailed = outcomes.every((outcome) => outcome.status === 'rejected');
+    if (firstFailure && allFailed) setCancelError(cancelFailureMessage(firstFailure.reason));
+    setCancelling(false);
   };
 
   return (
@@ -108,11 +114,21 @@ export function DownloadGameRow({ jobId, game, target, rate, running, onRetry }:
         )}
       </div>
 
+      {cancelError && (
+        <p role="alert" className={css({ mt: '1', fontSize: 'xs', color: 'status.danger.text' })}>
+          {cancelError}
+        </p>
+      )}
+
       {game.kind === 'failed' && <FailureActions game={game} onRetry={onRetry} />}
 
       {showProgressBar && <ProgressBar progress={game.progress} />}
     </div>
   );
+}
+
+function cancelFailureMessage(reason: unknown): string {
+  return reason instanceof Error ? reason.message : 'Annulation impossible';
 }
 
 /** "42 %" or the bytes so far when the total is unknown, then the rate. */

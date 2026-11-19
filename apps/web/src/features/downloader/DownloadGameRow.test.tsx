@@ -69,6 +69,25 @@ describe('DownloadGameRow', () => {
     expect(api.cancelDownloadItem).toHaveBeenCalledWith('job1', 'ff7', 'ff7.bin');
   });
 
+  it('says why the cancel failed', async () => {
+    vi.mocked(api.cancelDownloadItem).mockRejectedValue(new Error('Job job1 not found'));
+    renderRow();
+    await userEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Job job1 not found');
+  });
+
+  // One file already finished answers 404; the others were still cancelled.
+  it('stays quiet when only some files could not be cancelled', async () => {
+    vi.mocked(api.cancelDownloadItem)
+      .mockRejectedValueOnce(new Error('Item not found, already settled'))
+      .mockResolvedValueOnce(undefined);
+    renderRow();
+    await userEvent.click(screen.getByRole('button', { name: 'Annuler' }));
+    await waitFor(() => expect(api.cancelDownloadItem).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Annuler' })).toBeEnabled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('offers no cancel once the game is finished, or the job stopped', () => {
     const { unmount } = render(
       <DownloadGameRow

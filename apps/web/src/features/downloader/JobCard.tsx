@@ -31,6 +31,7 @@ interface Props {
 export function JobCard({ state, onRetry }: Props) {
   const romsRoot = useRomsRoot();
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const games = groupByGame(state.items, state.gameConversions);
   const summary = summarizeJob(games);
@@ -44,8 +45,11 @@ export function JobCard({ state, onRetry }: Props) {
 
   const handleCancel = async () => {
     setCancelling(true);
+    setCancelError(null);
     try {
       await cancelDownload(state.jobId);
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : 'Annulation impossible');
     } finally {
       setCancelling(false);
     }
@@ -96,6 +100,15 @@ export function JobCard({ state, onRetry }: Props) {
             </Button>
           )}
         </div>
+
+        {cancelError && (
+          <p
+            role="alert"
+            className={css({ px: '4', pt: '3', fontSize: 'xs', color: 'status.danger.text' })}
+          >
+            {cancelError}
+          </p>
+        )}
 
         {/* What the job is doing, in one line, as the comps show it. Counted
             per game rather than per file: a three-disc game is one thing the
