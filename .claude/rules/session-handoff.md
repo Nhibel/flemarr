@@ -21,12 +21,17 @@ The web app was brought in line with `frontend.md`, `readability.md` and `review
 - French plural rule everywhere through `lib/plural.ts` (`f88a154`).
 - Server: downloader split into `job-store` / `container-cache` / `chd-conversion` / `process-item`, `downloadFile` split, batch rename moved to `services/scanner/rename.ts`, `suggestSources` split (`42c735a`..`ed266cd`).
 - eslint now warns on `complexity` > 15 and `max-depth` > 4 (tests excepted); zero warnings (`df9ac26`).
-- Tests: web 328, server 462, all green. Not checked in a browser.
+- Priority components tested: GameRow, PathInput, ScanResults, GameHeader, ResolvedGameRow, JobCard, DownloadGameRow (`0050d01`, `ff9e0e2`); remaining fixed plurals fixed (`b2d1f4f`).
+- Tests: web 387, server 462, all green. Not checked in a browser.
 
 ## Left to do
 
-1. ~30 existing presentational components have no test (only new or extracted code was tested).
+1. Untested, lower priority: the settings sections, Fresh1g1rBrowser, SystemFolderBar, TopologyStep, SuggestionRow, SearchResultRow, SourceRow (connected), then small views (SystemCard, SelectionDock, Dialog…).
 2. `CLAUDE.md` says phase 14 is "not yet merged into master" — stale, it is merged. Camille chose to leave it for later.
+
+## Environment notes
+
+- In `apps/web`, `tsc --noEmit -p .` checks NOTHING (`tsconfig.json` is `files: []` plus references). Typecheck with `tsc -b`. Vitest doesn't typecheck either.
 
 ## Environment notes (code-server host)
 
