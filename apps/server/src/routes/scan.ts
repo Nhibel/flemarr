@@ -1,10 +1,13 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
-import { rename, access } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import { scanRequestSchema, renameRequestSchema } from '@shared/scan.js';
 import { runScan, scanJobs } from '@/services/scanner/index.js';
+import {
+  findCollisions,
+  renameDestination,
+  renameWithRollback,
+} from '@/services/scanner/rename.js';
 import {
   assertWithinConfiguredRoots,
   PathTraversalError,
@@ -17,6 +20,12 @@ export const scanRoute = new Hono();
 
 function configuredRoots(): string[] {
   return libraryRoots();
+}
+
+function rollbackNote(rolledBackCount: number): string {
+  if (rolledBackCount === 0) return '';
+  const files = rolledBackCount > 1 ? 'files' : 'file';
+  return ` (rolled back ${rolledBackCount} already-renamed ${files})`;
 }
 
 function rootsErrorResponse(c: Context, err: unknown): Response | null {
@@ -96,7 +105,7 @@ scanRoute.post('/scan/rename', async (c) => {
   for (const { from, to } of renames) {
     try {
       assertWithinConfiguredRoots(from, roots);
-      assertWithinConfiguredRoots(join(dirname(from), to), roots);
+      assertWithinConfiguredRoots(renameDestination({ from, to }), roots);
     } catch (err) {
       const known = rootsErrorResponse(c, err);
       if (known) return known;
@@ -106,19 +115,7 @@ scanRoute.post('/scan/rename', async (c) => {
 
   // Refuse the whole batch if any destination already exists or is duplicated
   // within the batch — a rename would silently overwrite the existing file.
-  const destinations = renames.map(({ from, to }) => join(dirname(from), to));
-  const seen = new Set<string>();
-  const collisions: string[] = [];
-  for (const dest of destinations) {
-    if (seen.has(dest)) collisions.push(dest);
-    seen.add(dest);
-    try {
-      await access(dest);
-      collisions.push(dest);
-    } catch {
-      // destination free — ok
-    }
-  }
+  const collisions = await findCollisions(renames);
   if (collisions.length > 0) {
     return errorJson(
       c,
@@ -131,48 +128,17 @@ scanRoute.post('/scan/rename', async (c) => {
     );
   }
 
-  const done: typeof renames = [];
-  const failed: { entry: (typeof renames)[0]; error: string }[] = [];
-  const rolledBack: string[] = [];
-
-  for (const entry of renames) {
-    const { from, to } = entry;
-    const dest = join(dirname(from), to);
-    try {
-      await rename(from, dest);
-      done.push(entry);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      failed.push({ entry, error: message });
-
-      // Best-effort rollback of already-completed renames
-      for (const completed of done) {
-        const completedDest = join(dirname(completed.from), completed.to);
-        try {
-          await rename(completedDest, completed.from);
-          rolledBack.push(completed.from);
-        } catch {
-          // best-effort — log but continue
-        }
-      }
-      break;
-    }
-  }
-
-  if (failed.length > 0) {
-    const first = failed[0]!;
-    const rollbackNote =
-      rolledBack.length > 0
-        ? ` (rolled back ${rolledBack.length} already-renamed file${rolledBack.length > 1 ? 's' : ''})`
-        : '';
+  const result = await renameWithRollback(renames);
+  const firstFailure = result.failed[0];
+  if (firstFailure) {
     return errorJson(
       c,
       500,
       'RENAME_FAILED',
-      `Rename failed for "${first.entry.from}": ${first.error}${rollbackNote}`,
-      { done, failed, rolledBack },
+      `Rename failed for "${firstFailure.entry.from}": ${firstFailure.error}${rollbackNote(result.rolledBack.length)}`,
+      result,
     );
   }
 
-  return c.json({ done, failed, rolledBack });
+  return c.json(result);
 });
