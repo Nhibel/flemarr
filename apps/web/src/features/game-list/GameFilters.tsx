@@ -73,6 +73,26 @@ const panelRaw = css.raw({
   shadow: 'lg',
 });
 
+// The "Ma sélection" / "Tout" segments: exactly one is pressed.
+const SEGMENT_STATE = {
+  pressed: css.raw({
+    bg: 'accent.solid',
+    color: 'accent.fg',
+    fontWeight: 'bold',
+    _hover: { color: 'accent.fg' },
+  }),
+  released: css.raw({
+    bg: 'transparent',
+    color: 'fg.subtle',
+    fontWeight: 'medium',
+    _hover: { color: 'fg.default' },
+  }),
+};
+
+function segmentState(pressed: boolean) {
+  return pressed ? SEGMENT_STATE.pressed : SEGMENT_STATE.released;
+}
+
 const chipBase = css.raw({
   px: '2.5',
   minH: '30px',
@@ -209,12 +229,7 @@ export function GameFilters({
           onClick={() => {
             if (!selectedOnly) onToggleSelectedOnly();
           }}
-          className={css(chipBase, {
-            bg: selectedOnly ? 'accent.solid' : 'transparent',
-            color: selectedOnly ? 'accent.fg' : 'fg.subtle',
-            fontWeight: selectedOnly ? 'bold' : 'medium',
-            _hover: { color: selectedOnly ? 'accent.fg' : 'fg.default' },
-          })}
+          className={css(chipBase, segmentState(selectedOnly))}
         >
           Ma sélection&nbsp;
           <span className={css({ fontFamily: 'mono' })}>({selectedCount})</span>
@@ -225,12 +240,7 @@ export function GameFilters({
           onClick={() => {
             if (selectedOnly) onToggleSelectedOnly();
           }}
-          className={css(chipBase, {
-            bg: !selectedOnly ? 'accent.solid' : 'transparent',
-            color: !selectedOnly ? 'accent.fg' : 'fg.subtle',
-            fontWeight: !selectedOnly ? 'bold' : 'medium',
-            _hover: { color: !selectedOnly ? 'accent.fg' : 'fg.default' },
-          })}
+          className={css(chipBase, segmentState(!selectedOnly))}
         >
           Tout
         </button>

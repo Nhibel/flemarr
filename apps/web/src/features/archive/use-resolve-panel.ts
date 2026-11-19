@@ -9,6 +9,7 @@ import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { buildDownloadItems } from './build-items.js';
 import { sourceKeyOf, summarizeResolve } from './resolve-summary.js';
 import type { ResolveSummary } from './resolve-summary.js';
+import { gamesToResolve, resolvePanelFlags } from './resolve-panel-flags.js';
 
 interface ResolvePanelInput {
   datId: string;
@@ -62,22 +63,24 @@ export function useResolvePanel({
   // scanner checks once the files are moved there by hand.
   const { folder: destinationDir, loaded: settingsLoaded } = useSystemFolder(system);
 
-  const hasSources = (sourcesData?.sources.length ?? 0) > 0;
-  const sourceKey = sourceKeyOf(sourcesData?.sources ?? []);
+  const sources = sourcesData?.sources ?? [];
+  const sourceKey = sourceKeyOf(sources);
   const result = resolved?.result ?? null;
   const summary: ResolveSummary | null = result ? summarizeResolve(result) : null;
-  const isStale = resolved !== null && resolved.sourceKey !== sourceKey;
   const isServerTarget = downloadTarget === 'server';
-  const lacksServerFolder = isServerTarget && destinationDir === '';
-  // Only once settings have loaded: an empty folder before that means
-  // "unknown", not "unset".
-  const hasNoFolder = lacksServerFolder && settingsLoaded;
-
-  const effectiveGameIds =
-    excludeOwned && missingGameIds !== null ? missingGameIds : selectedGameIds;
-
-  const canResolve = !resolving && effectiveGameIds.length > 0 && hasSources;
-  const canDownload = !queuing && !isStale && !lacksServerFolder;
+  const effectiveGameIds = gamesToResolve(selectedGameIds, missingGameIds, excludeOwned);
+  const { hasSources, isStale, lacksServerFolder, hasNoFolder, canResolve, canDownload } =
+    resolvePanelFlags({
+      sourceCount: sources.length,
+      resolvedSourceKey: resolved?.sourceKey ?? null,
+      currentSourceKey: sourceKey,
+      downloadTarget,
+      destinationDir,
+      settingsLoaded,
+      toResolveCount: effectiveGameIds.length,
+      resolving,
+      queuing,
+    });
 
   const resolve = useCallback(async () => {
     if (effectiveGameIds.length === 0) return;
