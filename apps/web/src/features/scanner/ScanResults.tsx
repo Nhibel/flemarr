@@ -10,6 +10,8 @@ interface ScanResultsProps {
   result: ScanResult;
   selected: Set<string>;
   onToggle: (p: string) => void;
+  /** Selects every misnamed file (true) or none (false). */
+  onSetAll: (selectAll: boolean) => void;
   onRename: () => void;
   renaming: boolean;
   renameResult: { done: number; failed: number } | null;
@@ -20,12 +22,14 @@ export function ScanResults({
   result,
   selected,
   onToggle,
+  onSetAll,
   onRename,
   renaming,
   renameResult,
 }: ScanResultsProps) {
   const romsRoot = useRomsRoot();
   const total = result.matched.length + result.wrongName.length + result.unmatched.length;
+  const allSelected = result.wrongName.every((entry) => selected.has(entry.filePath));
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
@@ -47,7 +51,7 @@ export function ScanResults({
               Suggestions de renommage
             </h3>
             <button
-              onClick={() => result.wrongName.forEach((e) => onToggle(e.filePath))}
+              onClick={() => onSetAll(!allSelected)}
               className={css({
                 fontSize: 'xs',
                 color: 'accent.text',
@@ -55,9 +59,7 @@ export function ScanResults({
                 _hover: { textDecoration: 'underline' },
               })}
             >
-              {selected.size === result.wrongName.length
-                ? 'Tout désélectionner'
-                : 'Tout sélectionner'}
+              {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
             </button>
           </div>
           <div

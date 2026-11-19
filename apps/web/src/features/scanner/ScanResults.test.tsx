@@ -29,6 +29,7 @@ const PROPS: ComponentProps<typeof ScanResults> = {
   result: RESULT,
   selected: new Set(),
   onToggle: () => {},
+  onSetAll: () => {},
   onRename: () => {},
   renaming: false,
   renameResult: null,
@@ -101,9 +102,22 @@ describe('ScanResults', () => {
     expect(screen.getByRole('button', { name: 'Renommage…' })).toBeDisabled();
   });
 
-  it('offers to deselect everything once everything is selected', () => {
-    renderResults({ selected: new Set(['/roms/snes/a.sfc', '/roms/snes/b.sfc']) });
-    expect(screen.getByRole('button', { name: 'Tout désélectionner' })).toBeInTheDocument();
+  it('offers to deselect everything once everything is selected', async () => {
+    const onSetAll = vi.fn();
+    renderResults({ onSetAll, selected: new Set(['/roms/snes/a.sfc', '/roms/snes/b.sfc']) });
+    await userEvent.click(screen.getByRole('button', { name: 'Tout désélectionner' }));
+    expect(onSetAll).toHaveBeenCalledWith(false);
+  });
+
+  // Regression: it used to toggle each file, so a partial selection got
+  // inverted (two of three ticked → one) instead of completed.
+  it('selects every file from a partial selection', async () => {
+    const onSetAll = vi.fn();
+    const onToggle = vi.fn();
+    renderResults({ onSetAll, onToggle, selected: new Set(['/roms/snes/a.sfc']) });
+    await userEvent.click(screen.getByRole('button', { name: 'Tout sélectionner' }));
+    expect(onSetAll).toHaveBeenCalledWith(true);
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it('reports a rename outcome, failures included', () => {

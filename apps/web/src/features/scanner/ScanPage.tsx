@@ -82,6 +82,17 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
     });
   }, []);
 
+  // Not a toggle per file: with some already ticked, toggling each one
+  // inverted the selection instead of completing it.
+  const setAllRenames = useCallback(
+    (selectAll: boolean) => {
+      if (scan.phase !== 'done') return;
+      const everyFile = scan.result.wrongName.map((entry) => entry.filePath);
+      setSelected(new Set(selectAll ? everyFile : []));
+    },
+    [scan],
+  );
+
   const handleRename = useCallback(async () => {
     if (scan.phase !== 'done' || selected.size === 0) return;
     setRenaming(true);
@@ -160,6 +171,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
           result={scan.result}
           selected={selected}
           onToggle={toggleRename}
+          onSetAll={setAllRenames}
           onRename={() => void handleRename()}
           renaming={renaming}
           renameResult={renameResult}
