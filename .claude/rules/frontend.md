@@ -5,13 +5,13 @@ paths:
 
 # Frontend rules (apps/web)
 
-Complements CLAUDE.md (stack, `no any`, Zod as source of truth, kebab-case files). Where the two overlap, CLAUDE.md wins.
+Complements CLAUDE.md (stack, `no any`, Zod as source of truth, kebab-case files) and `readability.md` (project-wide). Where they overlap, CLAUDE.md wins.
 
 ## Component responsibilities
 
 There is no router: screens are switched in `App.tsx`. Responsibilities split by layer:
 
-- **Shared components (`src/components/`)** — 100% "dumb" and domain-agnostic. No API calls, no TanStack Query hooks, no feature imports. Props in, callbacks out (`onSelect`, `onChange`…). They are the app's design system.
+- **Shared components (`src/components/`)** — 100% "dumb" and domain-agnostic. No API calls, no TanStack Query hooks, no feature imports. Props in, callbacks out (`onSelect`, `onChange`…). They are the app's design system. A component that reads or writes server state is a feature widget, even if several features use it (e.g. the folder picker lives in `features/folders/`).
 - **Feature components (`src/features/<feature>/`)** — two kinds coexist:
   - **Connected widgets** (e.g. `SourcesManager`, `ResolvePanel`) may call their own queries and mutations and own their local state. This keeps parents from becoming god components and avoids prop-drilling. Rules:
     1. Single responsibility: the widget handles only its own functional area.
@@ -37,14 +37,16 @@ There is no router: screens are switched in `App.tsx`. Responsibilities split by
 
 | Data category | Examples here | `staleTime` | `gcTime` | Notes |
 | --- | --- | --- | --- | --- |
-| Immutable for the session | games of a loaded DAT, game details pages, system icons | `Infinity` | `Infinity` (or default if memory matters) | `refetchOnWindowFocus: false` |
+| Immutable for the session | games of a loaded DAT (a reload gets a new id), game details pages, system icons | `Infinity` | `Infinity` | `refetchOnWindowFocus: false` |
 | Slow-moving remote | Fresh1G1R DAT listing (GitHub) | minutes | ≥ `staleTime` | |
 | Transactional / user-edited | settings, archive sources, DAT list, directory listing | `0` up to a few seconds | ≥ `staleTime` (default 5 min is fine) | invalidate after every mutation |
 | Live progress | download progress | — | — | streamed over SSE (`EventSource`), not React Query; don't poll it |
 
 ### Mutations
 
-- Always invalidate the related queries in `onSuccess` after a write (`POST`/`PUT`/`DELETE`), using factory keys:
+- After every write (`POST`/`PUT`/`DELETE`), resync the related queries in the mutation's own `onSuccess` — never leave it to the caller. Either:
+  - `setQueryData(key, response)` when the server returns the full updated resource (settings), saving a round-trip, or
+  - `invalidateQueries` otherwise, using factory keys:
 
 ```ts
 const queryClient = useQueryClient();
