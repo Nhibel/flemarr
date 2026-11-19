@@ -9,7 +9,7 @@ interface Props {
   /**
    * Where the files will land. Stated here because it is the thing most
    * worth knowing before pressing download, and in the comps' dock it sits
-   * right next to the size — "3,4 Go vers mon navigateur" is a different
+   * right next to the size — "3.4 GB vers mon navigateur" is a different
    * decision than the same size onto a NAS.
    */
   target?: 'server' | 'browser';

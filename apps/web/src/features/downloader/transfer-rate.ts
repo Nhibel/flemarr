@@ -1,3 +1,4 @@
+import { formatSize } from '@/lib/format.js';
 import { plural } from '@/lib/plural.js';
 
 /**
@@ -67,10 +68,9 @@ export function pushSample(samples: RateSample[], sample: RateSample): RateSampl
   return [...samples, sample].filter((s) => sample.at - s.at <= WINDOW_MS);
 }
 
+/** Same units as every size in the app (formatSize), per second: "2.1 MB/s". */
 export function formatRate(bytesPerSecond: number): string {
-  if (bytesPerSecond >= 1_048_576) return `${(bytesPerSecond / 1_048_576).toFixed(1)} Mo/s`;
-  if (bytesPerSecond >= 1024) return `${Math.round(bytesPerSecond / 1024)} ko/s`;
-  return `${Math.round(bytesPerSecond)} o/s`;
+  return `${formatSize(Math.round(bytesPerSecond))}/s`;
 }
 
 /**

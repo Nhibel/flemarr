@@ -58,7 +58,7 @@ describe('DownloadGameRow', () => {
 
   it('shows the transfer rate when known', () => {
     renderRow({}, { rate: 1_048_576 });
-    expect(screen.getByText('Téléchargement').parentElement).toHaveTextContent('· 1.0 Mo/s');
+    expect(screen.getByText('Téléchargement').parentElement).toHaveTextContent('· 1.0 MB/s');
   });
 
   it('cancels every file of the game', async () => {

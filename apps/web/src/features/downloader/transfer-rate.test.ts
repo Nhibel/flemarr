@@ -94,9 +94,10 @@ describe('pushSample', () => {
 
 describe('formatting', () => {
   it('scales the rate to a readable unit', () => {
-    expect(formatRate(2_202_010)).toBe('2.1 Mo/s');
-    expect(formatRate(51_200)).toBe('50 ko/s');
-    expect(formatRate(300)).toBe('300 o/s');
+    expect(formatRate(2_202_010)).toBe('2.1 MB/s');
+    expect(formatRate(51_200)).toBe('50 KB/s');
+    expect(formatRate(300)).toBe('300 B/s');
+    expect(formatRate(300.4)).toBe('300 B/s');
   });
 
   // Vague on purpose: "environ 7 minutes" is honest about its precision in

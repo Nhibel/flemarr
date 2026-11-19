@@ -6,7 +6,7 @@ import type { ItemLike } from './game-status.js';
 interface Rates {
   /** Whole-job rate, which is what the time-remaining estimate divides by. */
   rate: number | undefined;
-  /** Per game, for the "2,1 Mo/s" the comps put on each row. */
+  /** Per game, for the "2.1 MB/s" the comps put on each row. */
   rates: Map<string, number>;
 }
 
