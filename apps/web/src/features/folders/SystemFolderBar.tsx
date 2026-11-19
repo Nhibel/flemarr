@@ -4,7 +4,7 @@ import { css } from '@/styled-system/css';
 import { updateSettings, validateDir } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
-import { PathInput } from '@/components/PathInput.js';
+import { PathInput } from './PathInput.js';
 import { SystemIcon } from '@/components/SystemIcon.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { displayPath } from '@/lib/paths.js';

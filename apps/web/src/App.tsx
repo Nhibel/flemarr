@@ -14,7 +14,7 @@ import { useGameFilters, applySelectedOnly } from '@/features/game-list/use-game
 import { useSelection } from '@/features/game-list/use-selection.js';
 import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
-import { SystemFolderBar } from '@/components/SystemFolderBar.js';
+import { SystemFolderBar } from '@/features/folders/SystemFolderBar.js';
 import { SystemIcon } from '@/components/SystemIcon.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';

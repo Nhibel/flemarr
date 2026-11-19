@@ -1,26 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 import { css, cx } from '@/styled-system/css';
-import { listDirs, createDir } from '@/lib/api.js';
-import { queryKeys } from '@/lib/query-keys.js';
 import { displayPath, absolutePath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
-
-function pathBasename(p: string): string {
-  return (
-    p
-      .replace(/[\\/]+$/, '')
-      .split(/[\\/]/)
-      .pop() ?? p
-  );
-}
-
-// Join a child name onto a listed directory, preserving its separator.
-function joinPath(base: string, name: string): string {
-  const trimmed = base.replace(/[\\/]+$/, '');
-  const sep = trimmed.includes('\\') ? '\\' : '/';
-  return `${trimmed}${sep}${name}`;
-}
+import { pathBasename } from './folder-paths.js';
+import { useDirListing } from './use-dir-listing.js';
 
 function FolderIcon() {
   return (
@@ -38,28 +21,24 @@ interface Props {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
+/**
+ * A path field with a folder browser underneath: lists the folder being
+ * typed, steps into subfolders, and creates new ones. The listing and the
+ * creation live in useDirListing; this component is the UI around them.
+ */
 export function PathInput({ value, onChange, placeholder, inputClassName, onKeyDown }: Props) {
-  const queryClient = useQueryClient();
   // `value` (and everything sent to the API) stays absolute; the input shows
   // and accepts the root-relative form when a library root is configured.
   const romsRoot = useRomsRoot();
   const [open, setOpen] = useState(false);
-  const [debouncedValue, setDebouncedValue] = useState(value);
   const [newFolder, setNewFolder] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedValue(value), 250);
-    return () => clearTimeout(t);
-  }, [value]);
-
-  const { data } = useQuery({
-    queryKey: queryKeys.listDirs(debouncedValue),
-    queryFn: () => listDirs(debouncedValue),
-    enabled: open,
-    staleTime: 30_000,
-  });
+  const {
+    listing: data,
+    listedPath: base,
+    creating,
+    createError,
+    createFolder,
+  } = useDirListing(value, open);
 
   // Close only when focus leaves the whole component — moving focus to a child
   // (a folder button, or the "new folder" field) must keep the panel open.
@@ -69,36 +48,17 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
     }
   }, []);
 
-  const navigate = useCallback(
-    (path: string) => {
-      onChange(path);
-    },
-    [onChange],
-  );
-
   // Create a subfolder under the directory currently listed, then step into it.
-  const base = data?.listedPath ?? '';
-  const handleCreate = useCallback(async () => {
-    const name = newFolder.trim();
-    if (!name || !base) return;
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const { path } = await createDir(joinPath(base, name));
-      setNewFolder('');
-      await queryClient.invalidateQueries({ queryKey: queryKeys.listDirs() });
-      navigate(path);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Création impossible');
-    } finally {
-      setCreating(false);
-    }
-  }, [newFolder, base, queryClient, navigate]);
+  const handleCreate = async () => {
+    const createdPath = await createFolder(newFolder);
+    if (createdPath === null) return;
+    setNewFolder('');
+    onChange(createdPath);
+  };
 
-  const showPanel =
-    open &&
-    data != null &&
-    (data.dirs.length > 0 || data.parent !== null || data.listedPath !== '');
+  const hasSomethingToShow =
+    data != null && (data.dirs.length > 0 || data.parent !== null || data.listedPath !== '');
+  const showPanel = open && hasSomethingToShow;
 
   return (
     <div
@@ -146,7 +106,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
             <button
               onMouseDown={(e) => {
                 e.preventDefault();
-                navigate(data.parent!);
+                onChange(data.parent!);
               }}
               className={css({
                 display: 'flex',
@@ -171,7 +131,7 @@ export function PathInput({ value, onChange, placeholder, inputClassName, onKeyD
               key={dir.path}
               onMouseDown={(e) => {
                 e.preventDefault();
-                navigate(dir.path);
+                onChange(dir.path);
               }}
               className={css({
                 display: 'flex',

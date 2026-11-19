@@ -132,8 +132,8 @@ Composants génériques (`apps/web/src/components/`) :
 - `Button` — variantes `primary` / `secondary` / `danger` / `ghost`, tailles `sm` / `md`.
 - `Card` — conteneur de surface avec bordure/ombre, utilisé pour toute liste/bloc groupé.
 - `Chip` — pastille comptage + couleur sémantique (vert/ambre/gris), utilisée pour les résumés de scan et de résolution.
-- `PathInput` — champ de chemin avec autocomplétion de sous-dossiers et création de dossier inline.
-- `SystemFolderBar` — bandeau persistant affichant/éditant le dossier du système actif.
+- `PathInput` (désormais dans `features/folders/`, car il appelle l'API) — champ de chemin avec autocomplétion de sous-dossiers et création de dossier inline.
+- `SystemFolderBar` (désormais dans `features/folders/`, car il lit et écrit les réglages) — bandeau persistant affichant/éditant le dossier du système actif.
 - `FontScaleControl` — widget +/− flottant, taille fixe en pixels (volontairement pas liée à l'échelle de texte qu'il contrôle).
 - Icônes : `BookIcon`, `GearIcon` (SVG inline, pas de bibliothèque d'icônes externe).
 
