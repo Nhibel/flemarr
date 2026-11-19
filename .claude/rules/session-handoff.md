@@ -15,12 +15,18 @@ The web app was brought in line with `frontend.md`, `readability.md` and `review
 - `ScanPage` split into `ScanResults` / `RenameRow`; all nested ternaries removed (web + `apps/server/src/services/archive-org/suggest.ts`).
 - Tests: web 226 → 281, server 449, all green. Visual check in headless Chromium (Light, Lemon Grid, Night Drive): no regression.
 
+## Done since (2026-11-19, Windows workstation)
+
+- `ResolvePanel` split (`9733603`..`e3c4ecf`): pure helpers, `use-resolve-panel`, presentational views.
+- French plural rule everywhere through `lib/plural.ts` (`f88a154`).
+- Server: downloader split into `job-store` / `container-cache` / `chd-conversion` / `process-item`, `downloadFile` split, batch rename moved to `services/scanner/rename.ts`, `suggestSources` split (`42c735a`..`ed266cd`).
+- eslint now warns on `complexity` > 15 and `max-depth` > 4 (tests excepted); zero warnings (`df9ac26`).
+- Tests: web 328, server 462, all green. Not checked in a browser.
+
 ## Left to do
 
-1. `features/archive/ResolvePanel.tsx` — complexity 40, the most complex frontend component; next split candidate.
-2. Server, out of the refactor's scope: 7 functions above complexity 15, 5-level nesting in `services/downloader/index.ts`.
-3. ~30 existing presentational components have no test (only new or extracted code was tested).
-4. `CLAUDE.md` says phase 14 is "not yet merged into master" — stale, it is merged. Camille chose to leave it for later.
+1. ~30 existing presentational components have no test (only new or extracted code was tested).
+2. `CLAUDE.md` says phase 14 is "not yet merged into master" — stale, it is merged. Camille chose to leave it for later.
 
 ## Environment notes (code-server host)
 
