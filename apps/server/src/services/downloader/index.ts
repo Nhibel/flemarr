@@ -1,104 +1,46 @@
 import { randomUUID } from 'node:crypto';
-import { rename, rm, mkdir, copyFile } from 'node:fs/promises';
+import { rename, rm } from 'node:fs/promises';
 import { join, basename, dirname } from 'node:path';
-import { tmpdir } from 'node:os';
 import { assertWithinRoot, assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
 import { getSettings } from '@/services/settings/index.js';
 import { libraryRoots } from '@/lib/library-root.js';
+import { logger } from '@/lib/logger.js';
+import type { DownloadRequest, DownloadEvent, DownloadTarget } from '@shared/download.js';
+import type { Rom } from '@shared/dat.js';
 import { downloadFile, extractContainerEntry } from './worker.js';
 import type { WorkerResult } from './worker.js';
 import { recordDownload } from './history.js';
-import { convertGameToChd } from './chd.js';
-import { getDat } from '@/services/dat/store.js';
-import { logger } from '@/lib/logger.js';
-import type {
-  DownloadRequest,
-  DownloadEvent,
-  DownloadTarget,
-  DownloadSource,
-} from '@shared/download.js';
-import type { Rom } from '@shared/dat.js';
+import { abortSignal, cleanupContainerCache, getOrFetchContainer } from './container-cache.js';
+import {
+  emitIndividualFallback,
+  getConvertibleRoms,
+  maybeConvertGame,
+  maybeConvertGameForBrowser,
+} from './chd-conversion.js';
+import { BROWSER_STAGING_DIR, browserFileUrl, downloadJobs } from './job-store.js';
+import type { DownloadItemState, DownloadJobState } from './job-store.js';
+
+export { downloadJobs } from './job-store.js';
+export type { DownloadJobState } from './job-store.js';
+
 const TEMP_DIR_NAME = '.rom-curator-tmp';
-// Browser-target files are staged here (outside any library root — they
-// never get placed, only served once and then deleted).
-const BROWSER_STAGING_DIR = join(tmpdir(), 'rom-curator-browser-dl');
-
-interface DownloadItemState {
-  gameId: string;
-  romName: string;
-  expectedCrc: string;
-  // Ordered candidates — see downloadSourceSchema. A candidate with
-  // innerPath set is an archive-container fast path (fetch the whole
-  // container via getOrFetchContainer, then extractContainerEntry); others
-  // go straight through downloadFile as before.
-  sources: DownloadSource[];
-  status: 'queued' | 'downloading' | 'done' | 'failed' | 'cancelled';
-  tempPath: string;
-  // Own controller, separate from the job's — lets one item be cancelled
-  // without aborting its siblings. Combined with the job's own signal (see
-  // processItem) so the existing "cancel everything" action still works.
-  controller: AbortController;
-}
-
-export interface DownloadJobState {
-  status: 'running' | 'cancelled' | 'done';
-  target: DownloadTarget;
-  items: DownloadItemState[];
-  events: DownloadEvent[];
-  controller: AbortController;
-  completedAt?: number;
-  // Several roms of the same game can share one archive-container (e.g. a
-  // disc's .bin and .cue both live in the same per-game .7z) — dedup'd here
-  // by container URL so it's only fetched once per job.
-  // `listeners` fans the one real download's progress out to every item
-  // waiting on it — a per-game .7z/.zip is itself multiple hundred MB, and
-  // without this nothing at all showed in the UI until the whole thing
-  // finished (looked exactly like the download never started).
-  // `refCount`/`controller`: once every item that needed this container has
-  // settled (done, failed, or cancelled — see getOrFetchContainer's
-  // `release`), the fetch itself is aborted if it's still running. Without
-  // this, cancelling every item sharing a container left the real download
-  // running to completion in the background regardless, which also blocked
-  // the job from ever reaching 'done' (cleanupContainerCache awaits it at
-  // job end) — the job-level "Annuler" button stayed up until a multi-
-  // hundred-MB download finished on its own, long after every row it was
-  // for had already disappeared.
-  containerCache: Map<
-    string,
-    {
-      promise: Promise<string>;
-      listeners: Set<(bytesDownloaded: number, totalBytes: number) => void>;
-      controller: AbortController;
-      refCount: number;
-    }
-  >;
-  // Browser-target CHD conversions only: a game's raw .bin/.cue are never
-  // placed anywhere findBrowserFile already knows to look (see
-  // maybeConvertGameForBrowser) — the resulting .chd's own path+filename is
-  // recorded here, keyed by gameId, so findBrowserFile can serve it.
-  convertedFiles: Map<string, { path: string; filename: string }>;
-}
-
-export const downloadJobs = new Map<string, DownloadJobState>();
 
 const JOB_RETENTION_MS = 30 * 60 * 1000;
 // One progress event per network chunk would grow job.events unbounded on
 // multi-GB files (and get replayed in full to every SSE client) — throttle.
 const PROGRESS_THROTTLE_MS = 250;
 
-// Resolves once the signal aborts — used to race a per-item cancel against
-// the archive-container fast path's own operations below, neither of which
-// otherwise ever check this item's signal mid-flight: getOrFetchContainer
-// deliberately uses the job's signal, not this item's own, since the fetch
-// may still be needed by sibling roms; extractContainerEntry takes no
-// signal at all. Without this, cancelling one item that's waiting on (or
-// extracting from) an archive-container had no effect at all until that
-// operation finished on its own.
-function abortSignal(signal: AbortSignal): Promise<'aborted'> {
-  if (signal.aborted) return Promise.resolve('aborted');
-  return new Promise((resolve) => {
-    signal.addEventListener('abort', () => resolve('aborted'), { once: true });
-  });
+// Deletes a browser-target job's staged files without awaiting the deletions.
+function releaseBrowserFiles(job: DownloadJobState): void {
+  for (const item of job.items) {
+    if (item.status === 'done') void rm(item.tempPath, { force: true }).catch(() => undefined);
+  }
+  // Same leak, different map: a converted .chd the client never
+  // picked up (tab closed before the save prompt, etc.) sits in
+  // BROWSER_STAGING_DIR under its own path, not any item's tempPath.
+  for (const converted of job.convertedFiles.values()) {
+    void rm(converted.path, { force: true }).catch(() => undefined);
+  }
 }
 
 function evictOldJobs(): void {
@@ -107,18 +49,7 @@ function evictOldJobs(): void {
     if (job.status !== 'running' && job.completedAt !== undefined && job.completedAt < cutoff) {
       // Browser-target files that were never fetched by the client (tab
       // closed, etc.) would otherwise leak in the OS temp dir forever.
-      if (job.target === 'browser') {
-        for (const item of job.items) {
-          if (item.status === 'done')
-            void rm(item.tempPath, { force: true }).catch(() => undefined);
-        }
-        // Same leak, different map: a converted .chd the client never
-        // picked up (tab closed before the save prompt, etc.) sits in
-        // BROWSER_STAGING_DIR under its own path, not any item's tempPath.
-        for (const converted of job.convertedFiles.values()) {
-          void rm(converted.path, { force: true }).catch(() => undefined);
-        }
-      }
+      if (job.target === 'browser') releaseBrowserFiles(job);
       downloadJobs.delete(id);
     }
   }
@@ -360,7 +291,7 @@ async function runQueue(
         type: 'file-ready',
         gameId: item.gameId,
         romName: item.romName,
-        downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
+        downloadUrl: browserFileUrl(jobId, item.gameId, item.romName),
       });
       return;
     }
@@ -474,211 +405,6 @@ async function runQueue(
     job.events.push({ type: 'complete' });
   }
   job.completedAt = Date.now();
-}
-
-// Only games with a .cue among the DAT's own roms (disc systems) are
-// eligible for CHD conversion — everything else (cartridge systems) returns
-// undefined, a silent no-op rather than an error, for both target types.
-function getConvertibleRoms(datId: string, gameId: string): Rom[] | undefined {
-  const dat = getDat(datId);
-  const game = dat?.games.find((g) => g.id === gameId);
-  if (!game) return undefined;
-  const roms = game.roms.filter((r) => r.crc !== undefined);
-  if (!roms.some((r) => r.name.toLowerCase().endsWith('.cue'))) return undefined;
-  return roms;
-}
-
-// Emits the ordinary browser-save prompt individually for each given item —
-// the fallback whenever a game that was eligible for CHD conversion never
-// actually gets converted (chdman failed, or runGame skipped conversion
-// outright because a sibling rom failed/cancelled first).
-function emitIndividualFallback(
-  job: DownloadJobState,
-  jobId: string,
-  items: Pick<DownloadItemState, 'gameId' | 'romName'>[],
-): void {
-  for (const item of items) {
-    job.events.push({
-      type: 'file-ready',
-      gameId: item.gameId,
-      romName: item.romName,
-      downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(item.gameId)}/${encodeURIComponent(item.romName)}`,
-    });
-  }
-}
-
-// Called by runGame (in runQueue) once every rom of `gameId` has reached
-// 'done' — `roms` is already known-eligible (see getConvertibleRoms).
-async function maybeConvertGame(
-  job: DownloadJobState,
-  gameId: string,
-  destinationDir: string,
-  roms: Rom[],
-): Promise<void> {
-  job.events.push({ type: 'game-converting', gameId });
-  const result = await convertGameToChd(destinationDir, roms);
-  if (result.ok) {
-    job.events.push({ type: 'game-converted', gameId });
-  } else {
-    job.events.push({
-      type: 'game-convert-failed',
-      gameId,
-      reason: result.reason ?? 'unknown error',
-    });
-  }
-}
-
-// Browser-target counterpart to maybeConvertGame. Unlike server-target,
-// these roms were never renamed to canonical names in a shared folder — each
-// item sits at its own job-prefixed tempPath (see startDownload) — and
-// chdman needs the .cue's internally-referenced filenames to match real
-// files on disk. So: copy (not move, to keep the per-item fallback intact
-// on any failure) each item into a scratch dir under its real basename,
-// convert there, then move the resulting .chd into the same flat staging
-// dir every other browser item uses, so findBrowserFile/the download route
-// can serve and clean it up exactly like any other browser-target file.
-async function maybeConvertGameForBrowser(
-  job: DownloadJobState,
-  jobId: string,
-  gameId: string,
-  roms: Rom[],
-): Promise<void> {
-  const gameItems = job.items.filter((i) => i.gameId === gameId && i.status === 'done');
-
-  job.events.push({ type: 'game-converting', gameId });
-
-  const scratchDir = join(tmpdir(), `rom-curator-chd-browser-${randomUUID()}`);
-  try {
-    await mkdir(scratchDir, { recursive: true });
-    for (const item of gameItems) {
-      await copyFile(item.tempPath, join(scratchDir, basename(item.romName)));
-    }
-
-    const result = await convertGameToChd(scratchDir, roms);
-    if (!result.ok || !result.chdPath) {
-      const reason = result.reason ?? 'unknown error';
-      logger.warn({ gameId, reason }, 'browser-target CHD conversion failed, falling back');
-      job.events.push({ type: 'game-convert-failed', gameId, reason });
-      emitIndividualFallback(job, jobId, gameItems);
-      return;
-    }
-
-    const filename = basename(result.chdPath);
-    const finalPath = join(BROWSER_STAGING_DIR, `${jobId}-${filename}`);
-    await mkdir(BROWSER_STAGING_DIR, { recursive: true });
-    await rename(result.chdPath, finalPath);
-
-    job.convertedFiles.set(gameId, { path: finalPath, filename });
-    job.events.push({ type: 'game-converted', gameId });
-    job.events.push({
-      type: 'file-ready',
-      gameId,
-      romName: filename,
-      downloadUrl: `/api/downloads/${jobId}/items/${encodeURIComponent(gameId)}/${encodeURIComponent(filename)}`,
-    });
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    logger.warn(
-      { gameId, scratchDir, reason },
-      'browser-target CHD conversion threw, falling back',
-    );
-    job.events.push({ type: 'game-convert-failed', gameId, reason });
-    emitIndividualFallback(job, jobId, gameItems);
-  } finally {
-    // On success the .chd was already moved out above; this only ever
-    // removes the (now-empty, or never-fully-populated on failure) scratch
-    // dir itself — the originals it held were copies, never the real
-    // tempPaths, so there's nothing here that emitIndividualFallback
-    // still needs.
-    await rm(scratchDir, { recursive: true, force: true }).catch(() => undefined);
-  }
-}
-
-// A container shared by several roms (see getOrFetchContainer) is job-scoped,
-// not any single item's own tempPath — cleaned up once, here, rather than
-// refcounted per item. By the time this runs (after every item has settled),
-// any container still fetching has already had its last claim released,
-// which aborts it — so this mostly awaits already-aborted/finished fetches,
-// not a full in-progress download.
-async function cleanupContainerCache(job: DownloadJobState): Promise<void> {
-  const settled = await Promise.allSettled(
-    [...job.containerCache.values()].map((entry) => entry.promise),
-  );
-  await Promise.all(
-    settled
-      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
-      .map((r) => rm(r.value, { force: true }).catch(() => undefined)),
-  );
-}
-
-// Fetches a whole archive container once per job, sharing it across every
-// rom that needs an entry from it (e.g. a disc's .bin and .cue in the same
-// per-game .7z). The check-then-set on containerCache is synchronous — no
-// `await` in between — so concurrent callers for the same URL never race
-// into two fetches.
-//
-// A per-game archive can be hundreds of MB — every item waiting on this
-// same fetch registers its own onProgress as a listener, so every one of
-// them (not just whichever item happened to trigger the fetch) sees real
-// progress while the shared container downloads, instead of nothing at all
-// until it's done (which looked exactly like the download never started).
-//
-// Returns a `release()` the caller must call (in a finally) once it's done
-// with the container either way. refCount tracks how many items still
-// claim it; once it hits zero the fetch is aborted if still running —
-// without this, cancelling every item sharing a container left the real
-// download running to completion in the background regardless, which also
-// blocked the job from ever finishing (cleanupContainerCache awaits it at
-// job end): the job-level "Annuler" button stayed up long after every row
-// it was for had already disappeared. The container's own controller still
-// cascades from the job's signal (whole-job cancel keeps working), but
-// cancelling one item must not aim it at siblings still using the same
-// container — only at this item's own claim.
-function getOrFetchContainer(
-  job: DownloadJobState,
-  containerUrl: string,
-  jobSignal: AbortSignal,
-  stagingDir: string,
-  onProgress: (bytesDownloaded: number, totalBytes: number) => void,
-): { promise: Promise<string>; release: () => void } {
-  let entry = job.containerCache.get(containerUrl);
-  if (!entry) {
-    const controller = new AbortController();
-    if (jobSignal.aborted) controller.abort();
-    else jobSignal.addEventListener('abort', () => controller.abort(), { once: true });
-
-    const containerPath = join(stagingDir, `${randomUUID()}-container`);
-    const listeners = new Set([onProgress]);
-    const promise = downloadFile({
-      url: containerUrl,
-      tempPath: containerPath,
-      signal: controller.signal,
-      onProgress: (bytesDownloaded, totalBytes) => {
-        for (const listener of listeners) listener(bytesDownloaded, totalBytes);
-      },
-    }).then((result) => {
-      if (result !== 'done') throw new Error(`container fetch failed: ${result}`);
-      return containerPath;
-    });
-    entry = { promise, listeners, controller, refCount: 0 };
-    job.containerCache.set(containerUrl, entry);
-  } else {
-    entry.listeners.add(onProgress);
-  }
-
-  const activeEntry = entry;
-  activeEntry.refCount++;
-  let released = false;
-  return {
-    promise: activeEntry.promise,
-    release: () => {
-      if (released) return;
-      released = true;
-      activeEntry.listeners.delete(onProgress);
-      activeEntry.refCount--;
-      if (activeEntry.refCount <= 0) activeEntry.controller.abort();
-    },
-  };
 }
 
 /**
