@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DownloadManager } from './DownloadManager.js';
-import type { QueuedDownload } from './DownloadManager.js';
+import type { QueuedDownload } from './job-state.js';
 
 vi.mock('@/lib/api.js', async (orig) => {
   const actual = await orig<typeof import('@/lib/api.js')>();

@@ -5,7 +5,7 @@ import { fetchSources, resolveGames, startDownload } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
 import type { ResolveResponse } from '@/lib/api.js';
-import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
+import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { buildDownloadItems } from './build-items.js';
 import { Button } from '@/components/Button.js';

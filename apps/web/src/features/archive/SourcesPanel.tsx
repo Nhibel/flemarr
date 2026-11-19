@@ -1,5 +1,5 @@
 import { css } from '@/styled-system/css';
-import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
+import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { SourcesManager } from './SourcesManager.js';
 import { ResolvePanel } from './ResolvePanel.js';
 

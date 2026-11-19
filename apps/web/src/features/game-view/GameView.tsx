@@ -11,7 +11,7 @@ import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/features/folders/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
-import type { QueuedDownload } from '@/features/downloader/DownloadManager.js';
+import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { fetchGames } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
