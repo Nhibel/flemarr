@@ -42,8 +42,55 @@ export function boxartUrl(datSystem: string, gameName: string): string {
   return `${BASE_URL}/${system}/Named_Boxarts/${file}`;
 }
 
+// The same thumbnails, one GitHub repository per system directory (spaces
+// become '_'). thumbnails.libretro.com went empty on 2026-11-21 while these
+// kept serving, so every lookup falls back to them.
+const MIRROR_BASE_URL = 'https://raw.githubusercontent.com/libretro-thumbnails';
+
+/** The GitHub copy of a thumbnails.libretro.com URL; null for any other URL. */
+export function mirrorOf(url: string): string | null {
+  const prefix = `${BASE_URL}/`;
+  if (!url.startsWith(prefix)) return null;
+  const [encodedSystem = '', ...path] = url.slice(prefix.length).split('/');
+  const repository = decodeURIComponent(encodedSystem).replace(/ /g, '_');
+  return `${MIRROR_BASE_URL}/${encodeURIComponent(repository)}/master/${path.join('/')}`;
+}
+
 /** Does the thumbnail exist upstream? HEAD probe, no body transferred. */
 export async function probeBoxart(url: string): Promise<boolean> {
   const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
   return res.ok;
+}
+
+/**
+ * Where the thumbnail is found: the provider, else its mirror. Null when
+ * neither has it. Throws only when a probe failed on the network and no
+ * probe found it, so an outage is never cached as "no boxart".
+ */
+export async function findBoxart(url: string): Promise<string | null> {
+  const mirror = mirrorOf(url);
+  const candidates = mirror === null ? [url] : [url, mirror];
+  let networkError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      if (await probeBoxart(candidate)) return candidate;
+    } catch (err) {
+      networkError = err;
+    }
+  }
+  if (networkError !== null) throw networkError;
+  return null;
+}
+
+/** The thumbnail's bytes, from its mirror when the provider fails. */
+export async function fetchBoxart(url: string): Promise<Response> {
+  const mirror = mirrorOf(url);
+  if (mirror === null) return fetch(url);
+  try {
+    const response = await fetch(url);
+    if (response.ok) return response;
+  } catch {
+    // The provider is down: the mirror answers instead.
+  }
+  return fetch(mirror);
 }

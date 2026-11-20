@@ -9,7 +9,8 @@ import { applyMigrations } from '../lib/migrations.js';
  */
 describe('migration005 — (identifier, system) source key', () => {
   // The schema as migration001 created it, at the user_version that leaves
-  // only migration005 to run.
+  // migration005 and the later ones to run. game_details is there because
+  // migration007 touches it.
   function legacyDb(): DatabaseConstructor.Database {
     const db = new DatabaseConstructor(':memory:');
     db.exec(`
@@ -18,6 +19,14 @@ describe('migration005 — (identifier, system) source key', () => {
         system TEXT NOT NULL,
         layout TEXT NOT NULL,
         note TEXT NOT NULL DEFAULT ''
+      );
+      CREATE TABLE game_details (
+        dat_id TEXT NOT NULL,
+        game_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        boxart_url TEXT,
+        fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (dat_id, game_id)
       );
     `);
     db.pragma('user_version = 4');
@@ -104,5 +113,32 @@ describe('migration006 — searched flag', () => {
     ).run('ni-roms', 'Nintendo - Super Nintendo Entertainment System', 'zip-collection', '');
     const row = db.prepare(`SELECT searched FROM archive_sources`).get() as { searched: number };
     expect(row.searched).toBe(1);
+  });
+});
+
+describe('migration007 — boxart misses re-probed', () => {
+  it('drops the misses and keeps the hits', () => {
+    const db = new DatabaseConstructor(':memory:');
+    db.exec(`
+      CREATE TABLE game_details (
+        dat_id TEXT NOT NULL,
+        game_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        boxart_url TEXT,
+        fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (dat_id, game_id)
+      );
+    `);
+    db.pragma('user_version = 6');
+    const insert = db.prepare(
+      `INSERT INTO game_details (dat_id, game_id, provider, boxart_url) VALUES (?, ?, ?, ?)`,
+    );
+    insert.run('d', 'hit', 'p', 'https://x/1.png');
+    insert.run('d', 'miss', 'p', null);
+    applyMigrations(db);
+    const rows = db.prepare(`SELECT game_id FROM game_details`).all() as Array<{
+      game_id: string;
+    }>;
+    expect(rows.map((row) => row.game_id)).toEqual(['hit']);
   });
 });

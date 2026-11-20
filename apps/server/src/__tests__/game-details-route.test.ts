@@ -76,7 +76,8 @@ describe('POST /api/dats/:id/games/details', () => {
     const byId = new Map(details.map((d) => [d.gameId, d.hasBoxart]));
     expect(byId.get(gameIds[0] ?? '')).toBe(true);
     expect(byId.get(gameIds[1] ?? '')).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Tetris found at once; the homebrew asked of the provider, then its mirror.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
     // Second request for the same page: everything from SQLite, no probe.
     const again = await app.request(`/api/dats/${datId}/games/details`, {
@@ -85,7 +86,7 @@ describe('POST /api/dats/:id/games/details', () => {
       body: JSON.stringify({ gameIds }),
     });
     expect(again.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('404s on an unknown DAT', async () => {
@@ -147,6 +148,31 @@ describe('GET /api/dats/:id/games/:gameId/boxart', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('image/png');
     expect(await res.text()).toBe('PNGDATA');
+  });
+
+  it('serves the mirror copy while the provider fails', async () => {
+    const app = makeApp();
+    const { datId, gameIds } = await uploadDat(app, 'Nintendo - Game Boy Color (Retool)');
+
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === 'HEAD') return Promise.resolve(new Response(null, { status: 200 }));
+      if (url.includes('thumbnails.libretro.com')) {
+        return Promise.resolve(new Response(null, { status: 404 }));
+      }
+      return Promise.resolve(
+        new Response('MIRRORPNG', { status: 200, headers: { 'content-type': 'image/png' } }),
+      );
+    });
+
+    await app.request(`/api/dats/${datId}/games/details`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ gameIds: [gameIds[0]] }),
+    });
+
+    const res = await app.request(`/api/dats/${datId}/games/${gameIds[0]}/boxart`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('MIRRORPNG');
   });
 
   it('404s when no boxart is cached for the game', async () => {

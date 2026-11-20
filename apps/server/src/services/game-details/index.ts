@@ -1,6 +1,6 @@
 import type { DatFile } from '@shared/dat.js';
 import type { GameDetails } from '@shared/game-details.js';
-import { boxartUrl, probeBoxart } from './libretro.js';
+import { boxartUrl, findBoxart } from './libretro.js';
 import { getCachedDetails, upsertDetails } from './store.js';
 import { logger } from '@/lib/logger.js';
 
@@ -47,15 +47,15 @@ export async function getOrFetchDetails(
       const game = byId.get(gameId);
       if (!game) return { gameId, provider: PROVIDER, boxartUrl: null };
       const url = boxartUrl(dat.system, game.name);
-      let found = false;
+      let found: string | null = null;
       try {
-        found = await probeBoxart(url);
+        found = await findBoxart(url);
       } catch (err) {
         // Network failure ≠ "no boxart": don't negatively cache it.
         logger.warn({ gameId, url, err: String(err) }, 'boxart probe failed');
         return null;
       }
-      return { gameId, provider: PROVIDER, boxartUrl: found ? url : null };
+      return { gameId, provider: PROVIDER, boxartUrl: found };
     });
 
     const fresh = probed.filter((p) => p !== null);

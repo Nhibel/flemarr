@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { gameDetailsRequestSchema } from '@shared/game-details.js';
 import { getDat } from '@/services/dat/index.js';
 import { getOrFetchDetails, cachedBoxartUrl } from '@/services/game-details/index.js';
+import { fetchBoxart } from '@/services/game-details/libretro.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
 export const gameDetailsRoute = new Hono();
@@ -35,7 +36,7 @@ gameDetailsRoute.get('/dats/:id/games/:gameId/boxart', async (c) => {
 
   let upstream: Response;
   try {
-    upstream = await fetch(url);
+    upstream = await fetchBoxart(url);
   } catch (err) {
     return errorJson(c, 502, 'PROVIDER_ERROR', errorMessage(err, 'Boxart fetch failed'));
   }
