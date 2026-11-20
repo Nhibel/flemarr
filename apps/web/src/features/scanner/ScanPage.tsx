@@ -55,15 +55,19 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
       if (!parsed.success) return;
       const event: ScanEvent = parsed.data;
 
-      if (event.type === 'progress') {
-        setScan({ phase: 'scanning', scanned: event.scanned, total: event.total });
-      } else if (event.type === 'done') {
-        setScan({ phase: 'done', result: event.result, directory });
-        onScanComplete?.(event.result);
-        es.close();
-      } else if (event.type === 'error') {
-        setScan({ phase: 'error', message: event.message });
-        es.close();
+      switch (event.type) {
+        case 'progress':
+          setScan({ phase: 'scanning', scanned: event.scanned, total: event.total });
+          break;
+        case 'done':
+          setScan({ phase: 'done', result: event.result, directory });
+          onScanComplete?.(event.result);
+          es.close();
+          break;
+        case 'error':
+          setScan({ phase: 'error', message: event.message });
+          es.close();
+          break;
       }
     };
 

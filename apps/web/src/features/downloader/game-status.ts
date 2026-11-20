@@ -172,16 +172,27 @@ export function summarizeJob(games: GameStatus[]): JobSummary {
   let remaining = 0;
   let remainingKnown = true;
 
-  for (const g of games) {
-    if (g.kind === 'done') done += 1;
-    else if (g.kind === 'failed') failed += 1;
-    else if (g.kind === 'queued') queued += 1;
-    else running += 1;
-
-    if (g.kind !== 'done' && g.kind !== 'failed') {
-      if (g.totalBytes < 0) remainingKnown = false;
-      else remaining += Math.max(0, g.totalBytes - g.bytesDownloaded);
+  for (const game of games) {
+    switch (game.kind) {
+      case 'done':
+        done += 1;
+        continue;
+      case 'failed':
+        failed += 1;
+        continue;
+      case 'queued':
+        queued += 1;
+        break;
+      case 'downloading':
+      case 'extracting':
+      case 'converting':
+        running += 1;
+        break;
     }
+
+    // Only games still in flight have bytes left to fetch.
+    if (game.totalBytes < 0) remainingKnown = false;
+    else remaining += Math.max(0, game.totalBytes - game.bytesDownloaded);
   }
 
   return {
