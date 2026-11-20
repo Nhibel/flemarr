@@ -183,6 +183,45 @@ describe('DELETE /api/archive/sources/:identifier', () => {
   });
 });
 
+describe('PATCH /api/archive/sources/:identifier', () => {
+  const SNES = 'Nintendo - Super Nintendo Entertainment System';
+  const patch = async (identifier: string, body: unknown): Promise<Response> =>
+    app.request(`/api/archive/sources/${identifier}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+  it('switches a source off, and the list says so', async () => {
+    await app.request('/api/archive/sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: SNES,
+        source: { identifier: 'switch-me', layout: 'direct', note: '' },
+      }),
+    });
+
+    const res = await patch('switch-me', { system: SNES, searched: false });
+    expect(res.status).toBe(200);
+
+    const list = (await (
+      await app.request(`/api/archive/sources?system=${encodeURIComponent(SNES)}`)
+    ).json()) as { sources: { identifier: string; searched: boolean }[] };
+    expect(list.sources.find((source) => source.identifier === 'switch-me')?.searched).toBe(false);
+  });
+
+  it('returns 404 for a source not configured for that system', async () => {
+    const res = await patch('nonexistent', { system: SNES, searched: false });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 without a system or a state', async () => {
+    expect((await patch('switch-me', { searched: false })).status).toBe(400);
+    expect((await patch('switch-me', { system: SNES })).status).toBe(400);
+  });
+});
+
 describe('POST /api/archive/index', () => {
   it('returns 400 for missing identifier', async () => {
     const res = await app.request('/api/archive/index', {

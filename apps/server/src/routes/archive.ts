@@ -3,6 +3,7 @@ import {
   addSourceRequestSchema,
   indexRequestSchema,
   resolveRequestSchema,
+  setSourceSearchedRequestSchema,
   suggestRequestSchema,
   archiveLoginRequestSchema,
 } from '@shared/archive.js';
@@ -12,6 +13,7 @@ import {
   getAllSystems,
   addSource,
   removeSource,
+  setSourceSearched,
 } from '@/services/archive-org/sources.js';
 import { getIndex } from '@/services/archive-org/metadata.js';
 import { detectLayout } from '@/services/archive-org/layout.js';
@@ -45,6 +47,20 @@ archiveRoute.post('/archive/sources', async (c) => {
   // Cached resolve results are stale as soon as the source list changes
   clearResolverCache();
   return c.json({ ok: true }, 201);
+});
+
+// Switch a source on or off for resolves. No resolver cache to clear: its
+// results are keyed by the set of sources searched.
+archiveRoute.patch('/archive/sources/:identifier', async (c) => {
+  const identifier = c.req.param('identifier');
+  const body = await parseJsonBody(c, setSourceSearchedRequestSchema);
+  if (!body.ok) return body.response;
+
+  const updated = setSourceSearched(identifier, body.data.system, body.data.searched);
+  if (!updated) {
+    return errorJson(c, 404, 'NOT_FOUND', `Source ${identifier} not found for ${body.data.system}`);
+  }
+  return c.json({ ok: true });
 });
 
 // Remove a source. An identifier can be registered for several systems
@@ -149,11 +165,6 @@ archiveRoute.post('/archive/resolve', async (c) => {
     return errorJson(c, 404, 'NOT_FOUND', `DAT ${body.data.datId} not found`);
   }
 
-  const results = await resolveGames(
-    dat,
-    body.data.datId,
-    body.data.gameIds,
-    body.data.sourceIdentifiers,
-  );
+  const results = await resolveGames(dat, body.data.datId, body.data.gameIds);
   return c.json({ results });
 });

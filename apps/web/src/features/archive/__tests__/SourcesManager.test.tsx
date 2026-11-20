@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ComponentProps } from 'react';
 import { SourcesManager } from '../SourcesManager.js';
 import * as api from '@/lib/api.js';
 
@@ -10,13 +9,13 @@ vi.mock('@/lib/api.js');
 
 const SYSTEM = 'Nintendo - Super Nintendo Entertainment System';
 
-function renderManager(picking: Partial<ComponentProps<typeof SourcesManager>> = {}) {
+function renderManager() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
-      <SourcesManager datId="dat1" system={SYSTEM} source="no-intro" {...picking} />
+      <SourcesManager datId="dat1" system={SYSTEM} source="no-intro" />
     </QueryClientProvider>,
   );
 }
@@ -25,7 +24,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.fetchSources).mockResolvedValue({
     system: SYSTEM,
-    sources: [{ identifier: 'ni-roms', layout: 'zip-collection', note: 'No-Intro full sets' }],
+    sources: [
+      {
+        identifier: 'ni-roms',
+        layout: 'zip-collection',
+        note: 'No-Intro full sets',
+        searched: true,
+      },
+    ],
   });
 });
 
@@ -105,7 +111,14 @@ describe('SourcesManager — suggestions', () => {
 
     vi.mocked(api.fetchSources).mockResolvedValue({
       system: SYSTEM,
-      sources: [{ identifier: 'ni-roms', layout: 'zip-collection', note: 'No-Intro full sets' }],
+      sources: [
+        {
+          identifier: 'ni-roms',
+          layout: 'zip-collection',
+          note: 'No-Intro full sets',
+          searched: true,
+        },
+      ],
     });
     await userEvent.click(adopt);
 
@@ -123,40 +136,52 @@ describe('SourcesManager — suggestions', () => {
   });
 });
 
-describe('SourcesManager — picking the sources to search', () => {
+describe('SourcesManager — switching sources on and off', () => {
+  const NI = { identifier: 'ni-roms', layout: 'zip-collection' as const, note: '', searched: true };
+  const SET = { identifier: 'snes-set', layout: 'direct' as const, note: '', searched: true };
+
   beforeEach(() => {
+    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [NI, SET] });
+    vi.mocked(api.setSourceSearched).mockResolvedValue(undefined);
+  });
+
+  it('shows every source as stored, and says what will be searched', async () => {
     vi.mocked(api.fetchSources).mockResolvedValue({
       system: SYSTEM,
-      sources: [
-        { identifier: 'ni-roms', layout: 'zip-collection', note: '' },
-        { identifier: 'snes-set', layout: 'direct', note: '' },
-      ],
+      sources: [NI, { ...SET, searched: false }],
     });
-  });
-
-  it('offers a checkbox per source, and says everything is searched by default', async () => {
-    renderManager({ onTogglePicked: () => {} });
-    expect(
-      await screen.findByRole('checkbox', { name: 'Chercher dans ni-roms' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/toutes les sources/)).toBeInTheDocument();
-  });
-
-  it('reports the toggled source and counts the ticked ones', async () => {
-    const onTogglePicked = vi.fn();
-    renderManager({ onTogglePicked, pickedSources: new Set(['snes-set']) });
-    await userEvent.click(await screen.findByRole('checkbox', { name: 'Chercher dans ni-roms' }));
-    expect(onTogglePicked).toHaveBeenCalledWith('ni-roms');
+    renderManager();
+    expect(await screen.findByRole('switch', { name: 'Chercher dans ni-roms' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByRole('switch', { name: 'Chercher dans snes-set' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
     expect(screen.getByText('La recherche portera sur 1 source sur 2.')).toBeInTheDocument();
   });
 
+  it('stores the new state and refreshes the list', async () => {
+    renderManager();
+    await userEvent.click(await screen.findByRole('switch', { name: 'Chercher dans ni-roms' }));
+    await waitFor(() =>
+      expect(api.setSourceSearched).toHaveBeenCalledWith('ni-roms', SYSTEM, false),
+    );
+    await waitFor(() => expect(api.fetchSources).toHaveBeenCalledTimes(2));
+  });
+
+  it('says everything is searched while all are on', async () => {
+    renderManager();
+    expect(
+      await screen.findByText('La recherche portera sur toutes les sources.'),
+    ).toBeInTheDocument();
+  });
+
   it('offers no choice with a single source', async () => {
-    vi.mocked(api.fetchSources).mockResolvedValue({
-      system: SYSTEM,
-      sources: [{ identifier: 'ni-roms', layout: 'zip-collection', note: '' }],
-    });
-    renderManager({ onTogglePicked: () => {} });
+    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [NI] });
+    renderManager();
     expect(await screen.findByText('ni-roms')).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 });

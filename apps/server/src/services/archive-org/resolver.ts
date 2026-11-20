@@ -1,5 +1,10 @@
 import type { DatFile } from '@shared/dat.js';
-import type { ArchiveSource, ResolvedGame, ResolvedSource } from '@shared/archive.js';
+import type {
+  ArchiveSource,
+  ConfiguredSource,
+  ResolvedGame,
+  ResolvedSource,
+} from '@shared/archive.js';
 import { getSources } from './sources.js';
 import { getItemInfo, resolveDownloadUrl, resolveZipViewUrl } from './metadata.js';
 import type { ArchiveItemInfo } from './metadata.js';
@@ -439,17 +444,16 @@ function hasSearchableRom(dat: DatFile, gameId: string): boolean {
 }
 
 /**
- * The system's sources to search: all of them, or only the requested ones
- * that are still configured (in configured order). `scope` names that
- * choice for the result cache.
+ * The system's sources a resolve looks in: the ones switched on, in
+ * configured order. `scope` names that set for the result cache ('*' when
+ * every source is on).
  */
-export function selectSources(
-  configured: ArchiveSource[],
-  requested: string[] = [],
-): { sources: ArchiveSource[]; scope: string } {
-  if (requested.length === 0) return { sources: configured, scope: '*' };
-  const wanted = new Set(requested);
-  const sources = configured.filter((source) => wanted.has(source.identifier));
+export function selectSources(configured: ConfiguredSource[]): {
+  sources: ConfiguredSource[];
+  scope: string;
+} {
+  const sources = configured.filter((source) => source.searched);
+  if (sources.length === configured.length) return { sources, scope: '*' };
   const scope = sources
     .map((source) => source.identifier)
     .sort()
@@ -461,9 +465,8 @@ export async function resolveGames(
   dat: DatFile,
   datId: string,
   gameIds: string[],
-  sourceIdentifiers: string[] = [],
 ): Promise<ResolvedGame[]> {
-  const { sources, scope } = selectSources(getSources(dat.system), sourceIdentifiers);
+  const { sources, scope } = selectSources(getSources(dat.system));
   const results: ResolvedGame[] = [];
   let prefetched = false;
 

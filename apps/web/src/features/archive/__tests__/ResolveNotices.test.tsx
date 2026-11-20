@@ -28,6 +28,11 @@ describe('ResolveNotices', () => {
     expect(screen.queryByText(/sélectionne des jeux/i)).not.toBeInTheDocument();
   });
 
+  it('says to switch a source back on when all are off', () => {
+    renderNotices({ hasNoActiveSource: true });
+    expect(screen.getByText(/toutes les sources sont désactivées/i)).toBeInTheDocument();
+  });
+
   it('asks for a selection once sources exist', () => {
     renderNotices({ selectedCount: 0, toResolveCount: 0 });
     expect(screen.getByText(/sélectionne des jeux/i)).toBeInTheDocument();

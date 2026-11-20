@@ -6,6 +6,7 @@ import { css } from '@/styled-system/css';
  */
 export function ResolveNotices({
   hasSources,
+  hasNoActiveSource = false,
   selectedCount,
   toResolveCount,
   hasNoFolder,
@@ -13,6 +14,8 @@ export function ResolveNotices({
   error,
 }: {
   hasSources: boolean;
+  /** Sources exist but every one is switched off. */
+  hasNoActiveSource?: boolean;
   /** Games selected in the Jeux tab. */
   selectedCount: number;
   /** Games that would be resolved — the selection minus owned games when excluded. */
@@ -30,6 +33,12 @@ export function ResolveNotices({
       {!hasSources && (
         <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
           Ajoute au moins une source ci-dessus avant de lancer la résolution.
+        </p>
+      )}
+
+      {hasNoActiveSource && (
+        <p className={css({ fontSize: 'sm', color: 'status.warning.text' })}>
+          Toutes les sources sont désactivées : active « Chercher ici » sur au moins une.
         </p>
       )}
 

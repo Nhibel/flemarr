@@ -5,12 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { SettingsResponse } from '@shared/settings.js';
 import * as api from '@/lib/api.js';
 import { useResolvePanel } from '../use-resolve-panel.js';
-import { queryKeys } from '@/lib/query-keys.js';
 
 vi.mock('@/lib/api.js');
 
 const SYSTEM = 'Sony - PlayStation';
-const SOURCE = { identifier: 'psx', layout: 'direct' as const, note: '' };
+const SOURCE = { identifier: 'psx', layout: 'direct' as const, note: '', searched: true };
 
 function resolvedSource(identifier: string) {
   return {
@@ -56,7 +55,6 @@ function settings(over: Partial<SettingsResponse> = {}): SettingsResponse {
 function renderPanelHook({
   selectedGameIds = ['g1', 'g2'],
   missingGameIds = null as string[] | null,
-  pickedSources = new Set<string>() as ReadonlySet<string>,
 } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -71,7 +69,6 @@ function renderPanelHook({
         selectedGameIds,
         missingGameIds,
         onQueueDownload,
-        pickedSources,
       }),
     { wrapper },
   );
@@ -114,33 +111,39 @@ describe('useResolvePanel — which games to resolve', () => {
   });
 });
 
-describe('useResolvePanel — source filter', () => {
-  beforeEach(() => {
-    vi.mocked(api.fetchSources).mockResolvedValue({
-      system: SYSTEM,
-      sources: [SOURCE, { identifier: 'psx-alt', layout: 'direct', note: '' }],
-    });
-  });
+describe('useResolvePanel — sources switched off', () => {
+  const ALT = { identifier: 'psx-alt', layout: 'direct' as const, note: '', searched: true };
 
-  it('searches every source while none is ticked', async () => {
+  // The server applies the switches itself: the request names no source.
+  it('leaves the choice of sources to the server', async () => {
+    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [SOURCE, ALT] });
     const { result } = await renderBrowserReady();
     await act(() => result.current.resolve());
-    expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2'], []);
+    expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2']);
   });
 
-  it('searches only the ticked sources', async () => {
-    const { result } = await renderBrowserReady({ pickedSources: new Set(['psx-alt']) });
+  it('still resolves with one source on', async () => {
+    vi.mocked(api.fetchSources).mockResolvedValue({
+      system: SYSTEM,
+      sources: [SOURCE, { ...ALT, searched: false }],
+    });
+    const { result } = await renderBrowserReady();
+    expect(result.current.hasNoActiveSource).toBe(false);
+  });
+
+  it('refuses to resolve with every source off', async () => {
+    vi.mocked(api.fetchSources).mockResolvedValue({
+      system: SYSTEM,
+      sources: [
+        { ...SOURCE, searched: false },
+        { ...ALT, searched: false },
+      ],
+    });
+    const { result } = renderPanelHook();
+    await waitFor(() => expect(result.current.hasNoActiveSource).toBe(true));
+    expect(result.current.canResolve).toBe(false);
     await act(() => result.current.resolve());
-    expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2'], ['psx-alt']);
-  });
-
-  it('forgets a ticked source once it is removed from the configuration', async () => {
-    const { result, client } = await renderBrowserReady({ pickedSources: new Set(['psx-alt']) });
-    expect(result.current.searchedSources).toEqual(['psx-alt']);
-
-    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [SOURCE] });
-    await act(() => client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) }));
-    await waitFor(() => expect(result.current.searchedSources).toEqual([]));
+    expect(api.resolveGames).not.toHaveBeenCalled();
   });
 });
 

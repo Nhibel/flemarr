@@ -4,7 +4,7 @@ import {
   clearResolverCache,
   selectSources,
 } from '../services/archive-org/resolver.js';
-import { addSource, removeSource } from '../services/archive-org/sources.js';
+import { addSource, removeSource, setSourceSearched } from '../services/archive-org/sources.js';
 import type { DatFile } from '@shared/dat.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
@@ -876,33 +876,38 @@ describe('resolveGames — multi-disc games', () => {
   });
 });
 
-describe('resolveGames — source filter', () => {
+describe('resolveGames — sources switched off', () => {
   const SNES = 'Nintendo - Super Nintendo Entertainment System';
 
   beforeEach(() => {
     addSource(SNES, { identifier: 'direct-snes', layout: 'direct', note: '' });
     addSource(SNES, { identifier: 'zip-snes', layout: 'direct', note: '' });
+    setSourceSearched('direct-snes', SNES, true);
+    setSourceSearched('zip-snes', SNES, true);
     vi.mocked(getIndex).mockResolvedValue(DIRECT_FILES);
   });
 
-  it('searches every source when none is picked', async () => {
+  it('searches every source while all are on', async () => {
     await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     const queried = vi.mocked(getItemInfo).mock.calls.map(([id]) => id);
     expect(new Set(queried)).toEqual(new Set(['direct-snes', 'zip-snes']));
   });
 
-  it('searches only the picked sources', async () => {
-    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw'], ['zip-snes']);
+  it('skips a switched-off source', async () => {
+    setSourceSearched('direct-snes', SNES, false);
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
     const queried = vi.mocked(getItemInfo).mock.calls.map(([id]) => id);
     expect(new Set(queried)).toEqual(new Set(['zip-snes']));
-    expect(results[0]?.roms[0]?.sources.map((s) => s.identifier)).toEqual(['zip-snes']);
+    expect(results[0]?.roms[0]?.sources.map((source) => source.identifier)).toEqual(['zip-snes']);
   });
 
-  // A run limited to one source must not be served to a run over all.
-  it('keeps a filtered run out of the cache of an unfiltered one', async () => {
-    await resolveGames(FIXTURE_DAT, 'dat1', ['smw'], ['zip-snes']);
+  // A run over one source must not be served to a run over all of them.
+  it('keeps a narrowed run out of the cache of a full one', async () => {
+    setSourceSearched('direct-snes', SNES, false);
+    await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    setSourceSearched('direct-snes', SNES, true);
     const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(results[0]?.roms[0]?.sources.map((s) => s.identifier)).toEqual([
+    expect(results[0]?.roms[0]?.sources.map((source) => source.identifier)).toEqual([
       'direct-snes',
       'zip-snes',
     ]);
@@ -910,24 +915,27 @@ describe('resolveGames — source filter', () => {
 });
 
 describe('selectSources', () => {
-  const configured = [
-    { identifier: 'b', layout: 'direct' as const, note: '' },
-    { identifier: 'a', layout: 'direct' as const, note: '' },
-  ];
+  const on = (identifier: string) => ({
+    identifier,
+    layout: 'direct' as const,
+    note: '',
+    searched: true,
+  });
 
-  it('keeps every source, in configured order, when nothing is requested', () => {
+  it('keeps every source, in configured order, while all are on', () => {
+    const configured = [on('b'), on('a')];
     expect(selectSources(configured)).toEqual({ sources: configured, scope: '*' });
   });
 
-  it('drops requested sources that are no longer configured', () => {
-    expect(selectSources(configured, ['a', 'gone']).sources.map((s) => s.identifier)).toEqual([
-      'a',
-    ]);
+  it('leaves out the switched-off ones', () => {
+    const configured = [on('b'), { ...on('a'), searched: false }];
+    expect(selectSources(configured).sources.map((source) => source.identifier)).toEqual(['b']);
   });
 
-  it('names the same choice the same way, whatever the request order', () => {
-    expect(selectSources(configured, ['a', 'b']).scope).toBe(
-      selectSources(configured, ['b', 'a']).scope,
+  it('names the same set the same way, whatever the configured order', () => {
+    const off = { ...on('c'), searched: false };
+    expect(selectSources([on('a'), on('b'), off]).scope).toBe(
+      selectSources([on('b'), on('a'), off]).scope,
     );
   });
 });

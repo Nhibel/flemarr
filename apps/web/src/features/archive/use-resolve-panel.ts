@@ -17,11 +17,7 @@ interface ResolvePanelInput {
   selectedGameIds: string[];
   missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
-  /** Sources ticked in the source list; none ticked means every source. */
-  pickedSources?: ReadonlySet<string>;
 }
-
-const NO_PICKED_SOURCES: ReadonlySet<string> = new Set();
 
 /**
  * State and actions of ResolvePanel: which games to resolve, the resolve
@@ -34,7 +30,6 @@ export function useResolvePanel({
   selectedGameIds,
   missingGameIds,
   onQueueDownload,
-  pickedSources = NO_PICKED_SOURCES,
 }: ResolvePanelInput) {
   // Stored with the source list it was resolved against: the server drops its
   // resolver cache when sources change, but these results are client state and
@@ -70,33 +65,41 @@ export function useResolvePanel({
 
   const sources = sourcesData?.sources ?? [];
   const sourceKey = sourceKeyOf(sources);
-  // A source removed from the configuration stops counting as ticked.
-  const searchedSources = sources
-    .map((source) => source.identifier)
-    .filter((identifier) => pickedSources.has(identifier));
+  // Switched on in the source list; the server searches only these.
+  const activeSourceCount = sources.filter((source) => source.searched).length;
   const result = resolved?.result ?? null;
   const summary: ResolveSummary | null = result ? summarizeResolve(result) : null;
   const isServerTarget = downloadTarget === 'server';
   const effectiveGameIds = gamesToResolve(selectedGameIds, missingGameIds, excludeOwned);
-  const { hasSources, isStale, lacksServerFolder, hasNoFolder, canResolve, canDownload } =
-    resolvePanelFlags({
-      sourceCount: sources.length,
-      resolvedSourceKey: resolved?.sourceKey ?? null,
-      currentSourceKey: sourceKey,
-      downloadTarget,
-      destinationDir,
-      settingsLoaded,
-      toResolveCount: effectiveGameIds.length,
-      resolving,
-      queuing,
-    });
+  const {
+    hasSources,
+    hasNoActiveSource,
+    isStale,
+    lacksServerFolder,
+    hasNoFolder,
+    canResolve,
+    canDownload,
+  } = resolvePanelFlags({
+    sourceCount: sources.length,
+    activeSourceCount,
+    resolvedSourceKey: resolved?.sourceKey ?? null,
+    currentSourceKey: sourceKey,
+    downloadTarget,
+    destinationDir,
+    settingsLoaded,
+    toResolveCount: effectiveGameIds.length,
+    resolving,
+    queuing,
+  });
 
   const resolve = useCallback(async () => {
     if (effectiveGameIds.length === 0) return;
+    // Every source switched off: nothing would be searched.
+    if (hasNoActiveSource) return;
     setResolving(true);
     setError(null);
     try {
-      const response = await resolveGames(datId, effectiveGameIds, searchedSources);
+      const response = await resolveGames(datId, effectiveGameIds);
       setResolved({ result: response, sourceKey });
       // A fresh resolve invalidates any earlier per-rom source choice — the
       // set of matching sources (and their order) may have changed.
@@ -106,7 +109,7 @@ export function useResolvePanel({
     } finally {
       setResolving(false);
     }
-  }, [datId, effectiveGameIds, searchedSources, sourceKey]);
+  }, [datId, effectiveGameIds, hasNoActiveSource, sourceKey]);
 
   const download = useCallback(async () => {
     if (isStale || lacksServerFolder || result === null) return;
@@ -152,6 +155,7 @@ export function useResolvePanel({
     excludeOwned,
     setExcludeOwned,
     hasSources,
+    hasNoActiveSource,
     hasNoFolder,
     isStale,
     result,
@@ -165,6 +169,5 @@ export function useResolvePanel({
     download,
     selectedSourceIndex,
     selectSource,
-    searchedSources,
   };
 }

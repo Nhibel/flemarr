@@ -4,6 +4,7 @@ import type { ResolvePanelFlagsInput } from '../resolve-panel-flags.js';
 
 const READY: ResolvePanelFlagsInput = {
   sourceCount: 1,
+  activeSourceCount: 1,
   resolvedSourceKey: 'a:direct',
   currentSourceKey: 'a:direct',
   downloadTarget: 'server',
@@ -49,6 +50,13 @@ describe('resolvePanelFlags', () => {
     expect(flags({ downloadTarget: 'browser', destinationDir: '' })).toMatchObject({
       canDownload: true,
       hasNoFolder: false,
+    });
+  });
+
+  it('cannot resolve with every source switched off', () => {
+    expect(flags({ activeSourceCount: 0 })).toMatchObject({
+      hasNoActiveSource: true,
+      canResolve: false,
     });
   });
 

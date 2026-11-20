@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
-import { fetchSources, addSource, deleteSource, suggestSources } from '@/lib/api.js';
+import {
+  fetchSources,
+  addSource,
+  deleteSource,
+  setSourceSearched,
+  suggestSources,
+} from '@/lib/api.js';
 import type { SuggestResponse } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import type { DatSource } from './SourcesPanel.js';
@@ -11,21 +17,14 @@ import { AddSourceForm } from './AddSourceForm.js';
 import { Button } from '@/components/Button.js';
 import { searchScopeLabel } from './search-scope-label.js';
 
-const NO_PICKED_SOURCES: ReadonlySet<string> = new Set();
-
 export function SourcesManager({
   datId,
   system,
   source,
-  pickedSources = NO_PICKED_SOURCES,
-  onTogglePicked,
 }: {
   datId: string;
   system: string;
   source: DatSource;
-  /** Sources a resolve will search; none = every source. */
-  pickedSources?: ReadonlySet<string>;
-  onTogglePicked?: (identifier: string) => void;
 }) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -41,6 +40,15 @@ export function SourcesManager({
   // One shared mutation, but the row it is acting on is identified by
   // `variables`, so only that row shows a pending state or an error — a
   // failed delete used to disappear entirely (no onError, no feedback).
+  // Stored on the source, so the choice outlives the session; the list
+  // refetches and the switch shows what the server now holds.
+  const toggleSearched = useMutation({
+    mutationFn: ({ identifier, searched }: { identifier: string; searched: boolean }) =>
+      setSourceSearched(identifier, system, searched),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) }),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (identifier: string) => deleteSource(identifier, system),
     onSuccess: () =>
@@ -78,8 +86,8 @@ export function SourcesManager({
   // once the last suggestion was taken.
   const configured = new Set(sources.map((src) => src.identifier));
   // A single source leaves nothing to choose between.
-  const canPick = onTogglePicked !== undefined && sources.length > 1;
-  const pickedCount = sources.filter((src) => pickedSources.has(src.identifier)).length;
+  const canPick = sources.length > 1;
+  const activeCount = sources.filter((src) => src.searched).length;
 
   return (
     <section>
@@ -174,13 +182,17 @@ export function SourcesManager({
               onRemove={() => removeMutation.mutate(s.identifier)}
               removing={removeMutation.isPending && removeMutation.variables === s.identifier}
               removeError={removeErrorFor(s.identifier)}
-              picked={pickedSources.has(s.identifier)}
-              onTogglePicked={canPick ? () => onTogglePicked(s.identifier) : undefined}
+              searched={s.searched}
+              onToggleSearched={
+                canPick
+                  ? () => toggleSearched.mutate({ identifier: s.identifier, searched: !s.searched })
+                  : undefined
+              }
             />
           ))}
           {canPick && (
             <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '1' })}>
-              {searchScopeLabel(pickedCount, sources.length)}
+              {searchScopeLabel(activeCount, sources.length)}
             </p>
           )}
         </div>

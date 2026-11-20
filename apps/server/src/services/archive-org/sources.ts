@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import type { ArchiveSource } from '@shared/archive.js';
+import type { ArchiveSource, ConfiguredSource } from '@shared/archive.js';
 import { getDb } from '@/lib/db.js';
 
 interface SourceRow {
@@ -7,17 +7,19 @@ interface SourceRow {
   system: string;
   layout: string;
   note: string;
+  searched: number;
 }
 
-function rowToSource(row: SourceRow): ArchiveSource {
+function rowToSource(row: SourceRow): ConfiguredSource {
   return {
     identifier: row.identifier,
     layout: row.layout as ArchiveSource['layout'],
     note: row.note,
+    searched: row.searched === 1,
   };
 }
 
-export function getSources(system: string, db: Database = getDb()): ArchiveSource[] {
+export function getSources(system: string, db: Database = getDb()): ConfiguredSource[] {
   const rows = db
     .prepare(`SELECT * FROM archive_sources WHERE system = ? ORDER BY identifier`)
     .all(system) as SourceRow[];
@@ -42,6 +44,19 @@ export function addSource(system: string, source: ArchiveSource, db: Database = 
        layout = excluded.layout,
        note = CASE WHEN excluded.note <> '' THEN excluded.note ELSE archive_sources.note END`,
   ).run(source.identifier, system, source.layout, source.note);
+}
+
+/** Switches a source on or off for resolves. False when the pair isn't configured. */
+export function setSourceSearched(
+  identifier: string,
+  system: string,
+  searched: boolean,
+  db: Database = getDb(),
+): boolean {
+  const result = db
+    .prepare(`UPDATE archive_sources SET searched = ? WHERE identifier = ? AND system = ?`)
+    .run(searched ? 1 : 0, identifier, system);
+  return result.changes > 0;
 }
 
 export function removeSource(identifier: string, system: string, db: Database = getDb()): boolean {

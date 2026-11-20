@@ -125,6 +125,20 @@ export async function addSource(system: string, source: ArchiveSource): Promise<
 }
 
 // The system scopes the deletion: one identifier can serve several systems.
+/** Switches a source on or off for resolves; the choice is stored server-side. */
+export async function setSourceSearched(
+  identifier: string,
+  system: string,
+  searched: boolean,
+): Promise<void> {
+  const res = await fetch(`/api/archive/sources/${encodeURIComponent(identifier)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, searched }),
+  });
+  await ensureOk(res);
+}
+
 export async function deleteSource(identifier: string, system: string): Promise<void> {
   const res = await fetch(
     `/api/archive/sources/${encodeURIComponent(identifier)}?system=${encodeURIComponent(system)}`,
@@ -165,16 +179,12 @@ export async function suggestSources(datId: string): Promise<SuggestResponse> {
   return parseResponse(res, suggestResponseSchema);
 }
 
-/** `sourceIdentifiers` empty = every source of the system. */
-export async function resolveGames(
-  datId: string,
-  gameIds: string[],
-  sourceIdentifiers: string[] = [],
-): Promise<ResolveResponse> {
+/** Searches the system's sources that are switched on. */
+export async function resolveGames(datId: string, gameIds: string[]): Promise<ResolveResponse> {
   const res = await fetch('/api/archive/resolve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ datId, gameIds, sourceIdentifiers }),
+    body: JSON.stringify({ datId, gameIds }),
   });
   return parseResponse(res, resolveResponseSchema);
 }

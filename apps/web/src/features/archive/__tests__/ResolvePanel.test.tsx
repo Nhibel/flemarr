@@ -9,7 +9,12 @@ import { queryKeys } from '@/lib/query-keys.js';
 vi.mock('@/lib/api.js');
 
 const SYSTEM = 'Nintendo - Super Nintendo Entertainment System';
-const SOURCE = { identifier: 'ni-roms', layout: 'zip-collection' as const, note: '' };
+const SOURCE = {
+  identifier: 'ni-roms',
+  layout: 'zip-collection' as const,
+  note: '',
+  searched: true,
+};
 
 const RESOLVED: api.ResolveResponse = {
   results: [
@@ -49,7 +54,6 @@ function renderPanel(onQueueDownload = vi.fn()) {
         selectedGameIds={['smw']}
         missingGameIds={null}
         onQueueDownload={onQueueDownload}
-        pickedSources={new Set()}
       />
     </QueryClientProvider>,
   );

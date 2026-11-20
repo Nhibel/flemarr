@@ -5,6 +5,7 @@ import type { ArchiveSource } from '@/lib/api.js';
 import { LayoutBadge } from './LayoutBadge.js';
 import { Button } from '@/components/Button.js';
 import { Card } from '@/components/Card.js';
+import { Switch } from '@/components/Switch.js';
 import { plural } from '@/lib/plural.js';
 
 export function SourceRow({
@@ -12,8 +13,8 @@ export function SourceRow({
   onRemove,
   removing = false,
   removeError = null,
-  picked = false,
-  onTogglePicked,
+  searched = true,
+  onToggleSearched,
 }: {
   source: ArchiveSource;
   onRemove: () => void;
@@ -21,10 +22,10 @@ export function SourceRow({
   removing?: boolean;
   /** Why the last delete of this source failed, if it did. */
   removeError?: string | null;
-  /** Ticked for the next resolve. */
-  picked?: boolean;
-  /** Absent: no checkbox (a single source leaves nothing to choose). */
-  onTogglePicked?: () => void;
+  /** Searched by the next resolve. */
+  searched?: boolean;
+  /** Absent: no switch (a single source leaves nothing to choose). */
+  onToggleSearched?: () => void;
 }) {
   const [preview, setPreview] = useState<{ fileCount: number } | null>(null);
   const [testing, setTesting] = useState(false);
@@ -45,15 +46,6 @@ export function SourceRow({
 
   return (
     <Card className={css({ display: 'flex', alignItems: 'flex-start', gap: '3', p: '3' })}>
-      {onTogglePicked && (
-        <input
-          type="checkbox"
-          checked={picked}
-          onChange={onTogglePicked}
-          aria-label={`Chercher dans ${source.identifier}`}
-          className={css({ mt: '1', flexShrink: 0 })}
-        />
-      )}
       <div className={css({ flex: 1, minW: 0 })}>
         <div className={css({ display: 'flex', alignItems: 'center', gap: '2', mb: '0.5' })}>
           <span
@@ -86,7 +78,16 @@ export function SourceRow({
           </p>
         )}
       </div>
-      <div className={css({ display: 'flex', gap: '2', flexShrink: 0 })}>
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '2', flexShrink: 0 })}>
+        {onToggleSearched && (
+          <Switch
+            checked={searched}
+            onChange={onToggleSearched}
+            label="Chercher ici"
+            ariaLabel={`Chercher dans ${source.identifier}`}
+            className={css({ mr: '1' })}
+          />
+        )}
         <Button variant="secondary" size="sm" onClick={() => void handleTest()} disabled={testing}>
           {testing ? '…' : 'Tester'}
         </Button>

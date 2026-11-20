@@ -42,27 +42,23 @@ describe('migration005 — (identifier, system) source key', () => {
         system: 'Nintendo - Super Nintendo Entertainment System',
         layout: 'zip-collection',
         note: 'No-Intro full sets',
+        // Added by migration006, which runs after this one.
+        searched: 1,
       },
     ]);
   });
 
   it('then accepts the same identifier for another system', () => {
     const db = legacyDb();
-    db.prepare(`INSERT INTO archive_sources VALUES (?, ?, ?, ?)`).run(
-      'ni-roms',
-      'Nintendo - Super Nintendo Entertainment System',
-      'zip-collection',
-      '',
-    );
+    db.prepare(
+      `INSERT INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+    ).run('ni-roms', 'Nintendo - Super Nintendo Entertainment System', 'zip-collection', '');
 
     applyMigrations(db);
 
-    db.prepare(`INSERT INTO archive_sources VALUES (?, ?, ?, ?)`).run(
-      'ni-roms',
-      'Nintendo - Nintendo Entertainment System',
-      'zip-collection',
-      '',
-    );
+    db.prepare(
+      `INSERT INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+    ).run('ni-roms', 'Nintendo - Nintendo Entertainment System', 'zip-collection', '');
     const count = db
       .prepare(`SELECT COUNT(*) AS n FROM archive_sources WHERE identifier = ?`)
       .get('ni-roms') as { n: number };
@@ -73,7 +69,9 @@ describe('migration005 — (identifier, system) source key', () => {
     const db = legacyDb();
     applyMigrations(db);
 
-    const insert = db.prepare(`INSERT INTO archive_sources VALUES (?, ?, ?, ?)`);
+    const insert = db.prepare(
+      `INSERT INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+    );
     insert.run('ni-roms', 'Sony - PlayStation', 'direct', '');
     expect(() => insert.run('ni-roms', 'Sony - PlayStation', 'direct', '')).toThrow();
   });
@@ -94,5 +92,17 @@ describe('migration005 — (identifier, system) source key', () => {
     const after = db.pragma('user_version', { simple: true });
     applyMigrations(db); // a second run must be a no-op, not a rebuild
     expect(db.pragma('user_version', { simple: true })).toBe(after);
+  });
+});
+
+describe('migration006 — searched flag', () => {
+  it('leaves every existing and new source searched', () => {
+    const db = new DatabaseConstructor(':memory:');
+    applyMigrations(db);
+    db.prepare(
+      `INSERT INTO archive_sources (identifier, system, layout, note) VALUES (?, ?, ?, ?)`,
+    ).run('ni-roms', 'Nintendo - Super Nintendo Entertainment System', 'zip-collection', '');
+    const row = db.prepare(`SELECT searched FROM archive_sources`).get() as { searched: number };
+    expect(row.searched).toBe(1);
   });
 });

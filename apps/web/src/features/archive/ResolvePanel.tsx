@@ -16,15 +16,12 @@ export function ResolvePanel({
   selectedGameIds,
   missingGameIds,
   onQueueDownload,
-  pickedSources,
 }: {
   datId: string;
   system: string;
   selectedGameIds: string[];
   missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
-  /** Ticked in the source list above; none = every source. */
-  pickedSources: ReadonlySet<string>;
 }) {
   const panel = useResolvePanel({
     datId,
@@ -32,7 +29,6 @@ export function ResolvePanel({
     selectedGameIds,
     missingGameIds,
     onQueueDownload,
-    pickedSources,
   });
   const romsRoot = useRomsRoot();
 
@@ -68,6 +64,7 @@ export function ResolvePanel({
 
       <ResolveNotices
         hasSources={panel.hasSources}
+        hasNoActiveSource={panel.hasNoActiveSource}
         selectedCount={selectedGameIds.length}
         toResolveCount={toResolveCount}
         hasNoFolder={panel.hasNoFolder}

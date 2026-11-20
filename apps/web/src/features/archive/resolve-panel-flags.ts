@@ -2,6 +2,8 @@ import type { DownloadTarget } from '@shared/download.js';
 
 export interface ResolvePanelFlagsInput {
   sourceCount: number;
+  /** Configured sources switched on in the source list. */
+  activeSourceCount: number;
   /** The source key the shown results were resolved against; null before any resolve. */
   resolvedSourceKey: string | null;
   currentSourceKey: string;
@@ -16,6 +18,8 @@ export interface ResolvePanelFlagsInput {
 
 export interface ResolvePanelFlags {
   hasSources: boolean;
+  /** Sources exist but every one is switched off: nothing could be searched. */
+  hasNoActiveSource: boolean;
   /** The results were resolved against a source list that has since changed. */
   isStale: boolean;
   /** A server download would be refused: no folder for this system. */
@@ -28,15 +32,17 @@ export interface ResolvePanelFlags {
 
 export function resolvePanelFlags(input: ResolvePanelFlagsInput): ResolvePanelFlags {
   const hasSources = input.sourceCount > 0;
+  const hasNoActiveSource = hasSources && input.activeSourceCount === 0;
   const isStale =
     input.resolvedSourceKey !== null && input.resolvedSourceKey !== input.currentSourceKey;
   const lacksServerFolder = input.downloadTarget === 'server' && input.destinationDir === '';
   return {
     hasSources,
+    hasNoActiveSource,
     isStale,
     lacksServerFolder,
     hasNoFolder: lacksServerFolder && input.settingsLoaded,
-    canResolve: !input.resolving && input.toResolveCount > 0 && hasSources,
+    canResolve: !input.resolving && input.toResolveCount > 0 && hasSources && !hasNoActiveSource,
     canDownload: !input.queuing && !isStale && !lacksServerFolder,
   };
 }

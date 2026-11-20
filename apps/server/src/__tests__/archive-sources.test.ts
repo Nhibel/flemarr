@@ -5,9 +5,10 @@ import {
   getAllSystems,
   addSource,
   removeSource,
+  setSourceSearched,
 } from '../services/archive-org/sources.js';
 import type { Database } from 'better-sqlite3';
-import type { ArchiveSource } from '@shared/archive.js';
+import type { ArchiveSource, ConfiguredSource } from '@shared/archive.js';
 
 const SNES = 'Nintendo - Super Nintendo Entertainment System';
 const PS1 = 'Sony - PlayStation';
@@ -26,10 +27,15 @@ beforeEach(() => {
   db = createDb(':memory:');
 });
 
+/** A source as getSources returns it: searched unless switched off. */
+function stored(source: ArchiveSource): ConfiguredSource {
+  return { ...source, searched: true };
+}
+
 describe('addSource / getSources', () => {
   it('stores a source and retrieves it by system', () => {
     addSource(SNES, SRC_A, db);
-    expect(getSources(SNES, db)).toEqual([SRC_A]);
+    expect(getSources(SNES, db)).toEqual([stored(SRC_A)]);
   });
 
   it('adding the same pair twice keeps one row', () => {
@@ -44,14 +50,14 @@ describe('addSource / getSources', () => {
   it('stores the same identifier for several systems', () => {
     addSource(SNES, SRC_A, db);
     addSource(PS1, SRC_A, db);
-    expect(getSources(SNES, db)).toEqual([SRC_A]);
-    expect(getSources(PS1, db)).toEqual([SRC_A]);
+    expect(getSources(SNES, db)).toEqual([stored(SRC_A)]);
+    expect(getSources(PS1, db)).toEqual([stored(SRC_A)]);
   });
 
   it('re-adding a pair corrects its layout', () => {
     addSource(SNES, SRC_A, db);
     addSource(SNES, { ...SRC_A, layout: 'zip-collection' }, db);
-    expect(getSources(SNES, db)).toEqual([{ ...SRC_A, layout: 'zip-collection' }]);
+    expect(getSources(SNES, db)).toEqual([stored({ ...SRC_A, layout: 'zip-collection' })]);
   });
 
   it('re-adding a pair with no note keeps the stored one', () => {
@@ -107,14 +113,14 @@ describe('removeSource', () => {
   it('returns false when the identifier exists under another system', () => {
     addSource(SNES, SRC_A, db);
     expect(removeSource(SRC_A.identifier, PS1, db)).toBe(false);
-    expect(getSources(SNES, db)).toEqual([SRC_A]);
+    expect(getSources(SNES, db)).toEqual([stored(SRC_A)]);
   });
 
   it('removes the correct source when multiple exist', () => {
     addSource(SNES, SRC_A, db);
     addSource(SNES, SRC_B, db);
     removeSource(SRC_A.identifier, SNES, db);
-    expect(getSources(SNES, db)).toEqual([SRC_B]);
+    expect(getSources(SNES, db)).toEqual([stored(SRC_B)]);
   });
 
   // Dropping a multi-system collection from one system must leave the others
@@ -124,6 +130,35 @@ describe('removeSource', () => {
     addSource(PS1, SRC_A, db);
     removeSource(SRC_A.identifier, SNES, db);
     expect(getSources(SNES, db)).toEqual([]);
-    expect(getSources(PS1, db)).toEqual([SRC_A]);
+    expect(getSources(PS1, db)).toEqual([stored(SRC_A)]);
+  });
+});
+
+describe('setSourceSearched', () => {
+  it('switches a source off, then back on', () => {
+    addSource(SNES, SRC_A, db);
+    expect(setSourceSearched(SRC_A.identifier, SNES, false, db)).toBe(true);
+    expect(getSources(SNES, db)[0]?.searched).toBe(false);
+    setSourceSearched(SRC_A.identifier, SNES, true, db);
+    expect(getSources(SNES, db)[0]?.searched).toBe(true);
+  });
+
+  it('only touches the given system', () => {
+    addSource(SNES, SRC_A, db);
+    addSource(PS1, SRC_A, db);
+    setSourceSearched(SRC_A.identifier, SNES, false, db);
+    expect(getSources(PS1, db)[0]?.searched).toBe(true);
+  });
+
+  // Re-adding corrects the layout; it must not switch the source back on.
+  it('survives re-adding the same pair', () => {
+    addSource(SNES, SRC_A, db);
+    setSourceSearched(SRC_A.identifier, SNES, false, db);
+    addSource(SNES, { ...SRC_A, layout: 'zip-collection' }, db);
+    expect(getSources(SNES, db)[0]?.searched).toBe(false);
+  });
+
+  it('reports a pair that is not configured', () => {
+    expect(setSourceSearched('nope', SNES, false, db)).toBe(false);
   });
 });

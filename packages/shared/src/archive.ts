@@ -10,6 +10,13 @@ const archiveSourceSchema = z.object({
 });
 export type ArchiveSource = z.infer<typeof archiveSourceSchema>;
 
+// A source as stored for a system. `searched`: whether a resolve looks in
+// it — switched per source in the UI, on by default, kept across sessions.
+const configuredSourceSchema = archiveSourceSchema.extend({
+  searched: z.boolean(),
+});
+export type ConfiguredSource = z.infer<typeof configuredSourceSchema>;
+
 const archiveFileSchema = z.object({
   name: z.string(),
   size: z.number(),
@@ -25,8 +32,14 @@ export const addSourceRequestSchema = z.object({
 });
 export const getSourcesResponseSchema = z.object({
   system: z.string(),
-  sources: z.array(archiveSourceSchema),
+  sources: z.array(configuredSourceSchema),
 });
+
+export const setSourceSearchedRequestSchema = z.object({
+  system: z.string().min(1),
+  searched: z.boolean(),
+});
+export type SetSourceSearchedRequest = z.infer<typeof setSourceSearchedRequestSchema>;
 export type GetSourcesResponse = z.infer<typeof getSourcesResponseSchema>;
 
 // Index preview
@@ -90,10 +103,6 @@ export type SuggestResponse = z.infer<typeof suggestResponseSchema>;
 export const resolveRequestSchema = z.object({
   datId: z.string().min(1),
   gameIds: z.array(z.string().min(1)).min(1),
-  // Only look in these configured sources. Absent or empty means every
-  // source of the system — the default, so an unticked filter never hides
-  // a source by accident.
-  sourceIdentifiers: z.array(z.string().min(1)).optional(),
 });
 const resolvedSourceSchema = z.object({
   identifier: z.string(),

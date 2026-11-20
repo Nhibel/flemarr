@@ -12,22 +12,29 @@ const SOURCE = {
 };
 
 describe('SourceRow — search pick', () => {
-  it('shows no checkbox when there is nothing to choose', () => {
+  it('shows no switch when there is nothing to choose', () => {
     render(<SourceRow source={SOURCE} onRemove={() => {}} />);
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
-  it('ticks the source for the next resolve', async () => {
-    const onTogglePicked = vi.fn();
-    render(<SourceRow source={SOURCE} onRemove={() => {}} onTogglePicked={onTogglePicked} />);
-    const box = screen.getByRole('checkbox', { name: 'Chercher dans sony_playstation_part3' });
-    expect(box).not.toBeChecked();
-    await userEvent.click(box);
-    expect(onTogglePicked).toHaveBeenCalledOnce();
+  it('is on by default, and reports a toggle', async () => {
+    const onToggleSearched = vi.fn();
+    render(<SourceRow source={SOURCE} onRemove={() => {}} onToggleSearched={onToggleSearched} />);
+    const toggle = screen.getByRole('switch', { name: 'Chercher dans sony_playstation_part3' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(toggle);
+    expect(onToggleSearched).toHaveBeenCalledOnce();
   });
 
-  it('shows the source as ticked', () => {
-    render(<SourceRow source={SOURCE} onRemove={() => {}} picked onTogglePicked={() => {}} />);
-    expect(screen.getByRole('checkbox')).toBeChecked();
+  it('shows a switched-off source as off', () => {
+    render(
+      <SourceRow
+        source={SOURCE}
+        onRemove={() => {}}
+        searched={false}
+        onToggleSearched={() => {}}
+      />,
+    );
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   });
 });
