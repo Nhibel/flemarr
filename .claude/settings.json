@@ -39,7 +39,6 @@
       "Bash(git reset --hard:*)"
     ],
     "ask": [
-      "Bash(git push:*)",
       "Bash(git rebase:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm remove:*)",
