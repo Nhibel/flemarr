@@ -146,13 +146,7 @@ export function SourcesManager({
           system={system}
           source={source}
           configured={configured}
-          onDone={() => {
-            setShowAdd(false);
-            void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) });
-          }}
-          onAdded={() =>
-            void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) })
-          }
+          onDone={() => setShowAdd(false)}
         />
       )}
 

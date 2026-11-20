@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AddSourceForm } from './AddSourceForm.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import * as api from '@/lib/api.js';
 
 vi.mock('@/lib/api.js');
 
 const SYSTEM = 'Nintendo - Super Nintendo Entertainment System';
 
-function renderForm(onDone = vi.fn(), onAdded = vi.fn()) {
-  render(<AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} onAdded={onAdded} />);
+function renderForm(onDone = vi.fn()) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  render(
+    <QueryClientProvider client={client}>
+      <AddSourceForm system={SYSTEM} source="no-intro" onDone={onDone} />
+    </QueryClientProvider>,
+  );
   return {
     onDone,
-    onAdded,
+    invalidate,
     searchBtn: screen.getByRole('button', { name: /chercher/i }),
     queryInput: screen.getByPlaceholderText(/No-Intro SNES/i),
     seriesCheckbox: screen.getByRole('checkbox', { name: /toute la série/i }),
@@ -162,7 +170,7 @@ describe('AddSourceForm — adding a search result directly', () => {
       suggestedLayout: 'zip-collection',
     });
     vi.mocked(api.addSource).mockResolvedValue(undefined);
-    const { searchBtn, onAdded, onDone } = renderForm();
+    const { searchBtn, invalidate, onDone } = renderForm();
 
     await userEvent.click(searchBtn);
     await userEvent.click(await screen.findByRole('button', { name: 'Ajouter' }));
@@ -174,7 +182,10 @@ describe('AddSourceForm — adding a search result directly', () => {
         note: 'SNES ROMs',
       }),
     );
-    expect(onAdded).toHaveBeenCalled();
+    // Refreshes the source list itself, and stays open for the rest of the series.
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.archiveSources(SYSTEM) }),
+    );
     expect(onDone).not.toHaveBeenCalled();
   });
 

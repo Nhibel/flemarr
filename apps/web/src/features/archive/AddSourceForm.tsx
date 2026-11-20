@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { addSource, searchArchive, previewIndex } from '@/lib/api.js';
 import type { ArchiveLayout, SearchResponse } from '@/lib/api.js';
+import { queryKeys } from '@/lib/query-keys.js';
 import type { DatSource } from './SourcesPanel.js';
 import { Button } from '@/components/Button.js';
 import { SearchResultRow } from './SearchResultRow.js';
@@ -29,18 +31,16 @@ export function AddSourceForm({
   system,
   source,
   onDone,
-  onAdded,
   configured,
 }: {
   system: string;
   source: DatSource;
+  /** Closes the form: after a manual add, or from its close button. */
   onDone: () => void;
-  /** A search-result row was added directly — refresh the source list, but
-   *  keep the form open (there may be other parts of the same series left). */
-  onAdded: () => void;
   /** Identifiers already configured for this system — shown as "✓ Déjà ajoutée". */
   configured?: Set<string>;
 }) {
+  const queryClient = useQueryClient();
   const [identifier, setIdentifier] = useState('');
   const [layout, setLayout] = useState<LayoutChoice>('auto');
   const [note, setNote] = useState('');
@@ -101,14 +101,16 @@ export function AddSourceForm({
     targetLayout: LayoutChoice,
     targetNote: string,
   ) => {
-    const idx = await previewIndex(targetIdentifier);
+    const archiveIndex = await previewIndex(targetIdentifier);
     const resolvedLayout: ArchiveLayout =
-      targetLayout === 'auto' ? idx.suggestedLayout : targetLayout;
+      targetLayout === 'auto' ? archiveIndex.suggestedLayout : targetLayout;
     await addSource(system, {
       identifier: targetIdentifier,
       layout: resolvedLayout,
       note: targetNote,
     });
+    // The write resyncs its own query rather than leaving it to the parent.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.archiveSources(system) });
   };
 
   const handleSave = async () => {
@@ -134,7 +136,6 @@ export function AddSourceForm({
   // found series can be added right after.
   const handleAddFromSearch = async (resultIdentifier: string, resultNote: string) => {
     await resolveLayoutAndAdd(resultIdentifier, 'auto', resultNote);
-    onAdded();
   };
 
   return (
