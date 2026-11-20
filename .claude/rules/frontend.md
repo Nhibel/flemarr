@@ -66,7 +66,7 @@ const { mutate } = useMutation({
 
 ## Tests (Vitest + Testing Library)
 
-- Tests are **co-located**: `GameList.tsx` → `GameList.test.tsx` in the same folder. Cross-cutting tests go in `src/__tests__/`.
+- Tests live in a **`__tests__/` folder beside the code they test**: `features/game-list/GameList.tsx` → `features/game-list/__tests__/GameList.test.tsx`. Close enough to find and move with the feature, without mixing into the component files. Cross-cutting tests (the whole app, theme contrast) go in `src/__tests__/`.
 - Every new component, helper or hook comes with its test file.
 - Presentational components must be testable without mocking queries: inject data and callbacks through props. Connected widgets are tested with a real `QueryClient` and a mocked `fetch`/API layer.
 
