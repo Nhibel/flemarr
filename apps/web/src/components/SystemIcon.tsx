@@ -1,6 +1,6 @@
 import { css } from '@/styled-system/css';
 import type { SystemIconStyle } from '@shared/system-icon.js';
-import { systemIconUrl } from '@/lib/api.js';
+import { systemIconUrl } from '@/lib/asset-urls.js';
 
 interface Props {
   system: string;

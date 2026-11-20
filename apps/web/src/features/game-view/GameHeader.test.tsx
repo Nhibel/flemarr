@@ -5,10 +5,6 @@ import userEvent from '@testing-library/user-event';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GameHeader } from './GameHeader.js';
 
-vi.mock('@/lib/api.js', () => ({
-  systemIconUrl: (system: string) => `/api/system-icons/${system}`,
-}));
-
 const DAT: DatUploadResponse = {
   id: 'dat1',
   system: 'Nintendo - Super Nintendo Entertainment System',

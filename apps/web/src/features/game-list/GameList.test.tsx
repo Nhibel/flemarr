@@ -9,7 +9,6 @@ import type { Ownership } from '@/lib/missing-games.js';
 
 vi.mock('@/lib/api.js', () => ({
   fetchGameDetails: vi.fn(),
-  gameBoxartUrl: (datId: string, gameId: string) => `/api/dats/${datId}/games/${gameId}/boxart`,
 }));
 
 const fetchGameDetailsMock = vi.mocked(fetchGameDetails);

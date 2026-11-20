@@ -278,11 +278,6 @@ export async function fetchGameDetails(
   return parseResponse(res, gameDetailsResponseSchema);
 }
 
-/** Boxart proxy URL — the browser never talks to the provider directly. */
-export function gameBoxartUrl(datId: string, gameId: string): string {
-  return `/api/dats/${encodeURIComponent(datId)}/games/${encodeURIComponent(gameId)}/boxart`;
-}
-
 export async function fetchSystemIcons(systems: string[]): Promise<SystemIconsResponse> {
   const res = await fetch('/api/systems/icons', {
     method: 'POST',
@@ -290,11 +285,6 @@ export async function fetchSystemIcons(systems: string[]): Promise<SystemIconsRe
     body: JSON.stringify({ systems }),
   });
   return parseResponse(res, systemIconsResponseSchema);
-}
-
-/** System icon proxy URL — same rule as the boxart one. */
-export function systemIconUrl(system: string): string {
-  return `/api/systems/icon?system=${encodeURIComponent(system)}`;
 }
 
 export type { ListDirsResponse, CreateDirResponse };
