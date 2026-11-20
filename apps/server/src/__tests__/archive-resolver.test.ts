@@ -791,8 +791,9 @@ describe('resolveGames — cache', () => {
     vi.mocked(getIndex).mockResolvedValue(DIRECT_FILES);
 
     await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    const fetchesAfterFirstRun = vi.mocked(getIndex).mock.calls.length;
     await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
-    expect(vi.mocked(getIndex)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(getIndex)).toHaveBeenCalledTimes(fetchesAfterFirstRun);
   });
 });
 

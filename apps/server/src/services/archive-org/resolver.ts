@@ -4,16 +4,15 @@ import { getSources } from './sources.js';
 import { getItemInfo, resolveDownloadUrl, resolveZipViewUrl } from './metadata.js';
 import type { ArchiveItemInfo } from './metadata.js';
 import { urlExists } from './url-check.js';
+import { itemIndex, zipRanks } from './item-index.js';
+import type { ItemIndex } from './item-index.js';
 import { getZipListing } from './zip-listing.js';
 import {
   baseName,
   containerFormat,
   extensionOf,
-  isArchiveContainer,
   isReencodedDump,
   stripExtension,
-  zipMatchesSystem,
-  zipSystemMatch,
 } from './system-name.js';
 import { logger } from '@/lib/logger.js';
 import type { ArchiveFile } from '@shared/archive.js';
@@ -22,6 +21,10 @@ const NEGATIVE_TTL_MS = 15 * 60 * 1000;
 // Upper bound on HEAD checks per game and per source — keeps a resolve run
 // over a big monolithic-ZIP collection from stalling on dozens of requests.
 const MAX_ZIP_HEAD_CHECKS = 5;
+// Item metadata fetched at once before a resolve run. Each one is a big JSON
+// (seconds for a full set); a few at a time stays polite to archive.org,
+// which answers bursts with 429.
+const METADATA_PREFETCH_CONCURRENCY = 6;
 
 interface ResultCacheEntry {
   result: ResolvedGame;
@@ -60,11 +63,10 @@ export function clearResolverCache(): void {
 function findMatch(
   romName: string,
   romCrc: string,
-  files: ArchiveFile[],
+  index: ItemIndex,
   siblingExtensions: Set<string>,
 ): { file: ArchiveFile; verified: boolean } | undefined {
-  const crcLower = romCrc.toLowerCase();
-  const byCrc = files.find((f) => f.crc32?.toLowerCase() === crcLower);
+  const byCrc = index.byCrc.get(romCrc.toLowerCase());
   if (byCrc) return { file: byCrc, verified: true };
   const romBase = stripExtension(romName);
   // A re-encode (.chd, .rvz…) carries the game but never the DAT's exact
@@ -79,12 +81,7 @@ function findMatch(
   // .7z files weren't recognized, got the whole collection mis-detected as
   // `direct`, and then matched the compressed .7z itself as the "found" ROM
   // — fast to download (no extraction) and guaranteed to fail CRC.
-  const byNameCandidates = files.filter(
-    (f) =>
-      !isReencodedDump(f.name) &&
-      !isArchiveContainer(f) &&
-      stripExtension(baseName(f.name)) === romBase,
-  );
+  const byNameCandidates = index.rawFilesByBase.get(romBase) ?? [];
   // A disc game's own sibling files (one .cue plus N .bin tracks) often
   // share this exact stripped base — "Bloody Roar II (USA).bin" and
   // "Bloody Roar II (USA).cue" both reduce to "Bloody Roar II (USA)" for a
@@ -109,11 +106,6 @@ function findMatch(
   return byName ? { file: byName, verified: false } : undefined;
 }
 
-// For zip-collection sources, find the archive files (.zip, .7z) in the index.
-function findZipFiles(files: ArchiveFile[]): ArchiveFile[] {
-  return files.filter((f) => isArchiveContainer(f));
-}
-
 // Rank ZIPs by likelihood of containing the ROM:
 // 1. named after the ROM, *or* after the game (per-game-zip uploads: a
 //    multi-track Redump disc is one ".cue" plus one ".bin" per track, all
@@ -134,21 +126,33 @@ function isExactZipMatch(zip: ArchiveFile, romBase: string, gameName: string): b
   return zipBase === romBase || zipBase === gameName;
 }
 
+// The first `limit` containers in that order, each rank in item order —
+// what a stable sort by rank gave, without sorting every container of the
+// item for every ROM. `systemOnly` stops before rank 4.
 function orderZipCandidates(
-  zips: ArchiveFile[],
+  index: ItemIndex,
   romName: string,
   gameName: string,
   system: string,
+  { limit, systemOnly }: { limit: number; systemOnly: boolean },
 ): ArchiveFile[] {
   const romBase = stripExtension(romName);
-  const rank = (z: ArchiveFile): number => {
-    if (isExactZipMatch(z, romBase, gameName)) return 0;
-    const match = zipSystemMatch(z.name, system);
-    if (match === 'exact') return 1;
-    if (match === 'loose') return 2;
-    return 3;
-  };
-  return [...zips].sort((a, b) => rank(a) - rank(b));
+  const exactPositions = new Set([
+    ...(index.zipPositionsByBase.get(romBase) ?? []),
+    ...(index.zipPositionsByBase.get(gameName) ?? []),
+  ]);
+  const ranks = zipRanks(index, system);
+  const rankedGroups = [ranks.exact, ranks.loose];
+  if (!systemOnly) rankedGroups.push(ranks.none);
+
+  const ordered = [...exactPositions].sort((a, b) => a - b);
+  for (const group of rankedGroups) {
+    for (const position of group) {
+      if (ordered.length >= limit) break;
+      if (!exactPositions.has(position)) ordered.push(position);
+    }
+  }
+  return ordered.slice(0, limit).map((position) => index.zips[position]!);
 }
 
 // Restricted/darked items: their /download/ path 403s, so resolve through the
@@ -175,11 +179,12 @@ async function resolveViaZipListing(
   // PlayStation 1 (Europe)") — filtering on system-name alone let those
   // unrelated zips take the only two candidate slots and the real match
   // never got probed at all.
-  const zips = orderZipCandidates(findZipFiles(info.files), romName, gameName, system).filter(
-    (z) => isExactZipMatch(z, romBase, gameName) || zipMatchesSystem(z.name, system),
-  );
+  const zips = orderZipCandidates(itemIndex(info), romName, gameName, system, {
+    limit: 2,
+    systemOnly: true,
+  });
 
-  for (const zip of zips.slice(0, 2)) {
+  for (const zip of zips) {
     const archiveFormat = isExactZipMatch(zip, romBase, gameName)
       ? containerFormat(zip.name)
       : undefined;
@@ -290,9 +295,9 @@ async function resolveRomInSource(
   info: ArchiveItemInfo,
   siblingExtensions: Set<string>,
 ): Promise<ResolvedSource | null> {
-  const files = info.files;
+  const index = itemIndex(info);
   if (source.layout === 'direct') {
-    const match = findMatch(romName, romCrc, files, siblingExtensions);
+    const match = findMatch(romName, romCrc, index, siblingExtensions);
     if (!match) return null;
     return {
       identifier: source.identifier,
@@ -318,10 +323,10 @@ async function resolveRomInSource(
 
   // Public zip-collection — probe candidate ZIPs (best first) and keep the
   // first one that actually contains the ROM, instead of guessing blindly.
-  const candidates = orderZipCandidates(findZipFiles(files), romName, gameName, system).slice(
-    0,
-    MAX_ZIP_HEAD_CHECKS,
-  );
+  const candidates = orderZipCandidates(index, romName, gameName, system, {
+    limit: MAX_ZIP_HEAD_CHECKS,
+    systemOnly: false,
+  });
   for (const zip of candidates) {
     // ZIPs often prefix entries with a folder named like the archive itself
     const folderPrefix = stripExtension(baseName(zip.name));
@@ -399,12 +404,32 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
   return { gameId, gameName: game.name, roms };
 }
 
+// Loads every source's file list before the first game, a few in parallel.
+// Fetched one by one inside the first ROM's loop, six sources cost the sum
+// of six fetches (12 s on a cold PlayStation run) instead of the slowest.
+// A failure is ignored here: the per-ROM lookup tries again and skips the
+// source, as it always did.
+async function prefetchItemInfo(identifiers: string[]): Promise<void> {
+  for (let i = 0; i < identifiers.length; i += METADATA_PREFETCH_CONCURRENCY) {
+    const batch = identifiers.slice(i, i + METADATA_PREFETCH_CONCURRENCY);
+    await Promise.all(batch.map((identifier) => getItemInfo(identifier).catch(() => undefined)));
+  }
+}
+
+// A game whose ROMs are all nodump (no CRC) is listed without querying any
+// source — see resolveOneGame — so it must not trigger the prefetch either.
+function hasSearchableRom(dat: DatFile, gameId: string): boolean {
+  const game = dat.games.find((g) => g.id === gameId);
+  return game?.roms.some((rom) => rom.crc !== undefined) ?? false;
+}
+
 export async function resolveGames(
   dat: DatFile,
   datId: string,
   gameIds: string[],
 ): Promise<ResolvedGame[]> {
   const results: ResolvedGame[] = [];
+  let prefetched = false;
 
   for (const gameId of gameIds) {
     const cached = getCached(datId, gameId);
@@ -413,6 +438,10 @@ export async function resolveGames(
       continue;
     }
 
+    if (!prefetched && hasSearchableRom(dat, gameId)) {
+      await prefetchItemInfo(getSources(dat.system).map((source) => source.identifier));
+      prefetched = true;
+    }
     const resolved = await resolveOneGame(dat, gameId);
     // Fully-resolved games cached long (invalidated when sources change);
     // partial or empty results cached 15 minutes
