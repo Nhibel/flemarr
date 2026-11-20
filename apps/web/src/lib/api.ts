@@ -165,11 +165,16 @@ export async function suggestSources(datId: string): Promise<SuggestResponse> {
   return parseResponse(res, suggestResponseSchema);
 }
 
-export async function resolveGames(datId: string, gameIds: string[]): Promise<ResolveResponse> {
+/** `sourceIdentifiers` empty = every source of the system. */
+export async function resolveGames(
+  datId: string,
+  gameIds: string[],
+  sourceIdentifiers: string[] = [],
+): Promise<ResolveResponse> {
   const res = await fetch('/api/archive/resolve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ datId, gameIds }),
+    body: JSON.stringify({ datId, gameIds, sourceIdentifiers }),
   });
   return parseResponse(res, resolveResponseSchema);
 }

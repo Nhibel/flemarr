@@ -46,6 +46,8 @@ export function useResolvePanel({
   // Absent means "use the first" (today's behavior, unchanged when there's
   // only one match anyway).
   const [selectedSourceIndex, setSelectedSourceIndex] = useState<Map<string, number>>(new Map());
+  // Sources ticked in the filter; none ticked means every source.
+  const [pickedSources, setPickedSources] = useState<ReadonlySet<string>>(new Set());
 
   const { data: sourcesData } = useQuery({
     queryKey: queryKeys.archiveSources(system),
@@ -65,6 +67,10 @@ export function useResolvePanel({
 
   const sources = sourcesData?.sources ?? [];
   const sourceKey = sourceKeyOf(sources);
+  // A source removed from the configuration stops counting as ticked.
+  const searchedSources = sources
+    .map((source) => source.identifier)
+    .filter((identifier) => pickedSources.has(identifier));
   const result = resolved?.result ?? null;
   const summary: ResolveSummary | null = result ? summarizeResolve(result) : null;
   const isServerTarget = downloadTarget === 'server';
@@ -87,7 +93,7 @@ export function useResolvePanel({
     setResolving(true);
     setError(null);
     try {
-      const response = await resolveGames(datId, effectiveGameIds);
+      const response = await resolveGames(datId, effectiveGameIds, searchedSources);
       setResolved({ result: response, sourceKey });
       // A fresh resolve invalidates any earlier per-rom source choice — the
       // set of matching sources (and their order) may have changed.
@@ -97,7 +103,7 @@ export function useResolvePanel({
     } finally {
       setResolving(false);
     }
-  }, [datId, effectiveGameIds, sourceKey]);
+  }, [datId, effectiveGameIds, searchedSources, sourceKey]);
 
   const download = useCallback(async () => {
     if (isStale || lacksServerFolder || result === null) return;
@@ -128,6 +134,15 @@ export function useResolvePanel({
     selectedSourceIndex,
   ]);
 
+  const togglePickedSource = useCallback((identifier: string) => {
+    setPickedSources((previous) => {
+      const next = new Set(previous);
+      if (next.has(identifier)) next.delete(identifier);
+      else next.add(identifier);
+      return next;
+    });
+  }, []);
+
   const selectSource = useCallback((gameId: string, romName: string, index: number) => {
     setSelectedSourceIndex((previous) => {
       const next = new Map(previous);
@@ -156,5 +171,8 @@ export function useResolvePanel({
     download,
     selectedSourceIndex,
     selectSource,
+    sourceIdentifiers: sources.map((source) => source.identifier),
+    searchedSources,
+    togglePickedSource,
   };
 }

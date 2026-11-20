@@ -6,6 +6,7 @@ import { ExcludeOwnedToggle } from './ExcludeOwnedToggle.js';
 import { ResolvedGameRow } from './ResolvedGameRow.js';
 import { ResolveNotices } from './ResolveNotices.js';
 import { ResolveSummary } from './ResolveSummary.js';
+import { SourceFilter } from './SourceFilter.js';
 import { destinationLabel } from './destination-label.js';
 import { useResolvePanel } from './use-resolve-panel.js';
 import { plural } from '@/lib/plural.js';
@@ -59,6 +60,15 @@ export function ResolvePanel({
           onChange={panel.setExcludeOwned}
           ownedCount={selectedGameIds.length - missingGameIds.length}
           selectedCount={selectedGameIds.length}
+        />
+      )}
+
+      {/* A single source leaves nothing to choose between. */}
+      {panel.sourceIdentifiers.length > 1 && (
+        <SourceFilter
+          sources={panel.sourceIdentifiers}
+          picked={panel.searchedSources}
+          onToggle={panel.togglePickedSource}
         />
       )}
 

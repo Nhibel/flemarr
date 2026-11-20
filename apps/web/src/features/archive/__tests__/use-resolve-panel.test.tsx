@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { SettingsResponse } from '@shared/settings.js';
 import * as api from '@/lib/api.js';
 import { useResolvePanel } from '../use-resolve-panel.js';
+import { queryKeys } from '@/lib/query-keys.js';
 
 vi.mock('@/lib/api.js');
 
@@ -72,7 +73,7 @@ function renderPanelHook({
       }),
     { wrapper },
   );
-  return { ...hook, onQueueDownload };
+  return { ...hook, onQueueDownload, client };
 }
 
 /** Renders the hook and waits for sources and the browser target to load. */
@@ -108,6 +109,38 @@ describe('useResolvePanel — which games to resolve', () => {
   it('resolves every selected game when no scan ran', () => {
     const { result } = renderPanelHook();
     expect(result.current.effectiveGameIds).toEqual(['g1', 'g2']);
+  });
+});
+
+describe('useResolvePanel — source filter', () => {
+  beforeEach(() => {
+    vi.mocked(api.fetchSources).mockResolvedValue({
+      system: SYSTEM,
+      sources: [SOURCE, { identifier: 'psx-alt', layout: 'direct', note: '' }],
+    });
+  });
+
+  it('searches every source while none is ticked', async () => {
+    const { result } = await renderBrowserReady();
+    await act(() => result.current.resolve());
+    expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2'], []);
+  });
+
+  it('searches only the ticked sources', async () => {
+    const { result } = await renderBrowserReady();
+    act(() => result.current.togglePickedSource('psx-alt'));
+    await act(() => result.current.resolve());
+    expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2'], ['psx-alt']);
+  });
+
+  it('forgets a ticked source once it is removed from the configuration', async () => {
+    const { result, client } = await renderBrowserReady();
+    act(() => result.current.togglePickedSource('psx-alt'));
+    expect(result.current.searchedSources).toEqual(['psx-alt']);
+
+    vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [SOURCE] });
+    await act(() => client.invalidateQueries({ queryKey: queryKeys.archiveSources(SYSTEM) }));
+    await waitFor(() => expect(result.current.searchedSources).toEqual([]));
   });
 });
 
