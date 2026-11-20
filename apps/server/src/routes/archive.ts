@@ -149,6 +149,11 @@ archiveRoute.post('/archive/resolve', async (c) => {
     return errorJson(c, 404, 'NOT_FOUND', `DAT ${body.data.datId} not found`);
   }
 
-  const results = await resolveGames(dat, body.data.datId, body.data.gameIds);
+  const results = await resolveGames(
+    dat,
+    body.data.datId,
+    body.data.gameIds,
+    body.data.sourceIdentifiers,
+  );
   return c.json({ results });
 });

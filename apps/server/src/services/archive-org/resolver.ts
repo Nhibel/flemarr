@@ -1,5 +1,5 @@
 import type { DatFile } from '@shared/dat.js';
-import type { ResolvedGame, ResolvedSource } from '@shared/archive.js';
+import type { ArchiveSource, ResolvedGame, ResolvedSource } from '@shared/archive.js';
 import { getSources } from './sources.js';
 import { getItemInfo, resolveDownloadUrl, resolveZipViewUrl } from './metadata.js';
 import type { ArchiveItemInfo } from './metadata.js';
@@ -32,21 +32,27 @@ interface ResultCacheEntry {
   expiresAt: number;
 }
 
-// Keyed by `${datId}:${gameId}`
+// Keyed by game AND by the sources searched: a run limited to one source
+// must never be served back to a run over all of them (it would hide what
+// the other sources have), nor the other way round.
 const resultCache = new Map<string, ResultCacheEntry>();
 
-function getCached(datId: string, gameId: string): ResolvedGame | undefined {
-  const entry = resultCache.get(`${datId}:${gameId}`);
+function cacheKey(datId: string, gameId: string, scope: string): string {
+  return `${datId}:${gameId}:${scope}`;
+}
+
+function getCached(key: string): ResolvedGame | undefined {
+  const entry = resultCache.get(key);
   if (!entry) return undefined;
   if (entry.expiresAt < Date.now()) {
-    resultCache.delete(`${datId}:${gameId}`);
+    resultCache.delete(key);
     return undefined;
   }
   return entry.result;
 }
 
-function setCached(datId: string, gameId: string, result: ResolvedGame, ttlMs: number): void {
-  resultCache.set(`${datId}:${gameId}`, { result, expiresAt: Date.now() + ttlMs });
+function setCached(key: string, result: ResolvedGame, ttlMs: number): void {
+  resultCache.set(key, { result, expiresAt: Date.now() + ttlMs });
 }
 
 export function clearResolverCache(): void {
@@ -349,13 +355,16 @@ async function resolveRomInSource(
   return null;
 }
 
-async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGame> {
+async function resolveOneGame(
+  dat: DatFile,
+  gameId: string,
+  sources: ArchiveSource[],
+): Promise<ResolvedGame> {
   const game = dat.games.find((g) => g.id === gameId);
   if (!game) {
     return { gameId, gameName: '', roms: [] };
   }
 
-  const sources = getSources(dat.system);
   const roms: ResolvedGame['roms'] = [];
 
   // Every ROM of the game is resolved — multi-disc games need all discs.
@@ -429,31 +438,53 @@ function hasSearchableRom(dat: DatFile, gameId: string): boolean {
   return game?.roms.some((rom) => rom.crc !== undefined) ?? false;
 }
 
+/**
+ * The system's sources to search: all of them, or only the requested ones
+ * that are still configured (in configured order). `scope` names that
+ * choice for the result cache.
+ */
+export function selectSources(
+  configured: ArchiveSource[],
+  requested: string[] = [],
+): { sources: ArchiveSource[]; scope: string } {
+  if (requested.length === 0) return { sources: configured, scope: '*' };
+  const wanted = new Set(requested);
+  const sources = configured.filter((source) => wanted.has(source.identifier));
+  const scope = sources
+    .map((source) => source.identifier)
+    .sort()
+    .join('|');
+  return { sources, scope };
+}
+
 export async function resolveGames(
   dat: DatFile,
   datId: string,
   gameIds: string[],
+  sourceIdentifiers: string[] = [],
 ): Promise<ResolvedGame[]> {
+  const { sources, scope } = selectSources(getSources(dat.system), sourceIdentifiers);
   const results: ResolvedGame[] = [];
   let prefetched = false;
 
   for (const gameId of gameIds) {
-    const cached = getCached(datId, gameId);
+    const key = cacheKey(datId, gameId, scope);
+    const cached = getCached(key);
     if (cached) {
       results.push(cached);
       continue;
     }
 
     if (!prefetched && hasSearchableRom(dat, gameId)) {
-      await prefetchItemInfo(getSources(dat.system).map((source) => source.identifier));
+      await prefetchItemInfo(sources.map((source) => source.identifier));
       prefetched = true;
     }
-    const resolved = await resolveOneGame(dat, gameId);
+    const resolved = await resolveOneGame(dat, gameId, sources);
     // Fully-resolved games cached long (invalidated when sources change);
     // partial or empty results cached 15 minutes
     const complete = resolved.roms.length > 0 && resolved.roms.every((r) => r.sources.length > 0);
     const ttl = complete ? 24 * 60 * 60 * 1000 : NEGATIVE_TTL_MS;
-    setCached(datId, gameId, resolved, ttl);
+    setCached(key, resolved, ttl);
     results.push(resolved);
   }
 

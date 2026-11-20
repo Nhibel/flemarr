@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resolveGames, clearResolverCache } from '../services/archive-org/resolver.js';
+import {
+  resolveGames,
+  clearResolverCache,
+  selectSources,
+} from '../services/archive-org/resolver.js';
 import { addSource, removeSource } from '../services/archive-org/sources.js';
 import type { DatFile } from '@shared/dat.js';
 import type { ArchiveFile } from '@shared/archive.js';
@@ -155,7 +159,7 @@ describe('resolveGames — direct layout', () => {
     expect(results[0]?.roms[0]?.sources[0]?.verified).toBe(false);
   });
 
-  it('disambiguates by extension when a disc game\'s own sibling files share a stripped base name', async () => {
+  it("disambiguates by extension when a disc game's own sibling files share a stripped base name", async () => {
     // A single-track disc game's .bin and .cue both strip down to the same
     // base ("Bloody Roar II (USA)") — without preferring the exact
     // (extension-included) name first, resolving the .cue ROM could return
@@ -194,7 +198,7 @@ describe('resolveGames — direct layout', () => {
     );
   });
 
-  it('does not fall back to a sibling rom\'s own file when this rom has no real match at all', async () => {
+  it("does not fall back to a sibling rom's own file when this rom has no real match at all", async () => {
     // Same real bug as the restricted-zip-listing case, but for a direct
     // layout: only the .bin is actually present (wrongly named or just
     // missing the .cue) — findMatch must not hand the .cue rom the .bin
@@ -217,9 +221,7 @@ describe('resolveGames — direct layout', () => {
       ],
     };
     // No crc32, and no file named after the .cue at all.
-    vi.mocked(getIndex).mockResolvedValue([
-      { name: 'Bloody Roar II (USA).bin', size: 291650000 },
-    ]);
+    vi.mocked(getIndex).mockResolvedValue([{ name: 'Bloody Roar II (USA).bin', size: 291650000 }]);
 
     const results = await resolveGames(discDat, 'dat1', ['bloody-roar-2']);
     removeSource('direct-psx', 'Sony - PlayStation');
@@ -871,5 +873,61 @@ describe('resolveGames — multi-disc games', () => {
     expect(results[0]?.roms[0]?.sources).toHaveLength(1);
     expect(results[0]?.roms[1]?.sources).toHaveLength(1);
     expect(results[0]?.roms[2]?.sources).toHaveLength(0);
+  });
+});
+
+describe('resolveGames — source filter', () => {
+  const SNES = 'Nintendo - Super Nintendo Entertainment System';
+
+  beforeEach(() => {
+    addSource(SNES, { identifier: 'direct-snes', layout: 'direct', note: '' });
+    addSource(SNES, { identifier: 'zip-snes', layout: 'direct', note: '' });
+    vi.mocked(getIndex).mockResolvedValue(DIRECT_FILES);
+  });
+
+  it('searches every source when none is picked', async () => {
+    await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    const queried = vi.mocked(getItemInfo).mock.calls.map(([id]) => id);
+    expect(new Set(queried)).toEqual(new Set(['direct-snes', 'zip-snes']));
+  });
+
+  it('searches only the picked sources', async () => {
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw'], ['zip-snes']);
+    const queried = vi.mocked(getItemInfo).mock.calls.map(([id]) => id);
+    expect(new Set(queried)).toEqual(new Set(['zip-snes']));
+    expect(results[0]?.roms[0]?.sources.map((s) => s.identifier)).toEqual(['zip-snes']);
+  });
+
+  // A run limited to one source must not be served to a run over all.
+  it('keeps a filtered run out of the cache of an unfiltered one', async () => {
+    await resolveGames(FIXTURE_DAT, 'dat1', ['smw'], ['zip-snes']);
+    const results = await resolveGames(FIXTURE_DAT, 'dat1', ['smw']);
+    expect(results[0]?.roms[0]?.sources.map((s) => s.identifier)).toEqual([
+      'direct-snes',
+      'zip-snes',
+    ]);
+  });
+});
+
+describe('selectSources', () => {
+  const configured = [
+    { identifier: 'b', layout: 'direct' as const, note: '' },
+    { identifier: 'a', layout: 'direct' as const, note: '' },
+  ];
+
+  it('keeps every source, in configured order, when nothing is requested', () => {
+    expect(selectSources(configured)).toEqual({ sources: configured, scope: '*' });
+  });
+
+  it('drops requested sources that are no longer configured', () => {
+    expect(selectSources(configured, ['a', 'gone']).sources.map((s) => s.identifier)).toEqual([
+      'a',
+    ]);
+  });
+
+  it('names the same choice the same way, whatever the request order', () => {
+    expect(selectSources(configured, ['a', 'b']).scope).toBe(
+      selectSources(configured, ['b', 'a']).scope,
+    );
   });
 });

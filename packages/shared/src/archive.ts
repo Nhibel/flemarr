@@ -90,6 +90,10 @@ export type SuggestResponse = z.infer<typeof suggestResponseSchema>;
 export const resolveRequestSchema = z.object({
   datId: z.string().min(1),
   gameIds: z.array(z.string().min(1)).min(1),
+  // Only look in these configured sources. Absent or empty means every
+  // source of the system — the default, so an unticked filter never hides
+  // a source by accident.
+  sourceIdentifiers: z.array(z.string().min(1)).optional(),
 });
 const resolvedSourceSchema = z.object({
   identifier: z.string(),
