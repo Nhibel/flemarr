@@ -9,15 +9,23 @@ import { SuggestionRow } from './SuggestionRow.js';
 import { SourceRow } from './SourceRow.js';
 import { AddSourceForm } from './AddSourceForm.js';
 import { Button } from '@/components/Button.js';
+import { searchScopeLabel } from './search-scope-label.js';
+
+const NO_PICKED_SOURCES: ReadonlySet<string> = new Set();
 
 export function SourcesManager({
   datId,
   system,
   source,
+  pickedSources = NO_PICKED_SOURCES,
+  onTogglePicked,
 }: {
   datId: string;
   system: string;
   source: DatSource;
+  /** Sources a resolve will search; none = every source. */
+  pickedSources?: ReadonlySet<string>;
+  onTogglePicked?: (identifier: string) => void;
 }) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -69,6 +77,9 @@ export function SourcesManager({
   // rows — dropping them is what made the panel claim nothing had been found
   // once the last suggestion was taken.
   const configured = new Set(sources.map((src) => src.identifier));
+  // A single source leaves nothing to choose between.
+  const canPick = onTogglePicked !== undefined && sources.length > 1;
+  const pickedCount = sources.filter((src) => pickedSources.has(src.identifier)).length;
 
   return (
     <section>
@@ -163,8 +174,15 @@ export function SourcesManager({
               onRemove={() => removeMutation.mutate(s.identifier)}
               removing={removeMutation.isPending && removeMutation.variables === s.identifier}
               removeError={removeErrorFor(s.identifier)}
+              picked={pickedSources.has(s.identifier)}
+              onTogglePicked={canPick ? () => onTogglePicked(s.identifier) : undefined}
             />
           ))}
+          {canPick && (
+            <p className={css({ fontSize: 'xs', color: 'fg.faint', mt: '1' })}>
+              {searchScopeLabel(pickedCount, sources.length)}
+            </p>
+          )}
         </div>
       )}
     </section>

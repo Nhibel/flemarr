@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { css } from '@/styled-system/css';
 import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { SourcesManager } from './SourcesManager.js';
@@ -23,15 +24,34 @@ export function SourcesPanel({
   missingGameIds,
   onQueueDownload,
 }: Props) {
+  // Which sources a resolve searches, ticked in the source list and read by
+  // the resolve panel below it: one list, not a second copy of it.
+  const [pickedSources, setPickedSources] = useState<ReadonlySet<string>>(new Set());
+  const togglePickedSource = useCallback((identifier: string) => {
+    setPickedSources((previous) => {
+      const next = new Set(previous);
+      if (next.has(identifier)) next.delete(identifier);
+      else next.add(identifier);
+      return next;
+    });
+  }, []);
+
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}>
-      <SourcesManager datId={datId} system={system} source={source} />
+      <SourcesManager
+        datId={datId}
+        system={system}
+        source={source}
+        pickedSources={pickedSources}
+        onTogglePicked={togglePickedSource}
+      />
       <ResolvePanel
         datId={datId}
         system={system}
         selectedGameIds={selectedGameIds}
         missingGameIds={missingGameIds}
         onQueueDownload={onQueueDownload}
+        pickedSources={pickedSources}
       />
     </div>
   );

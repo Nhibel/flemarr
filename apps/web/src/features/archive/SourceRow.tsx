@@ -12,6 +12,8 @@ export function SourceRow({
   onRemove,
   removing = false,
   removeError = null,
+  picked = false,
+  onTogglePicked,
 }: {
   source: ArchiveSource;
   onRemove: () => void;
@@ -19,6 +21,10 @@ export function SourceRow({
   removing?: boolean;
   /** Why the last delete of this source failed, if it did. */
   removeError?: string | null;
+  /** Ticked for the next resolve. */
+  picked?: boolean;
+  /** Absent: no checkbox (a single source leaves nothing to choose). */
+  onTogglePicked?: () => void;
 }) {
   const [preview, setPreview] = useState<{ fileCount: number } | null>(null);
   const [testing, setTesting] = useState(false);
@@ -39,6 +45,15 @@ export function SourceRow({
 
   return (
     <Card className={css({ display: 'flex', alignItems: 'flex-start', gap: '3', p: '3' })}>
+      {onTogglePicked && (
+        <input
+          type="checkbox"
+          checked={picked}
+          onChange={onTogglePicked}
+          aria-label={`Chercher dans ${source.identifier}`}
+          className={css({ mt: '1', flexShrink: 0 })}
+        />
+      )}
       <div className={css({ flex: 1, minW: 0 })}>
         <div className={css({ display: 'flex', alignItems: 'center', gap: '2', mb: '0.5' })}>
           <span

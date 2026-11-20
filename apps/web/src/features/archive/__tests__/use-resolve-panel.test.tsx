@@ -56,6 +56,7 @@ function settings(over: Partial<SettingsResponse> = {}): SettingsResponse {
 function renderPanelHook({
   selectedGameIds = ['g1', 'g2'],
   missingGameIds = null as string[] | null,
+  pickedSources = new Set<string>() as ReadonlySet<string>,
 } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -70,6 +71,7 @@ function renderPanelHook({
         selectedGameIds,
         missingGameIds,
         onQueueDownload,
+        pickedSources,
       }),
     { wrapper },
   );
@@ -77,8 +79,8 @@ function renderPanelHook({
 }
 
 /** Renders the hook and waits for sources and the browser target to load. */
-async function renderBrowserReady() {
-  const rendered = renderPanelHook();
+async function renderBrowserReady(options: Parameters<typeof renderPanelHook>[0] = {}) {
+  const rendered = renderPanelHook(options);
   await waitFor(() => {
     expect(rendered.result.current.canResolve).toBe(true);
     expect(rendered.result.current.downloadTarget).toBe('browser');
@@ -127,15 +129,13 @@ describe('useResolvePanel — source filter', () => {
   });
 
   it('searches only the ticked sources', async () => {
-    const { result } = await renderBrowserReady();
-    act(() => result.current.togglePickedSource('psx-alt'));
+    const { result } = await renderBrowserReady({ pickedSources: new Set(['psx-alt']) });
     await act(() => result.current.resolve());
     expect(api.resolveGames).toHaveBeenCalledWith('dat1', ['g1', 'g2'], ['psx-alt']);
   });
 
   it('forgets a ticked source once it is removed from the configuration', async () => {
-    const { result, client } = await renderBrowserReady();
-    act(() => result.current.togglePickedSource('psx-alt'));
+    const { result, client } = await renderBrowserReady({ pickedSources: new Set(['psx-alt']) });
     expect(result.current.searchedSources).toEqual(['psx-alt']);
 
     vi.mocked(api.fetchSources).mockResolvedValue({ system: SYSTEM, sources: [SOURCE] });

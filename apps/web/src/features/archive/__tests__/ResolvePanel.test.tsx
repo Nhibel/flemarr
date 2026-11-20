@@ -49,6 +49,7 @@ function renderPanel(onQueueDownload = vi.fn()) {
         selectedGameIds={['smw']}
         missingGameIds={null}
         onQueueDownload={onQueueDownload}
+        pickedSources={new Set()}
       />
     </QueryClientProvider>,
   );

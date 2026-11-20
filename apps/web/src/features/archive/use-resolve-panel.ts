@@ -17,7 +17,11 @@ interface ResolvePanelInput {
   selectedGameIds: string[];
   missingGameIds: string[] | null;
   onQueueDownload: (job: QueuedDownload) => void;
+  /** Sources ticked in the source list; none ticked means every source. */
+  pickedSources?: ReadonlySet<string>;
 }
+
+const NO_PICKED_SOURCES: ReadonlySet<string> = new Set();
 
 /**
  * State and actions of ResolvePanel: which games to resolve, the resolve
@@ -30,6 +34,7 @@ export function useResolvePanel({
   selectedGameIds,
   missingGameIds,
   onQueueDownload,
+  pickedSources = NO_PICKED_SOURCES,
 }: ResolvePanelInput) {
   // Stored with the source list it was resolved against: the server drops its
   // resolver cache when sources change, but these results are client state and
@@ -46,8 +51,6 @@ export function useResolvePanel({
   // Absent means "use the first" (today's behavior, unchanged when there's
   // only one match anyway).
   const [selectedSourceIndex, setSelectedSourceIndex] = useState<Map<string, number>>(new Map());
-  // Sources ticked in the filter; none ticked means every source.
-  const [pickedSources, setPickedSources] = useState<ReadonlySet<string>>(new Set());
 
   const { data: sourcesData } = useQuery({
     queryKey: queryKeys.archiveSources(system),
@@ -134,15 +137,6 @@ export function useResolvePanel({
     selectedSourceIndex,
   ]);
 
-  const togglePickedSource = useCallback((identifier: string) => {
-    setPickedSources((previous) => {
-      const next = new Set(previous);
-      if (next.has(identifier)) next.delete(identifier);
-      else next.add(identifier);
-      return next;
-    });
-  }, []);
-
   const selectSource = useCallback((gameId: string, romName: string, index: number) => {
     setSelectedSourceIndex((previous) => {
       const next = new Map(previous);
@@ -171,8 +165,6 @@ export function useResolvePanel({
     download,
     selectedSourceIndex,
     selectSource,
-    sourceIdentifiers: sources.map((source) => source.identifier),
     searchedSources,
-    togglePickedSource,
   };
 }
