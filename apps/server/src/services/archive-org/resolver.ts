@@ -15,16 +15,17 @@ import {
   stripExtension,
 } from './system-name.js';
 import { logger } from '@/lib/logger.js';
+import { mapInBatches } from '@/lib/batches.js';
 import type { ArchiveFile } from '@shared/archive.js';
 
 const NEGATIVE_TTL_MS = 15 * 60 * 1000;
 // Upper bound on HEAD checks per game and per source — keeps a resolve run
 // over a big monolithic-ZIP collection from stalling on dozens of requests.
 const MAX_ZIP_HEAD_CHECKS = 5;
-// Item metadata fetched at once before a resolve run. Each one is a big JSON
-// (seconds for a full set); a few at a time stays polite to archive.org,
-// which answers bursts with 429.
-const METADATA_PREFETCH_CONCURRENCY = 6;
+// Requests to archive.org in flight at once: item metadata before a run,
+// then each ROM's lookup in every source. A few at a time stays polite to
+// archive.org, which answers bursts with 429.
+const ARCHIVE_CONCURRENCY = 6;
 
 interface ResultCacheEntry {
   result: ResolvedGame;
@@ -378,26 +379,32 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
     );
     siblingExtensions.delete(extensionOf(rom.name));
 
-    const resolvedSources: ResolvedSource[] = [];
-    for (const source of sources) {
+    // Every source at once (a few at a time): each lookup may open zip
+    // listings over the network, and one source never depends on another.
+    // Results keep the configured source order, which is the order the
+    // downloader falls back in.
+    const romCrc = rom.crc;
+    const perSource = await mapInBatches(sources, ARCHIVE_CONCURRENCY, async (source) => {
       let info: ArchiveItemInfo;
       try {
         info = await getItemInfo(source.identifier);
       } catch {
         // Source unreachable — skip, don't fail the whole resolution
-        continue;
+        return null;
       }
-      const resolved = await resolveRomInSource(
+      return resolveRomInSource(
         rom.name,
-        rom.crc,
+        romCrc,
         game.name,
         dat.system,
         source,
         info,
         siblingExtensions,
       );
-      if (resolved) resolvedSources.push(resolved);
-    }
+    });
+    const resolvedSources = perSource.filter(
+      (resolved): resolved is ResolvedSource => resolved !== null,
+    );
     roms.push({ romName: rom.name, expectedCrc: rom.crc, sources: resolvedSources });
   }
 
@@ -410,10 +417,9 @@ async function resolveOneGame(dat: DatFile, gameId: string): Promise<ResolvedGam
 // A failure is ignored here: the per-ROM lookup tries again and skips the
 // source, as it always did.
 async function prefetchItemInfo(identifiers: string[]): Promise<void> {
-  for (let i = 0; i < identifiers.length; i += METADATA_PREFETCH_CONCURRENCY) {
-    const batch = identifiers.slice(i, i + METADATA_PREFETCH_CONCURRENCY);
-    await Promise.all(batch.map((identifier) => getItemInfo(identifier).catch(() => undefined)));
-  }
+  await mapInBatches(identifiers, ARCHIVE_CONCURRENCY, (identifier) =>
+    getItemInfo(identifier).catch(() => undefined),
+  );
 }
 
 // A game whose ROMs are all nodump (no CRC) is listed without querying any
