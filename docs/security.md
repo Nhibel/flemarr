@@ -50,6 +50,22 @@ Put the app on a VPN (WireGuard, Tailscale, …) and reach it as if you were at 
 
 Run the app behind Caddy / Traefik / nginx with authentication at the proxy layer — HTTP Basic Auth at minimum, or a real SSO (Authelia, Authentik, `oauth2-proxy`). The app stays "open" internally but is only reachable _after_ the proxy authenticates the visitor. This covers **every** endpoint at once, is battle-tested, and the proxy also terminates HTTPS for you. No application code changes.
 
+#### The setup in use: Cloudflare Tunnel + Cloudflare Access
+
+This is option 2 with Cloudflare as the proxy, and it is how the homelab instance is reached from outside. It needs no in-app login, **provided every point below holds**:
+
+- **No published port.** The container's `docker-compose.yml` has no `ports:` entry for the app. `cloudflared` reaches it by service name on a shared Docker network. A published port is a way around Access: anyone on the LAN (or the internet, if the port is forwarded) reaches the app with no login.
+- **One Access application covers the whole hostname**, all paths included: `/api/*` and the SSE streams as much as the page. An Access policy on `/` alone leaves the API open.
+- **The policy names who may log in** (email one-time PIN for your own address), not "anyone with an email".
+- **No second route in.** If a reverse proxy (SWAG) also serves the app on the LAN, it must not be reachable from outside with the same hostname, or it bypasses Access.
+
+Two consequences of going through Cloudflare, handled in the app:
+
+- **Idle connections are cut after ~100 s.** The download and scan event streams send a keep-alive comment every 30 s (`apps/server/src/lib/job-event-stream.ts`), so a long CHD conversion no longer freezes the progress shown.
+- **Large files through the tunnel.** "Browser" downloads stream ROM files (disc images of several hundred MB) through Cloudflare. Cloudflare's terms discourage serving large non-web content through its proxy on the free plan; "server" downloads, which land on the homelab's disk directly, avoid the question.
+
+Optional defense in depth: check the `Cf-Access-Jwt-Assertion` header Cloudflare adds to every authenticated request (a Hono middleware verifying the JWT against the team's public keys and the application's audience tag). It would reject a request that reached the app without going through Access — the case where a port was published by mistake. Not built: the points above already close that path.
+
 ### 3. Add a single-password gate inside the app (defense-in-depth)
 
 Only worth it if you want the container to be safe _by default_, without depending on the proxy being configured correctly. See the sketch below.
@@ -91,4 +107,5 @@ This is acceptable for a homelab: the database file sits on the same machine, at
 | Trusted home LAN                                  | Yes                     |
 | VPN access from outside                           | Yes                     |
 | Behind an authenticated reverse proxy, over HTTPS | Yes                     |
+| Cloudflare Tunnel + Access, no published port     | Yes                     |
 | Port-forwarded to the internet as-is              | **No — do not do this** |
