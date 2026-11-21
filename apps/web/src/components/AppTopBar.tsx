@@ -11,20 +11,16 @@ export const APP_TOP_BAR_HEIGHT = '72px';
  * The strip reserved for the small logo at the top of every screen but the
  * home screen, which shows the logo large as its title instead. Mounted
  * once in App rather than per screen so the logo sits at the same place and
- * size everywhere it appears. Sticky, so scrolling a long page never takes
- * it away.
+ * size everywhere it appears. Not sticky: it scrolls away with the page.
+ * FontScaleControl is the only thing pinned to the viewport.
  *
- * Its right end is left empty on purpose: FontScaleControl is pinned to the
- * viewport's top-right corner and lands inside this strip.
+ * Its right end is left empty on purpose: FontScaleControl sits in the
+ * viewport's top-right corner and lands inside this strip at scroll 0.
  */
 export function AppTopBar() {
   return (
     <header
       className={css({
-        position: 'sticky',
-        top: '0',
-        // Under FontScaleControl (50), which overlaps the strip's right end.
-        zIndex: '40',
         bg: 'bg.page',
         flexShrink: '0',
       })}
