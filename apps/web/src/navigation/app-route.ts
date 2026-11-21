@@ -8,13 +8,14 @@ import type { DatSummary } from '@shared/dat.js';
  *
  *   #/                         the systems
  *   #/systems/<datId>/<tab>    one system, on one tab
- *   #/settings, #/lexique      the two full pages
+ *   #/settings                 the settings page
+ *
+ * The glossary is a popup over any screen, not a screen of its own.
  */
 export type AppRoute =
   | { screen: 'systems' }
   | { screen: 'game'; datId: string; tab: Tab }
-  | { screen: 'settings' }
-  | { screen: 'lexique' };
+  | { screen: 'settings' };
 
 const TABS: readonly Tab[] = ['games', 'scanner', 'sources', 'downloads'];
 
@@ -28,8 +29,6 @@ export function parseHash(hash: string): AppRoute {
   switch (first) {
     case 'settings':
       return { screen: 'settings' };
-    case 'lexique':
-      return { screen: 'lexique' };
     case 'systems':
       if (!datId) return { screen: 'systems' };
       return {
@@ -50,8 +49,6 @@ export function routeToHash(route: AppRoute): string {
       return `#/systems/${encodeURIComponent(route.datId)}/${route.tab}`;
     case 'settings':
       return '#/settings';
-    case 'lexique':
-      return '#/lexique';
   }
 }
 

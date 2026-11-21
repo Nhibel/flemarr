@@ -21,9 +21,8 @@ describe('parseHash', () => {
     expect(parseHash('#/systems/dat-1/nope')).toMatchObject({ tab: 'games' });
   });
 
-  it('reads the full pages', () => {
+  it('reads the settings page', () => {
     expect(parseHash('#/settings')).toEqual({ screen: 'settings' });
-    expect(parseHash('#/lexique')).toEqual({ screen: 'lexique' });
   });
 
   it('falls back to the systems screen on anything else', () => {
@@ -36,7 +35,6 @@ describe('routeToHash', () => {
     { screen: 'systems' },
     { screen: 'game', datId: 'a b/c', tab: 'downloads' },
     { screen: 'settings' },
-    { screen: 'lexique' },
   ];
 
   it.each(routes)('round-trips %o', (route) => {

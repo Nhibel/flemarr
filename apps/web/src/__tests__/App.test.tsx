@@ -197,4 +197,30 @@ describe('App — the screen lives in the URL', () => {
     await user.click(await screen.findByRole('button', { name: '← Retour' }));
     expect(window.location.hash).toBe('#/systems/d1/games');
   });
+
+  // The system's screen (and its selected games) waits underneath, hidden.
+  it('keeps the system mounted while Settings shows', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/systems/d1/games';
+    render(<App />, { wrapper });
+    const heading = await screen.findByRole('heading', { name: 'Super Nintendo' });
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }));
+    expect(heading).toBeInTheDocument();
+    expect(heading).not.toBeVisible();
+  });
+
+  it('opens the glossary over the current screen, without leaving it', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/systems/d1/games';
+    render(<App />, { wrapper });
+    await screen.findByRole('heading', { name: 'Super Nintendo' });
+    await user.click(screen.getByRole('button', { name: 'Lexique' }));
+    expect(await screen.findByRole('dialog', { hidden: true, name: 'Lexique' })).toHaveAttribute(
+      'open',
+    );
+    expect(window.location.hash).toBe('#/systems/d1/games');
+    await user.click(screen.getByRole('button', { name: 'Fermer' }));
+    // Closed, a <dialog> has no accessible name: find it by its label.
+    expect(document.querySelector('dialog[aria-label="Lexique"]')).not.toHaveAttribute('open');
+  });
 });

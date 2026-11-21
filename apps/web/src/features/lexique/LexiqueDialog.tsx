@@ -1,4 +1,5 @@
 import { css } from '@/styled-system/css';
+import { Dialog } from '@/components/Dialog.js';
 
 interface Term {
   term: string;
@@ -151,34 +152,14 @@ const SECTIONS: Section[] = [
   },
 ];
 
-export function LexiquePage({ onClose }: { onClose: () => void }) {
+/**
+ * The glossary, as a popup over whatever screen asked: a question about a
+ * term comes up mid-task, and answering it must not leave the screen (nor
+ * drop its state, such as the selected games).
+ */
+export function LexiqueDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <main
-      className={css({
-        maxW: '6xl',
-        mx: 'auto',
-        mt: { base: '8', md: '16' },
-        px: { base: '4', md: '6', lg: '8' },
-        pb: '12',
-      })}
-    >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '4', mb: '8' })}>
-        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
-          Lexique
-        </h1>
-        <button
-          onClick={onClose}
-          className={css({
-            fontSize: 'sm',
-            color: 'accent.text',
-            cursor: 'pointer',
-            _hover: { textDecoration: 'underline' },
-          })}
-        >
-          ← Retour
-        </button>
-      </div>
-
+    <Dialog open={open} onClose={onClose} title="Lexique">
       {SECTIONS.map((section) => (
         <section
           key={section.title}
@@ -212,6 +193,6 @@ export function LexiquePage({ onClose }: { onClose: () => void }) {
           </dl>
         </section>
       ))}
-    </main>
+    </Dialog>
   );
 }

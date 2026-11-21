@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { css, cx } from '@/styled-system/css';
+import { BookIcon, iconBtnClass } from '@/components/icons.js';
 import { updateSettings } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
@@ -14,11 +15,13 @@ import { AppearanceSection } from './AppearanceSection.js';
 
 interface Props {
   onClose: () => void;
+  /** Opens the glossary over this page. */
+  onLexique: () => void;
   theme: Theme;
   onSetTheme: (t: Theme) => void;
 }
 
-export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
+export function SettingsPage({ onClose, onLexique, theme, onSetTheme }: Props) {
   const queryClient = useQueryClient();
   const { data: settings, isLoading, error } = useSettings();
 
@@ -60,6 +63,9 @@ export function SettingsPage({ onClose, theme, onSetTheme }: Props) {
         <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', color: 'fg.heading', flex: 1 })}>
           Paramètres
         </h1>
+        <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
+          <BookIcon />
+        </button>
         <button
           onClick={onClose}
           className={css({

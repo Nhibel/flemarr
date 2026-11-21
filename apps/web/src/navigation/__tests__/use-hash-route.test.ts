@@ -8,9 +8,9 @@ beforeEach(() => {
 
 describe('useHashRoute', () => {
   it('starts from the hash in the URL', () => {
-    window.location.hash = '#/lexique';
+    window.location.hash = '#/settings';
     const { result } = renderHook(() => useHashRoute());
-    expect(result.current.route).toEqual({ screen: 'lexique' });
+    expect(result.current.route).toEqual({ screen: 'settings' });
   });
 
   it('writes a navigation to the hash', () => {

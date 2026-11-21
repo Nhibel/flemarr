@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
 import { GameView } from '@/features/game-view/GameView.js';
-import { LexiquePage } from '@/features/lexique/LexiquePage.js';
+import { LexiqueDialog } from '@/features/lexique/LexiqueDialog.js';
 import { TopologyStep } from '@/features/onboarding/TopologyStep.js';
 import { SettingsPage } from '@/features/settings/SettingsPage.js';
 import { SystemsScreen } from '@/features/systems/SystemsScreen.js';
@@ -24,8 +24,9 @@ import type { AppRoute } from '@/navigation/app-route.js';
 export function App() {
   const { route, navigate } = useHashRoute();
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
-  // Where Settings and Lexique return to: the screen they were opened from.
+  // Where Settings returns to: the screen it was opened from.
   const [returnRoute, setReturnRoute] = useState<AppRoute>({ screen: 'systems' });
+  const [isLexiqueOpen, setLexiqueOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { fontScale, setFontScale } = useFontScale();
   const queryClient = useQueryClient();
@@ -53,20 +54,21 @@ export function App() {
     Object.keys(rootSettings.systemPaths).length === 0 &&
     knownDats.length === 0;
 
-  const { activeDat, isWaitingForDats } = openedSystem(route, knownDats);
+  // While Settings shows, the screen it was opened from stays mounted
+  // underneath, hidden: a system keeps its tabs' state (selected games,
+  // scan progress, resolve results) across a visit to Settings.
+  const isSettingsOpen = route.screen === 'settings';
+  const screenRoute = isSettingsOpen ? returnRoute : route;
+  const { activeDat, isWaitingForDats } = openedSystem(screenRoute, knownDats);
 
-  const openPage = (screen: 'settings' | 'lexique') => {
+  const openSettings = () => {
     setReturnRoute(route);
-    navigate({ screen });
+    navigate({ screen: 'settings' });
   };
-  const backFromPage = () => navigate(returnRoute);
+  const openLexique = () => setLexiqueOpen(true);
 
   let content: ReactNode;
-  if (route.screen === 'settings') {
-    content = <SettingsPage onClose={backFromPage} theme={theme} onSetTheme={setTheme} />;
-  } else if (route.screen === 'lexique') {
-    content = <LexiquePage onClose={backFromPage} />;
-  } else if (isWaitingForDats) {
+  if (isWaitingForDats) {
     content = null;
   } else if (activeDat === null && isUnusedInstall) {
     content = <TopologyStep saving={chooseTopology.isPending} onChoose={chooseTopology.mutate} />;
@@ -76,26 +78,35 @@ export function App() {
         loaderMode={loaderMode}
         onSetLoaderMode={setLoaderMode}
         onOpenSystem={(dat) => navigate({ screen: 'game', datId: dat.id, tab: 'games' })}
-        onSettings={() => openPage('settings')}
-        onLexique={() => openPage('lexique')}
+        onSettings={openSettings}
+        onLexique={openLexique}
       />
     );
   } else {
     content = (
       <GameView
         dat={activeDat}
-        tab={route.screen === 'game' ? route.tab : 'games'}
+        tab={screenRoute.screen === 'game' ? screenRoute.tab : 'games'}
         onTabChange={(tab) => navigate({ screen: 'game', datId: activeDat.id, tab })}
         onReset={() => navigate({ screen: 'systems' })}
-        onSettings={() => openPage('settings')}
-        onLexique={() => openPage('lexique')}
+        onSettings={openSettings}
+        onLexique={openLexique}
       />
     );
   }
 
   return (
     <>
-      {content}
+      {isSettingsOpen && (
+        <SettingsPage
+          onClose={() => navigate(returnRoute)}
+          theme={theme}
+          onSetTheme={setTheme}
+          onLexique={openLexique}
+        />
+      )}
+      <div style={isSettingsOpen ? { display: 'none' } : undefined}>{content}</div>
+      <LexiqueDialog open={isLexiqueOpen} onClose={() => setLexiqueOpen(false)} />
       {/* Fixed position, outside the normal page flow, mounted once here
           (not per-view, not inline next to Lexique/Réglages) — see
           FontScaleControl's own comment for why it can't sit inline with
