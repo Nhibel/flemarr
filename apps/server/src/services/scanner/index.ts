@@ -5,6 +5,7 @@ import { computeCrc32 } from '@/lib/crc32.js';
 import { buildCrcIndex, matchFiles } from './matcher.js';
 import { matchChdFile } from './chd-match.js';
 import { walkDir } from './walk.js';
+import { saveLastScan } from './last-scan.js';
 import type { ScanResult, ScanEvent } from '@shared/scan.js';
 
 export type ScanJobState =
@@ -80,8 +81,12 @@ export async function runScan(datId: string, directory: string): Promise<string>
       const result = matchFiles(results, crcIndex);
       result.matched.push(...chdMatched);
       const doneEvent: ScanEvent = { type: 'done', result };
+      const completedAt = Date.now();
+      // Stored before the done event goes out, so a client refetching on
+      // that event reads this scan.
+      saveLastScan(datId, directory, result, completedAt);
       events.push(doneEvent);
-      scanJobs.set(jobId, { status: 'done', events, result, completedAt: Date.now() });
+      scanJobs.set(jobId, { status: 'done', events, result, completedAt });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const errorEvent: ScanEvent = { type: 'error', message };

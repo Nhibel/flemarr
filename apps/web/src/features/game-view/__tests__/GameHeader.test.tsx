@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GameHeader } from '../GameHeader.js';
+import { scanTimeLabel } from '../scan-time-label.js';
 
 const DAT: DatUploadResponse = {
   id: 'dat1',
@@ -52,7 +53,7 @@ describe('GameHeader', () => {
   it('says when the last scan ran', () => {
     const lastScanAt = new Date(2026, 10, 19, 14, 30);
     renderHeader({ ownedCount: 3, lastScanAt });
-    expect(screen.getByText(`vérifié à ${lastScanAt.toLocaleTimeString()}`)).toBeInTheDocument();
+    expect(screen.getByText(scanTimeLabel(lastScanAt))).toBeInTheDocument();
   });
 
   it('offers a first scan, then a rescan', () => {

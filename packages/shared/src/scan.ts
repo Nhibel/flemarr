@@ -34,6 +34,19 @@ const scanResultSchema = z.object({
 });
 export type ScanResult = z.infer<typeof scanResultSchema>;
 
+// A DAT's last finished scan, kept server-side. scannedAt in ms since epoch.
+const lastScanSchema = z.object({
+  directory: z.string(),
+  scannedAt: z.number(),
+  result: scanResultSchema,
+});
+export type LastScan = z.infer<typeof lastScanSchema>;
+
+export const lastScanResponseSchema = z.object({
+  lastScan: lastScanSchema.nullable(),
+});
+export type LastScanResponse = z.infer<typeof lastScanResponseSchema>;
+
 export const scanEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('progress'), scanned: z.number(), total: z.number() }),
   z.object({ type: z.literal('done'), result: scanResultSchema }),

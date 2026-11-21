@@ -5,6 +5,7 @@ import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
 import type { SystemIconStyle } from '@shared/system-icon.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { plural } from '@/lib/plural.js';
+import { scanTimeLabel } from './scan-time-label.js';
 
 // The two text buttons that sit ON the Jeux header, given the fill the
 // icon buttons beside them already have (iconBtnClass): bg.inset, one
@@ -217,9 +218,7 @@ function OwnershipCounter({
         {missingCount} {plural(missingCount, 'manquant')} sur {dat.gameCount}
       </span>
       {lastScanAt && (
-        <span className={css({ color: 'fg.onBandMuted' })}>
-          vérifié à {lastScanAt.toLocaleTimeString()}
-        </span>
+        <span className={css({ color: 'fg.onBandMuted' })}>{scanTimeLabel(lastScanAt)}</span>
       )}
     </span>
   );

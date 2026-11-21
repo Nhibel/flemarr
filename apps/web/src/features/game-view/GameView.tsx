@@ -17,11 +17,11 @@ import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
 import { computeMissingGameIds, computeOwnership, countOwned } from '@/lib/missing-games.js';
-import type { ScanResult } from '@shared/scan.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GameHeader } from './GameHeader.js';
 import { SelectionDock } from './SelectionDock.js';
 import { TAB_LABELS, tabAfterGames, visibleTabs } from './tabs.js';
+import { useLastScan } from './use-last-scan.js';
 import type { Tab } from './tabs.js';
 
 interface Props {
@@ -39,12 +39,7 @@ interface Props {
 export function GameView({ dat, onReset, onSettings, onLexique }: Props) {
   const [tab, setTab] = useState<Tab>('games');
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
-  const [lastScan, setLastScan] = useState<ScanResult | null>(null);
-  // When that scan ran, for the header. A clock time rather than the comps'
-  // relative "il y a 2 jours": the scan result lives in React state only
-  // and is lost on reload, so it can never be older than the current
-  // session — a duration would imply a persistence that isn't there.
-  const [lastScanAt, setLastScanAt] = useState<Date | null>(null);
+  const { lastScan, lastScanAt, refresh: refreshLastScan } = useLastScan(dat.id, dat.system);
   const systemIcons = useSystemIcons([dat.system]);
 
   const handleQueueDownload = (job: QueuedDownload) => {
@@ -245,14 +240,7 @@ export function GameView({ dat, onReset, onSettings, onLexique }: Props) {
           kept mounted otherwise to preserve scan progress */}
       {showScanner && (
         <TabPanel active={tab === 'scanner'}>
-          <ScanPage
-            datId={dat.id}
-            system={dat.system}
-            onScanComplete={(result) => {
-              setLastScan(result);
-              setLastScanAt(new Date());
-            }}
-          />
+          <ScanPage datId={dat.id} system={dat.system} onScanComplete={refreshLastScan} />
         </TabPanel>
       )}
 

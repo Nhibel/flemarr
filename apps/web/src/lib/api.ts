@@ -7,8 +7,8 @@ import {
   errorResponseSchema,
 } from '@shared/api.js';
 import type { DatUploadResponse, GamesResponse, ListDatsResponse } from '@shared/api.js';
-import { scanJobSchema, renameResultSchema } from '@shared/scan.js';
-import type { ScanJob, RenameRequest, RenameResult } from '@shared/scan.js';
+import { scanJobSchema, renameResultSchema, lastScanResponseSchema } from '@shared/scan.js';
+import type { ScanJob, RenameRequest, RenameResult, LastScan } from '@shared/scan.js';
 import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
 import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
 import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
@@ -81,6 +81,12 @@ export async function listDats(): Promise<ListDatsResponse['dats']> {
 export async function deleteDat(datId: string): Promise<void> {
   const res = await fetch(`/api/dats/${encodeURIComponent(datId)}`, { method: 'DELETE' });
   await ensureOk(res);
+}
+
+/** The DAT's last finished scan, null when it was never scanned. */
+export async function fetchLastScan(datId: string): Promise<LastScan | null> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/last-scan`);
+  return parseResponse(res, lastScanResponseSchema).then((r) => r.lastScan);
 }
 
 export async function fetchGames(datId: string): Promise<GamesResponse['games']> {

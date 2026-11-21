@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { parseDat, addDat, getDat, listDats, deleteDat } from '@/services/dat/index.js';
 import { clearResolverCache } from '@/services/archive-org/resolver.js';
+import { deleteLastScan } from '@/services/scanner/last-scan.js';
 import { errorJson, errorMessage } from '@/lib/http.js';
 
 export const datsRoute = new Hono();
@@ -14,6 +15,7 @@ datsRoute.delete('/dats/:id', (c) => {
   if (!deleteDat(id)) {
     return errorJson(c, 404, 'NOT_FOUND', `DAT ${id} not found`);
   }
+  deleteLastScan(id);
   return c.json({ ok: true });
 });
 

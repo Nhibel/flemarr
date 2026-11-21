@@ -4,6 +4,7 @@ import { streamSSE } from 'hono/streaming';
 import { streamJobEvents } from '@/lib/job-event-stream.js';
 import { scanRequestSchema, renameRequestSchema } from '@shared/scan.js';
 import { runScan, scanJobs } from '@/services/scanner/index.js';
+import { getLastScan } from '@/services/scanner/last-scan.js';
 import {
   findCollisions,
   renameDestination,
@@ -63,6 +64,11 @@ scanRoute.post('/scan', async (c) => {
   }
 
   return c.json({ jobId }, 202);
+});
+
+// The DAT's last finished scan, null when it was never scanned.
+scanRoute.get('/dats/:id/last-scan', (c) => {
+  return c.json({ lastScan: getLastScan(c.req.param('id')) });
 });
 
 scanRoute.get('/scan/:jobId/events', (c) => {
