@@ -32,7 +32,7 @@ cp .env.example .env        # optional — adjust BIND_ADDR / PORT
 docker compose up -d --build
 ```
 
-The UI is then at `http://127.0.0.1:3000`. Data (the SQLite database and DAT cache) lives in the named volume `rom-curator-data`.
+The UI is then at `http://127.0.0.1:3000`. Data (the SQLite database and DAT cache) lives in the named volume `flemarr-data`.
 
 ### Mounting your ROM library
 
@@ -60,6 +60,23 @@ This table covers only the env vars read at startup. Everything else — the Fre
 
 - **Portainer** — Stacks → Add stack → _Repository_, point it at this repo and `docker-compose.yml`; Portainer clones and builds. (`better-sqlite3` compiles inside the image, so it adapts to the server's architecture.)
 - **SSH** — `git clone`, then `docker compose up -d --build`.
+
+### Migrating an install from rom-curator
+
+The app was called rom-curator until 2026-11-21. The compose service, container and volume are now named `flemarr`, and Docker cannot rename a volume, so an existing install moves its data once. The app itself renames `rom-curator.db` to `flemarr.db` on its first start.
+
+1. Find the old volume: `docker volume ls | grep rom-curator` (Portainer names it `<stack>_rom-curator-data`).
+2. Stop the old stack (Portainer → Stacks → the old stack → Stop). This frees port 3000.
+3. Deploy a new stack named `flemarr` from this repository, as above, then **stop it right away**. This creates the empty `flemarr-data` volume.
+4. Copy the data across, replacing what the new stack just created:
+
+   ```sh
+   docker run --rm -v <old-volume>:/from -v flemarr-data:/to alpine \
+     sh -c 'rm -rf /to/* && cp -a /from/. /to/'
+   ```
+
+5. Start the `flemarr` stack. Its log shows `migrated: /data/rom-curator.db -> /data/flemarr.db`; check your systems and settings are there.
+6. Delete the old stack, then the old volume: `docker volume rm <old-volume>`.
 
 ### ⚠️ Security — read before exposing
 

@@ -1,12 +1,12 @@
 services:
-  rom-curator:
+  flemarr:
     build: .
-    image: rom-curator:latest
+    image: flemarr:latest
     # Build the image locally from the Dockerfile — it is not published to any
     # registry. Prevents `docker compose pull` (e.g. Portainer's "re-pull")
-    # from failing with "pull access denied for rom-curator".
+    # from failing with "pull access denied for flemarr".
     pull_policy: build
-    container_name: rom-curator
+    container_name: flemarr
     restart: unless-stopped
     ports:
       # Loopback-only by default: the app has NO authentication (see
@@ -22,11 +22,14 @@ services:
       - ROMS_ROOT=/roms
     volumes:
       # SQLite DB + DAT cache — survives container recreation.
-      - rom-curator-data:/data
+      - flemarr-data:/data
       # Your ROM library, mounted at /roms. Set ROMS_HOST_DIR in .env to your
       # library path; defaults to ./roms next to this file (created empty if
       # absent, so the stack always comes up).
       - ${ROMS_HOST_DIR:-./roms}:/roms
 
 volumes:
-  rom-curator-data:
+  flemarr-data:
+    # A fixed name, not prefixed with the stack name, so the migration steps
+    # in the README can address it whatever the stack is called.
+    name: flemarr-data
