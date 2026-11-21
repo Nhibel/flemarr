@@ -16,6 +16,7 @@ export const queryKeys = {
   games: (datId: string) => ['games', datId] as const,
   lastScan: (datId: string) => ['last-scan', datId] as const,
   runningDownloads: (datId: string) => ['running-downloads', datId] as const,
+  downloadHistory: (datId: string) => ['download-history', datId] as const,
   /** Without gameIds: every cached page of the DAT, for an invalidation. */
   gameDetails: (datId: string, gameIds?: string[]) =>
     gameIds === undefined

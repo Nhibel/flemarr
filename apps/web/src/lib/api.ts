@@ -13,8 +13,14 @@ import {
   downloadJobSchema,
   downloadEventSchema,
   runningDownloadsResponseSchema,
+  downloadHistoryResponseSchema,
 } from '@shared/download.js';
-import type { DownloadRequest, DownloadEvent, RunningDownload } from '@shared/download.js';
+import type {
+  DownloadRequest,
+  DownloadEvent,
+  RunningDownload,
+  DownloadHistoryEntry,
+} from '@shared/download.js';
 import {
   listSourcesResponseSchema,
   fetchDatResponseSchema,
@@ -222,6 +228,12 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
 export async function fetchRunningDownloads(datId: string): Promise<RunningDownload[]> {
   const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/downloads`);
   return parseResponse(res, runningDownloadsResponseSchema).then((r) => r.jobs);
+}
+
+/** The DAT's download attempts of the last 30 days, newest first. */
+export async function fetchDownloadHistory(datId: string): Promise<DownloadHistoryEntry[]> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/download-history`);
+  return parseResponse(res, downloadHistoryResponseSchema).then((r) => r.entries);
 }
 
 export function openDownloadEvents(jobId: string): EventSource {

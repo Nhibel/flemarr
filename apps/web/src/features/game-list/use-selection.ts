@@ -22,6 +22,11 @@ export function useSelection(filteredGames: Game[]) {
     setSelected((prev) => new Set([...prev, ...filteredGames.map((g) => g.id)]));
   }, [filteredGames]);
 
+  // Checks specific games, keeping the rest of the selection.
+  const select = useCallback((ids: readonly string[]) => {
+    setSelected((prev) => new Set([...prev, ...ids]));
+  }, []);
+
   const clearAll = useCallback(() => {
     setSelected(new Set());
   }, []);
@@ -40,5 +45,5 @@ export function useSelection(filteredGames: Game[]) {
 
   const isAllSelected = filteredGames.length > 0 && filteredGames.every((g) => selected.has(g.id));
 
-  return { selected, toggle, selectAll, clearAll, deselect, isAllSelected };
+  return { selected, toggle, selectAll, select, clearAll, deselect, isAllSelected };
 }

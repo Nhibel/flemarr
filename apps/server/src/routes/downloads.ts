@@ -13,6 +13,7 @@ import {
   findBrowserFile,
   runningDownloads,
 } from '@/services/downloader/index.js';
+import { listDownloadHistory } from '@/services/downloader/history.js';
 import { PathTraversalError, NoRootsConfiguredError } from '@/lib/fs-safety.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
 
@@ -41,6 +42,14 @@ downloadsRoute.post('/downloads', async (c) => {
 // The DAT's jobs still running: a page reloaded mid-download picks them up.
 downloadsRoute.get('/dats/:id/downloads', (c) => {
   return c.json({ jobs: runningDownloads(c.req.param('id')) });
+});
+
+const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+// The DAT's download attempts of the last 30 days, newest first.
+downloadsRoute.get('/dats/:id/download-history', (c) => {
+  const since = Date.now() - HISTORY_WINDOW_MS;
+  return c.json({ entries: listDownloadHistory(c.req.param('id'), since) });
 });
 
 downloadsRoute.get('/downloads/:jobId/events', (c) => {

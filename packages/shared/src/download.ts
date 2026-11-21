@@ -62,6 +62,22 @@ const runningDownloadSchema = z.object({
 });
 export type RunningDownload = z.infer<typeof runningDownloadSchema>;
 
+// One past download attempt of a rom. completedAt in ms since epoch;
+// destination is the folder, or "<browser>" for a browser download.
+const downloadHistoryEntrySchema = z.object({
+  gameId: z.string(),
+  romName: z.string(),
+  destination: z.string(),
+  status: z.enum(['done', 'failed']),
+  errorMessage: z.string().nullable(),
+  completedAt: z.number(),
+});
+export type DownloadHistoryEntry = z.infer<typeof downloadHistoryEntrySchema>;
+
+export const downloadHistoryResponseSchema = z.object({
+  entries: z.array(downloadHistoryEntrySchema),
+});
+
 export const runningDownloadsResponseSchema = z.object({
   jobs: z.array(runningDownloadSchema),
 });

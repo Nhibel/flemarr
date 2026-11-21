@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { SegmentedControl } from '@/components/SegmentedControl.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
@@ -11,6 +11,7 @@ import { ScanPage } from '@/features/scanner/ScanPage.js';
 import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/features/folders/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
+import { DownloadHistory } from '@/features/downloader/DownloadHistory.js';
 import type { QueuedDownload } from '@/features/downloader/job-state.js';
 import { useRunningDownloads } from '@/features/downloader/use-running-downloads.js';
 import { fetchGames } from '@/lib/api.js';
@@ -109,7 +110,7 @@ export function GameView({
 
   // "Select all" keeps operating on baseFiltered: with the selected-only view
   // active it must still mean "all filtered games", not "the visible subset".
-  const { selected, toggle, selectAll, clearAll, deselect, isAllSelected } =
+  const { selected, toggle, selectAll, select, clearAll, deselect, isAllSelected } =
     useSelection(baseFiltered);
 
   const [selectedOnly, setSelectedOnly] = useState(false);
@@ -135,6 +136,12 @@ export function GameView({
   const ownedCount = useMemo(() => (ownership ? countOwned(ownership) : null), [ownership]);
 
   const isGamesReady = !isLoading && !error;
+  const gameNames = useMemo(() => new Map(games.map((game) => [game.id, game.name])), [games]);
+  const queryClient = useQueryClient();
+  const refreshHistory = useCallback(
+    () => void queryClient.invalidateQueries({ queryKey: queryKeys.downloadHistory(dat.id) }),
+    [dat.id, queryClient],
+  );
   // The "possession inconnue" notice shows only when a scan could tell us
   // something but hasn't run — in browser mode it never can, and repeating
   // that on every visit would be nagging about a choice already made.
@@ -290,6 +297,16 @@ export function GameView({
           // download does — without switching tabs, since the user is
           // already looking at this one.
           onQueueRetry={(job) => setDownloadJobs((prev) => [...prev, job])}
+          // Finished jobs have just written their attempts to the history.
+          onAllDone={refreshHistory}
+        />
+        <DownloadHistory
+          datId={dat.id}
+          gameNames={gameNames}
+          onSelectGames={(gameIds) => {
+            select(gameIds);
+            setTab('games');
+          }}
         />
       </TabPanel>
     </main>

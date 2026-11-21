@@ -98,3 +98,12 @@ describe('useSelection', () => {
     expect(r2.current.selected.size).toBe(0);
   });
 });
+
+describe('useSelection — select', () => {
+  it('checks the given games and keeps the others checked', () => {
+    const { result } = renderHook(() => useSelection(GAMES));
+    act(() => result.current.toggle('a'));
+    act(() => result.current.select(['b', 'c']));
+    expect([...result.current.selected].sort()).toEqual(['a', 'b', 'c']);
+  });
+});
