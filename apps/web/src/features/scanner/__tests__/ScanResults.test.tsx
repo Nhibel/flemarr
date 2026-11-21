@@ -62,7 +62,7 @@ beforeEach(() => {
 describe('ScanResults', () => {
   it('counts each outcome and the files scanned', () => {
     renderResults();
-    expect(screen.getByText('trouvés').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('jeu trouvé').parentElement).toHaveTextContent('1');
     expect(screen.getByText('mal nommés').parentElement).toHaveTextContent('2');
     expect(screen.getByText('introuvables').parentElement).toHaveTextContent('1');
     expect(screen.getByText('4 fichiers scannés')).toBeInTheDocument();
@@ -133,5 +133,28 @@ describe('ScanResults', () => {
   it('hides the rename section when every name is already right', () => {
     renderResults({ result: { ...RESULT, wrongName: [] } });
     expect(screen.queryByText('Suggestions de renommage')).not.toBeInTheDocument();
+  });
+
+  // A disc game in one .chd matches once per rom of the DAT: it must still
+  // read as one game in one file, and be listed.
+  it('counts and lists a .chd game once', () => {
+    const chd = '/roms/psx/Bloody Roar (USA).chd';
+    const match = (romName: string) => ({
+      filePath: chd,
+      gameName: 'Bloody Roar (USA)',
+      romName,
+      crc: '1',
+    });
+    renderResults({
+      result: {
+        matched: [match('a.cue'), match('a (Track 1).bin'), match('a (Track 2).bin')],
+        wrongName: [],
+        unmatched: [],
+      },
+    });
+    expect(screen.getByText('jeu trouvé').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('1 fichier scanné')).toBeInTheDocument();
+    expect(screen.getByText('Voir le jeu trouvé')).toBeInTheDocument();
+    expect(screen.getByText('Bloody Roar (USA)')).toBeInTheDocument();
   });
 });

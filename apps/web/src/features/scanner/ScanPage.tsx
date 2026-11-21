@@ -18,7 +18,7 @@ interface Props {
 
 type ScanState =
   | { phase: 'idle' }
-  | { phase: 'scanning'; scanned: number; total: number }
+  | { phase: 'scanning'; scanned: number; total: number; extracting?: string }
   | { phase: 'done'; result: ScanResult; directory: string }
   | { phase: 'error'; message: string };
 
@@ -57,7 +57,12 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
 
       switch (event.type) {
         case 'progress':
-          setScan({ phase: 'scanning', scanned: event.scanned, total: event.total });
+          setScan({
+            phase: 'scanning',
+            scanned: event.scanned,
+            total: event.total,
+            extracting: event.extracting,
+          });
           break;
         case 'done':
           setScan({ phase: 'done', result: event.result, directory });
@@ -159,6 +164,11 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
           {scan.total > 0
             ? `${scan.scanned} / ${scan.total} ${plural(scan.total, 'fichier')} ${plural(scan.total, 'haché')}…`
             : 'Collecte des fichiers…'}
+          {scan.extracting !== undefined && (
+            <span className={css({ display: 'block', mt: '1', color: 'fg.faint' })}>
+              Décompression de {scan.extracting} pour l&apos;identifier…
+            </span>
+          )}
         </div>
       )}
 

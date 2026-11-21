@@ -5,6 +5,7 @@ import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult } from '@shared/scan.js';
 import { RenameRow } from './RenameRow.js';
 import { plural } from '@/lib/plural.js';
+import { foundGames, scannedFileCount } from './scan-summary.js';
 
 interface ScanResultsProps {
   result: ScanResult;
@@ -28,14 +29,20 @@ export function ScanResults({
   renameResult,
 }: ScanResultsProps) {
   const romsRoot = useRomsRoot();
-  const total = result.matched.length + result.wrongName.length + result.unmatched.length;
+  const total = scannedFileCount(result);
+  const games = foundGames(result);
   const allSelected = result.wrongName.every((entry) => selected.has(entry.filePath));
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-      {/* Summary chips */}
+      {/* Summary chips. Found counts games; the other two count files,
+          since those are files to act on. */}
       <div className={css({ display: 'flex', gap: '3', flexWrap: 'wrap' })}>
-        <Chip label="trouvés" count={result.matched.length} color="green" />
+        <Chip
+          label={`${plural(games.length, 'jeu', 'jeux')} ${plural(games.length, 'trouvé')}`}
+          count={games.length}
+          color="green"
+        />
         <Chip label="mal nommés" count={result.wrongName.length} color="amber" />
         <Chip label="introuvables" count={result.unmatched.length} color="gray" />
         <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
@@ -143,6 +150,34 @@ export function ScanResults({
                 })}
               >
                 {displayPath(p, romsRoot)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {/* Found games — folded: on a full folder it is the long list, and
+          not the one that asks for action. */}
+      {games.length > 0 && (
+        <details className={css({ fontSize: 'sm' })}>
+          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
+            Voir {plural(games.length, 'le jeu trouvé', `les ${games.length} jeux trouvés`)}
+          </summary>
+          <ul
+            className={css({
+              pl: '4',
+              mt: '1',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5',
+            })}
+          >
+            {games.map((name) => (
+              <li
+                key={name}
+                className={css({ color: 'fg.default', fontSize: 'xs', truncate: true })}
+              >
+                {name}
               </li>
             ))}
           </ul>
