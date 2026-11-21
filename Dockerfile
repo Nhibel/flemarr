@@ -47,7 +47,7 @@ FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    ROM_CURATOR_DATA_DIR=/data \
+    FLEMARR_DATA_DIR=/data \
     WEB_ROOT=/app/web
 
 COPY --from=builder /prod/node_modules ./node_modules

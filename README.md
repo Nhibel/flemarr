@@ -46,13 +46,13 @@ ROMS_HOST_DIR=/srv/roms   # the library folder itself — pointing at its parent
 
 ### Configuration
 
-| Variable               | Default     | Purpose                                                                  |
-| ---------------------- | ----------- | ------------------------------------------------------------------------ |
-| `BIND_ADDR`            | `127.0.0.1` | Host address the port binds to. Loopback by default (see security note). |
-| `PORT`                 | `3000`      | Host port the app is published on.                                       |
-| `ROMS_HOST_DIR`        | `./roms`    | Host directory holding your ROM library; mounted at `/roms`.             |
-| `ROMS_ROOT`            | `/roms`     | In-container library root that browsing/scan/download are confined to.   |
-| `ROM_CURATOR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file).   |
+| Variable           | Default     | Purpose                                                                                                                                     |
+| ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BIND_ADDR`        | `127.0.0.1` | Host address the port binds to. Loopback by default (see security note).                                                                    |
+| `PORT`             | `3000`      | Host port the app is published on.                                                                                                          |
+| `ROMS_HOST_DIR`    | `./roms`    | Host directory holding your ROM library; mounted at `/roms`.                                                                                |
+| `ROMS_ROOT`        | `/roms`     | In-container library root that browsing/scan/download are confined to.                                                                      |
+| `FLEMARR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file). The pre-rename `ROM_CURATOR_DATA_DIR` is still read, with a warning. |
 
 This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org credentials, whether downloads land on the server or in the browser, and whether disc games auto-convert to `.chd` — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
 

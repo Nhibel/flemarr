@@ -16,7 +16,7 @@ services:
       - '${BIND_ADDR:-127.0.0.1}:${PORT:-3000}:3000'
     environment:
       - PORT=3000
-      - ROM_CURATOR_DATA_DIR=/data
+      - FLEMARR_DATA_DIR=/data
       # The single library root. Browsing, scan and download are confined to
       # it; in the app you navigate inside it to pick (or create) subfolders.
       - ROMS_ROOT=/roms
