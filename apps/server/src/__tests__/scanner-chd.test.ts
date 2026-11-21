@@ -15,7 +15,7 @@ const SECTOR = 2352;
 let dir: string;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'rom-curator-scanner-chd-test-'));
+  dir = await mkdtemp(join(tmpdir(), 'flemarr-scanner-chd-test-'));
 });
 
 afterEach(async () => {
@@ -55,8 +55,18 @@ async function buildTestChd(): Promise<{ dat: DatFile; chdPath: string }> {
         region: ['USA'],
         languages: ['En'],
         roms: [
-          { name: 'Game (USA) (Track 1).bin', size: track1.length, crc: computeCrc32Buffer(track1), status: 'good' },
-          { name: 'Game (USA) (Track 2).bin', size: track2.length, crc: computeCrc32Buffer(track2), status: 'good' },
+          {
+            name: 'Game (USA) (Track 1).bin',
+            size: track1.length,
+            crc: computeCrc32Buffer(track1),
+            status: 'good',
+          },
+          {
+            name: 'Game (USA) (Track 2).bin',
+            size: track2.length,
+            crc: computeCrc32Buffer(track2),
+            status: 'good',
+          },
           // The DAT's own expected .cue CRC — never reproducible from a
           // CHD's regenerated cue sheet, which is exactly what this test
           // is here to confirm matchChdFile still accounts for.

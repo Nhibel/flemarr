@@ -9,7 +9,7 @@ import type {
 
 // Browser-target files are staged here (outside any library root — they
 // never get placed, only served once and then deleted).
-export const BROWSER_STAGING_DIR = join(tmpdir(), 'rom-curator-browser-dl');
+export const BROWSER_STAGING_DIR = join(tmpdir(), 'flemarr-browser-dl');
 
 export interface DownloadItemState {
   gameId: string;

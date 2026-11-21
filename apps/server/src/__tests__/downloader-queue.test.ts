@@ -28,7 +28,7 @@ import { convertGameToChd } from '../services/downloader/chd.js';
 import { getDat } from '../services/dat/store.js';
 import type { DatFile } from '@shared/dat.js';
 
-const TMP = join(tmpdir(), 'rom-curator-queue-test');
+const TMP = join(tmpdir(), 'flemarr-queue-test');
 
 const ITEM = {
   gameId: 'smw',
@@ -810,7 +810,7 @@ describe('autoConvertChd', () => {
     // convertGameToChd reports success.
     const found = findBrowserFile(jobId, 'g1', 'Game (USA).chd');
     expect(found).toEqual({
-      path: join(tmpdir(), 'rom-curator-browser-dl', `${jobId}-Game (USA).chd`),
+      path: join(tmpdir(), 'flemarr-browser-dl', `${jobId}-Game (USA).chd`),
       filename: 'Game (USA).chd',
     });
   });

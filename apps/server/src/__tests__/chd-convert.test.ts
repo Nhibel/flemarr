@@ -63,7 +63,7 @@ async function writeDiscFixture(): Promise<{ roms: Rom[] }> {
 }
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'rom-curator-chd-test-'));
+  dir = await mkdtemp(join(tmpdir(), 'flemarr-chd-test-'));
 });
 
 afterEach(async () => {

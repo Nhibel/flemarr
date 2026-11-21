@@ -47,12 +47,12 @@ async function buildContainer(archiveName: string, innerName: string): Promise<s
 }
 
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'rom-curator-extract-test-'));
+  dir = await mkdtemp(join(tmpdir(), 'flemarr-extract-test-'));
 });
 
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
-  dir = await mkdtemp(join(tmpdir(), 'rom-curator-extract-test-'));
+  dir = await mkdtemp(join(tmpdir(), 'flemarr-extract-test-'));
 });
 
 describe('extractContainerEntry', () => {

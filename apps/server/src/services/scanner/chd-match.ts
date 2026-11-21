@@ -34,7 +34,7 @@ export async function matchChdFile(
   filePath: string,
   index: Map<string, CrcEntry>,
 ): Promise<ScanMatch[]> {
-  const scratchDir = join(tmpdir(), `rom-curator-chd-scan-${randomUUID()}`);
+  const scratchDir = join(tmpdir(), `flemarr-chd-scan-${randomUUID()}`);
   const matched: ScanMatch[] = [];
 
   try {

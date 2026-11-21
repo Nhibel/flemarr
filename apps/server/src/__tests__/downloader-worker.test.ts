@@ -6,7 +6,7 @@ import { zipSync } from 'fflate';
 import { computeCrc32Buffer } from '../lib/crc32.js';
 import { downloadFile } from '../services/downloader/worker.js';
 
-const TMP = join(tmpdir(), 'rom-curator-worker-test');
+const TMP = join(tmpdir(), 'flemarr-worker-test');
 
 beforeEach(async () => {
   await mkdir(TMP, { recursive: true });

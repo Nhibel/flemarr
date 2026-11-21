@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Hono } from 'hono';
 import { serveWeb } from '../lib/serve-web.js';
 
-const INDEX_HTML = '<!doctype html><title>rom-curator</title><div id="root"></div>';
+const INDEX_HTML = '<!doctype html><title>Flemarr</title><div id="root"></div>';
 const APP_JS = 'console.log("hello");';
 
 let webRoot: string;

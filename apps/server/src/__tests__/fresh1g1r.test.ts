@@ -8,7 +8,7 @@ vi.mock('node:os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:os')>();
   return {
     ...actual,
-    homedir: () => join(actual.tmpdir(), 'rom-curator-fresh1g1r-test'),
+    homedir: () => join(actual.tmpdir(), 'flemarr-fresh1g1r-test'),
   };
 });
 
@@ -78,7 +78,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   closeDb(); // release SQLite file lock before deleting the temp dir
-  await rm(join(tmpdir(), 'rom-curator-fresh1g1r-test'), { recursive: true, force: true });
+  await rm(join(tmpdir(), 'flemarr-fresh1g1r-test'), { recursive: true, force: true });
 });
 
 describe('listDatSources', () => {

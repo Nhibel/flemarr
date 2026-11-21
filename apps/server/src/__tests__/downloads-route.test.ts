@@ -150,7 +150,7 @@ describe('GET /api/downloads/:jobId/events', () => {
 });
 
 describe('GET /api/downloads/:jobId/items/:gameId/:romName', () => {
-  const stagedPath = join(tmpdir(), 'rom-curator-route-test.sfc');
+  const stagedPath = join(tmpdir(), 'flemarr-route-test.sfc');
 
   afterEach(async () => {
     await rm(stagedPath, { force: true });

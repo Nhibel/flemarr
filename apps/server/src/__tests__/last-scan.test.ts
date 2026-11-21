@@ -47,7 +47,7 @@ describe('last scan store', () => {
   });
 });
 
-const ROOT = join(tmpdir(), 'rom-curator-last-scan-test');
+const ROOT = join(tmpdir(), 'flemarr-last-scan-test');
 
 const FIXTURE_DAT: DatFile = {
   source: 'no-intro',

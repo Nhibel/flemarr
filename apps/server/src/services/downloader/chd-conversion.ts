@@ -80,7 +80,7 @@ export async function maybeConvertGameForBrowser(
 
   job.events.push({ type: 'game-converting', gameId });
 
-  const scratchDir = join(tmpdir(), `rom-curator-chd-browser-${randomUUID()}`);
+  const scratchDir = join(tmpdir(), `flemarr-chd-browser-${randomUUID()}`);
   try {
     await mkdir(scratchDir, { recursive: true });
     for (const item of gameItems) {

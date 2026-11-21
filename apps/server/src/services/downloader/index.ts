@@ -16,12 +16,13 @@ import {
   maybeConvertGameForBrowser,
 } from './chd-conversion.js';
 import { BROWSER_STAGING_DIR, downloadJobs } from './job-store.js';
+import { removeLegacyStagingDirs } from './legacy-staging.js';
 import type { DownloadItemState, DownloadJobState } from './job-store.js';
 
 export { downloadJobs, runningDownloads } from './job-store.js';
 export type { DownloadJobState } from './job-store.js';
 
-const TEMP_DIR_NAME = '.rom-curator-tmp';
+const TEMP_DIR_NAME = '.flemarr-tmp';
 
 const JOB_RETENTION_MS = 30 * 60 * 1000;
 
@@ -60,6 +61,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   }
 
   evictOldJobs();
+  await removeLegacyStagingDirs(target === 'server' ? destinationDir : undefined);
   const jobId = randomUUID();
   const controller = new AbortController();
 

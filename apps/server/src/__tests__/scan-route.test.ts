@@ -10,7 +10,7 @@ import type { DatFile } from '@shared/dat.js';
 
 const app = new Hono().route('/api', scanRoute);
 
-const ROOT = join(tmpdir(), 'rom-curator-scan-route-test');
+const ROOT = join(tmpdir(), 'flemarr-scan-route-test');
 
 const FIXTURE_DAT: DatFile = {
   source: 'no-intro',

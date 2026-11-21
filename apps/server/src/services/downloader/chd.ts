@@ -40,7 +40,7 @@ export async function convertGameToChd(
 
   const cuePath = join(destinationDir, cueRom.name);
   const chdPath = join(destinationDir, `${basename(cueRom.name, '.cue')}.chd`);
-  const scratchDir = join(tmpdir(), `rom-curator-chd-verify-${randomUUID()}`);
+  const scratchDir = join(tmpdir(), `flemarr-chd-verify-${randomUUID()}`);
 
   try {
     await chdman.createCd({ inputFilename: cuePath, outputFilename: chdPath, force: true });
