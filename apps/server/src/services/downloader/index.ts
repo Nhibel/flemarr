@@ -17,12 +17,12 @@ import {
 } from './chd-conversion.js';
 import { BROWSER_STAGING_DIR, downloadJobs } from './job-store.js';
 import { removeLegacyStagingDirs } from './legacy-staging.js';
+import { isStagingDirShared, removeStagingDirIfEmpty } from './staging-cleanup.js';
+import { LIBRARY_STAGING_DIR_NAME } from '@/lib/staging-dir.js';
 import type { DownloadItemState, DownloadJobState } from './job-store.js';
 
 export { downloadJobs, runningDownloads } from './job-store.js';
 export type { DownloadJobState } from './job-store.js';
-
-const TEMP_DIR_NAME = '.flemarr-tmp';
 
 const JOB_RETENTION_MS = 30 * 60 * 1000;
 
@@ -66,7 +66,7 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   const controller = new AbortController();
 
   const stagingDir =
-    target === 'browser' ? BROWSER_STAGING_DIR : join(destinationDir!, TEMP_DIR_NAME);
+    target === 'browser' ? BROWSER_STAGING_DIR : join(destinationDir!, LIBRARY_STAGING_DIR_NAME);
   const jobItems: DownloadItemState[] = items.map((item) => ({
     ...item,
     status: 'queued',
@@ -209,6 +209,11 @@ async function runQueue(
   // job isn't actually finished until that drains too.
   await conversionQueue;
   await cleanupContainerCache(job);
+
+  const hasOwnStagingDir = target === 'server' && destinationDir !== undefined;
+  if (hasOwnStagingDir && !isStagingDirShared(jobId, destinationDir, downloadJobs)) {
+    await removeStagingDirIfEmpty(join(destinationDir, LIBRARY_STAGING_DIR_NAME));
+  }
 
   if (jobSignal.aborted) {
     job.status = 'cancelled';
