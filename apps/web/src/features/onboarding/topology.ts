@@ -5,23 +5,21 @@ export type Topology = NonNullable<SettingsResponse['topology']>;
 /**
  * Picking a topology writes downloadTarget with it, always, in one patch.
  * downloadTarget stays the field every code path reads (the downloader,
- * whether the scanner is offered at all, the dock's wording); this is the
- * question the user actually answers. Keeping the two writes together is
- * the point: the alternative is two controls for one decision, which is
- * what the design canvas warned against — and it is why there is no
- * separate "destination des téléchargements" control any more.
- *
- * `local` and `mounted` produce identical settings. They are separate
- * answers anyway, because "is the collection on this machine or on a
- * network share?" is answerable without knowing how the app works, and
- * "should downloads go to the server?" is not.
+ * whether the scanner is offered at all, the dock's wording); topology is
+ * the answer the user gave, and its being set is what tells the install
+ * flow the question was asked. Keeping the two writes together is the
+ * point: the alternative is two controls for one decision — which is why
+ * there is no separate "destination des téléchargements" control any more.
  */
 export const TOPOLOGY_PATCHES: Record<Topology, UpdateSettings> = {
   local: { topology: 'local', downloadTarget: 'server' },
-  mounted: { topology: 'mounted', downloadTarget: 'server' },
   remote: { topology: 'remote', downloadTarget: 'browser' },
 };
 
+// The question is asked by where downloads land, not by where the
+// collection physically lives: "this machine / a network share / a
+// homelab" left a Docker install with a mounted library unsure which
+// answer applied, and two of the three did the same thing anyway.
 export const TOPOLOGY_OPTIONS: {
   value: Topology;
   title: string;
@@ -30,30 +28,22 @@ export const TOPOLOGY_OPTIONS: {
 }[] = [
   {
     value: 'local',
-    title: 'Sur cette machine',
-    hint: 'le plus simple',
-    body: "Flemarr tourne là où ta collection est stockée. Les jeux téléchargés sont rangés et renommés tout seuls, et l'app reconnaît ce que tu as déjà.",
-  },
-  {
-    value: 'mounted',
-    title: 'Ailleurs, mais sur un disque réseau monté sur ce serveur',
-    body: 'Le serveur voit ta collection par le réseau. Comme le premier cas : un dossier te sera demandé, et il servira à la fois à reconnaître ce que tu as et à y ranger les téléchargements.',
+    title: 'Dans un dossier du serveur',
+    hint: 'le plus complet',
+    body: 'Flemarr range et renomme les jeux dans un dossier par système, et peut scanner ce dossier pour reconnaître ce que tu as déjà. Le dossier peut être un disque local, un volume Docker ou un partage réseau monté sur le serveur.',
   },
   {
     value: 'remote',
-    title: 'Ailleurs — Flemarr tourne sur un serveur, un NAS, un homelab',
-    body: "Les jeux arrivent dans les téléchargements de ton navigateur, tu les ranges ensuite. Aucun dossier ne te sera demandé : le serveur ne peut pas voir ton disque, donc l'app affichera le catalogue complet sans savoir ce que tu possèdes.",
+    title: 'Dans les téléchargements de mon navigateur',
+    body: "Tu ranges les jeux toi-même. Le serveur ne voit pas ta collection : le catalogue s'affiche en entier, sans savoir ce que tu possèdes.",
   },
 ];
 
 /**
- * Which topology an existing install is already behaving as, for the
+ * Which answer an existing install is already behaving as, for the
  * settings screen to show as selected when the question was never asked
- * (anyone who installed before the field existed). Deliberately collapses
- * to the only thing that is actually knowable from downloadTarget — a
- * server target could be `local` or `mounted`, and guessing between them
- * would put a wrong answer on screen, so it reports `local`, the common
- * case, rather than nothing.
+ * (anyone who installed before the field existed). downloadTarget maps to
+ * exactly one answer, so the fallback is never a guess.
  */
 export function inferTopology(settings: SettingsResponse): Topology {
   if (settings.topology !== null) return settings.topology;

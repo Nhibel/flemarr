@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TOPOLOGY_PATCHES, inferTopology } from '../topology.js';
+import { TOPOLOGY_OPTIONS, TOPOLOGY_PATCHES, inferTopology } from '../topology.js';
 import type { SettingsResponse } from '@/lib/api.js';
 
 function settings(over: Partial<SettingsResponse> = {}): SettingsResponse {
@@ -30,14 +30,20 @@ describe('TOPOLOGY_PATCHES', () => {
 
   it('only the remote answer sends downloads to the browser', () => {
     expect(TOPOLOGY_PATCHES.local.downloadTarget).toBe('server');
-    expect(TOPOLOGY_PATCHES.mounted.downloadTarget).toBe('server');
     expect(TOPOLOGY_PATCHES.remote.downloadTarget).toBe('browser');
+  });
+
+  // Two answers, one per downloadTarget: an answer that maps to the same
+  // target as another is a distinction the code never makes.
+  it('has exactly one answer per download target', () => {
+    const options = TOPOLOGY_OPTIONS.map((option) => option.value);
+    expect(options).toEqual(['local', 'remote']);
   });
 });
 
 describe('inferTopology', () => {
   it('uses the recorded answer when there is one', () => {
-    expect(inferTopology(settings({ topology: 'mounted' }))).toBe('mounted');
+    expect(inferTopology(settings({ topology: 'remote' }))).toBe('remote');
   });
 
   // Anyone who installed before this field existed has no recorded answer.
@@ -46,13 +52,5 @@ describe('inferTopology', () => {
   it('falls back to what downloadTarget already says', () => {
     expect(inferTopology(settings({ topology: null, downloadTarget: 'browser' }))).toBe('remote');
     expect(inferTopology(settings({ topology: null, downloadTarget: 'server' }))).toBe('local');
-  });
-
-  it('never contradicts a recorded answer with downloadTarget', () => {
-    // A server target could be local or mounted; a recorded `mounted` must
-    // win over the `local` the fallback would have guessed.
-    expect(inferTopology(settings({ topology: 'mounted', downloadTarget: 'server' }))).toBe(
-      'mounted',
-    );
   });
 });

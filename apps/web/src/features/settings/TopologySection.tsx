@@ -36,11 +36,11 @@ export function TopologySection({
           mb: '1',
         })}
       >
-        Où vivent tes jeux ?
+        Où arrivent les jeux téléchargés ?
       </h2>
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
-        Décide où arrivent les téléchargements et si Flemarr peut reconnaître ce que tu possèdes
-        déjà. Ce choix ne touche jamais à tes fichiers.
+        Décide aussi si Flemarr peut reconnaître ce que tu possèdes déjà. Ce choix ne touche jamais
+        à tes fichiers.
       </p>
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>
         {TOPOLOGY_OPTIONS.map((o) => {

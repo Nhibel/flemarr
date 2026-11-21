@@ -20,12 +20,11 @@ export function TopologyStep({
       })}
     >
       <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'fg.heading', mb: '2' })}>
-        Où vivent tes jeux ?
+        Où arrivent les jeux téléchargés ?
       </h1>
       <p className={css({ fontSize: 'sm', color: 'fg.muted', mb: '6' })}>
-        Une seule question, posée une fois pour toute l&apos;application. C&apos;est elle qui
-        détermine où arrivent les téléchargements et si Flemarr peut reconnaître ce que tu possèdes
-        déjà.
+        Une seule question, posée une fois pour toute l&apos;application. Elle décide aussi si
+        Flemarr peut reconnaître ce que tu possèdes déjà.
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>

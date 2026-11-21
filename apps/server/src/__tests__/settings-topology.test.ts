@@ -4,7 +4,7 @@ import { createDb } from '../lib/db.js';
 import { getSettings, updateSettings } from '../services/settings/index.js';
 
 // The topology answer is the only setting with three states rather than
-// two: each of the three answers, plus "never asked". That last one is what
+// two: each of the two answers, plus "never asked". That last one is what
 // gates the install flow, so it has to survive a round trip as null rather
 // than collapsing into a default — and it has to be resettable.
 
@@ -20,7 +20,7 @@ describe('topology setting', () => {
   });
 
   it('round-trips each answer', () => {
-    for (const answer of ['local', 'mounted', 'remote'] as const) {
+    for (const answer of ['local', 'remote'] as const) {
       updateSettings({ topology: answer }, db);
       expect(getSettings(db).topology).toBe(answer);
     }
@@ -31,8 +31,8 @@ describe('topology setting', () => {
   // has to remove the row. Without this, the install question could be
   // answered but never un-answered.
   it('writing null clears the answer instead of being ignored', () => {
-    updateSettings({ topology: 'mounted' }, db);
-    expect(getSettings(db).topology).toBe('mounted');
+    updateSettings({ topology: 'local' }, db);
+    expect(getSettings(db).topology).toBe('local');
 
     updateSettings({ topology: null }, db);
     expect(getSettings(db).topology).toBeNull();

@@ -18,26 +18,23 @@ export const settingsSchema = z.object({
   // real use case (see ResolvePanel, which reads this instead of offering
   // two buttons).
   downloadTarget: z.enum(['server', 'browser']).default('server'),
-  // Where the user's collection physically lives, relative to where the
-  // server runs. This is the one question the install flow asks first,
-  // because its answer decides both where downloads land AND whether a
+  // The answer to the install question "where do downloaded games land?",
+  // asked first because it decides both where downloads go AND whether a
   // server-side scan can see anything at all:
   //
-  //   local   — the server runs on the machine holding the collection
-  //   mounted — the collection is on a network disk mounted on the server
-  //   remote  — the server cannot reach the collection (it lives on the
-  //             machine using the browser, or anywhere the server can't read)
+  //   local  — in a folder the server can read and write (a local disk, a
+  //            Docker volume, a mounted network share); downloadTarget 'server'
+  //   remote — in the browser's downloads; the server never sees the
+  //            collection; downloadTarget 'browser'
   //
-  // `local` and `mounted` are deliberately the same thing to the code
-  // (downloadTarget 'server', a folder per system); they are kept apart
-  // only so the question is answerable without knowing how the app works.
-  // `remote` is downloadTarget 'browser' with no folder.
+  // A third answer, `mounted`, was folded into `local` (migration010): it
+  // meant the same thing to the code and only made the question harder.
   //
-  // null means the question has never been answered. downloadTarget stays
-  // the field every code path reads — this one is what the user picks, and
-  // writing it always writes downloadTarget with it, so there is never a
-  // second control for the same decision.
-  topology: z.enum(['local', 'mounted', 'remote']).nullable().default(null),
+  // null means the question has never been answered — that is what gates
+  // the install flow. downloadTarget stays the field every code path reads;
+  // writing this one always writes downloadTarget with it, so there is never
+  // a second control for the same decision.
+  topology: z.enum(['local', 'remote']).nullable().default(null),
   // Server-target only: once every rom of a disc game (anything with a
   // .cue) finishes downloading, convert it to a single .chd and delete the
   // original .bin/.cue — smaller, tidier library for frontends like
@@ -62,7 +59,7 @@ export const settingsResponseSchema = z.object({
   archiveOrgKeysConfigured: z.boolean(),
   archiveOrgSessionConfigured: z.boolean(),
   downloadTarget: z.enum(['server', 'browser']),
-  topology: z.enum(['local', 'mounted', 'remote']).nullable(),
+  topology: z.enum(['local', 'remote']).nullable(),
   autoConvertChd: z.boolean(),
   // The library root (ROMS_ROOT) the UI confines directory browsing to, or
   // null when unset (local dev, browse anywhere).

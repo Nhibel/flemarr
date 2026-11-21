@@ -73,9 +73,9 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /ajouter un système/i })).not.toBeInTheDocument();
   });
 
-  it('asks where the games live on a never-used install', async () => {
+  it('asks where downloads land on a never-used install', async () => {
     render(<App />, { wrapper });
-    expect(await screen.findByRole('heading', { name: /où vivent tes jeux/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /où arrivent les jeux téléchargés/i })).toBeInTheDocument();
   });
 
   // The three guards that keep an existing install out of the install flow.
@@ -90,7 +90,7 @@ describe('App', () => {
     render(<App />, { wrapper });
 
     expect(await screen.findByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /où vivent tes jeux/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /où arrivent les jeux téléchargés/i })).not.toBeInTheDocument();
   });
 
   it('skips the install flow when a DAT has already been loaded', async () => {
@@ -100,7 +100,7 @@ describe('App', () => {
     render(<App />, { wrapper });
 
     expect(await screen.findByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /où vivent tes jeux/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /où arrivent les jeux téléchargés/i })).not.toBeInTheDocument();
   });
 
   it('does not flash the install flow before the settings have loaded', async () => {
@@ -108,15 +108,15 @@ describe('App', () => {
     // the question while they are pending would show it for a frame on
     // every cold load, including installs that must never see it.
     render(<App />, { wrapper });
-    expect(screen.queryByRole('heading', { name: /où vivent tes jeux/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /où arrivent les jeux téléchargés/i })).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: /où vivent tes jeux/i })).toBeInTheDocument(),
+      expect(screen.getByRole('heading', { name: /où arrivent les jeux téléchargés/i })).toBeInTheDocument(),
     );
   });
 
   it('shows the small logo strip on the screens other than home', async () => {
     render(<App />, { wrapper });
-    await screen.findByRole('heading', { name: /où vivent tes jeux/i });
+    await screen.findByRole('heading', { name: /où arrivent les jeux téléchargés/i });
     expect(screen.getByRole('banner')).toContainElement(
       screen.getByRole('img', { name: 'Flemarr' }),
     );

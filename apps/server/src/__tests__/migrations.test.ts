@@ -9,7 +9,7 @@ import { applyMigrations } from '../lib/migrations.js';
  */
 describe('migration005 — (identifier, system) source key', () => {
   // The schema as migration001 created it, at the user_version that leaves
-  // migration005 and the later ones to run. game_details and dats are there
+  // migration005 and the later ones to run. game_details, settings and dats are there
   // because migration007 and migration009 touch them.
   function legacyDb(): DatabaseConstructor.Database {
     const db = new DatabaseConstructor(':memory:');
@@ -27,6 +27,10 @@ describe('migration005 — (identifier, system) source key', () => {
         boxart_url TEXT,
         fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
         PRIMARY KEY (dat_id, game_id)
+      );
+      CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       );
       CREATE TABLE dats (
         id TEXT PRIMARY KEY,
@@ -137,6 +141,10 @@ describe('migration007 — boxart misses re-probed', () => {
         fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
         PRIMARY KEY (dat_id, game_id)
       );
+      CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
       CREATE TABLE dats (
         id TEXT PRIMARY KEY,
         system TEXT NOT NULL,
@@ -173,5 +181,38 @@ describe('migration009 — DAT origin', () => {
     );
     const row = db.prepare(`SELECT fresh1g1r_preset, fresh1g1r_path FROM dats`).get();
     expect(row).toEqual({ fresh1g1r_preset: null, fresh1g1r_path: null });
+  });
+});
+
+describe('migration010 — mounted topology folded into local', () => {
+  // A database left at the version just before migration010, holding an
+  // answer the settings schema no longer accepts.
+  function dbBeforeMigration010(topology: string): DatabaseConstructor.Database {
+    const db = new DatabaseConstructor(':memory:');
+    applyMigrations(db);
+    db.pragma('user_version = 9');
+    const insert = db.prepare(`INSERT INTO settings (key, value) VALUES (?, ?)`);
+    insert.run('topology', topology);
+    insert.run('download_target', 'server');
+    return db;
+  }
+
+  function settingValue(db: DatabaseConstructor.Database, key: string): unknown {
+    const row = db.prepare(`SELECT value FROM settings WHERE key = ?`).get(key) as
+      { value: string } | undefined;
+    return row?.value;
+  }
+
+  it('turns a recorded mounted answer into local', () => {
+    const db = dbBeforeMigration010('mounted');
+    applyMigrations(db);
+    expect(settingValue(db, 'topology')).toBe('local');
+    expect(settingValue(db, 'download_target')).toBe('server');
+  });
+
+  it('leaves the other answers alone', () => {
+    const db = dbBeforeMigration010('remote');
+    applyMigrations(db);
+    expect(settingValue(db, 'topology')).toBe('remote');
   });
 });
