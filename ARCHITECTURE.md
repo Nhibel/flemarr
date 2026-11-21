@@ -64,7 +64,7 @@ Three workspaces (`web`, `server`, `shared`), one lockfile, one `pnpm install`. 
 
 ### Backend persistence
 
-SQLite (`better-sqlite3`, hand-rolled SQL migrations in `apps/server/src/lib/migrations/`) stores everything that must survive a restart: parsed DATs, archive.org sources per system, download history, settings (including archive.org credentials). The database lives in `~/.rom-curator/` (`ROM_CURATOR_DATA_DIR` overrides it).
+SQLite (`better-sqlite3`, hand-rolled SQL migrations in `apps/server/src/lib/migrations/`) stores everything that must survive a restart: parsed DATs, archive.org sources per system, download history, settings (including archive.org credentials). The database lives in `~/.flemarr/` (`FLEMARR_DATA_DIR` overrides it).
 
 In-memory state is reserved for caches (archive.org metadata, ZIP listings, resolve results) and running jobs (scan/download job maps) — all safely lost on restart.
 
@@ -285,7 +285,7 @@ is the cyan and Keppel's is the teal, so both push info onto Blushing
 Purple, while Lemon Grid — accent yellow — leaves info on the cyan.
 
 The design canvases these came from are private Artifacts; their working
-files are gitignored under `.rom-curator-data/`. ROADMAP.md's Phase 14
+files are gitignored under `.flemarr-data/`. ROADMAP.md's Phase 14
 records the decisions and the deliberate departures from the comps.
 
 ---
@@ -309,17 +309,16 @@ records the decisions and the deliberate departures from the comps.
 
 ## Naming
 
-The app is called **Flemarr** since 2026-11-21; it was `rom-curator` before. The name changed everywhere a person reads it: the UI, the browser tab, the server logs, the GitHub User-Agent, the workspace packages (`@flemarr/*`) and the docs.
+The app is called **Flemarr** since 2026-11-21; it was `rom-curator` before. Every identifier now uses the new name. The old name survives only in the code that moves an existing install's data across, because those identifiers point at data a search-and-replace would have orphaned:
 
-A few identifiers keep the old name **on purpose**, because they point at data an existing install already has. Renaming one silently orphans that data:
+| What                             | Migration                                                                                                                                                                                |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `localStorage` keys              | `apps/web/src/lib/migrate-storage-keys.ts`, before the first render; `index.html` reads both theme keys until then.                                                                      |
+| Data dir, env var, database file | `apps/server/src/lib/data-dir.ts`, on the first `dataDir()` call: moves `~/.rom-curator`, renames `rom-curator.db` and its WAL files, still reads `ROM_CURATOR_DATA_DIR` with a warning. |
+| Library and browser staging dirs | `apps/server/src/services/downloader/legacy-staging.ts`: each download deletes the leftover pre-rename staging dir next to it.                                                           |
+| Docker volume                    | Manual, one time: README § "Migrating an install from rom-curator". Docker cannot rename a volume.                                                                                       |
 
-- `ROM_CURATOR_DATA_DIR`, `~/.rom-curator/` and `rom-curator.db` — the database and DAT cache location.
-- The compose service, container, image and the `rom-curator-data` volume — a renamed volume comes up empty, and a renamed service leaves the old container running and holding the port.
-- The `localStorage` keys (`rom-curator-theme`, `rom-curator.page-size`, …) — renaming resets every browser's theme, font size and list preferences.
-- `.rom-curator-tmp` in the library and the `rom-curator-*` scratch dirs under the OS temp dir — never shown, and renaming would strand an in-flight download's staging files.
-- The repository and its local folder.
-
-Each can move to the new name later, but only together with a migration (read the old key or path, write the new one), never by search-and-replace.
+All of it is temporary. Once the homelab install and the browsers that use it have each run the new version once, delete the three files above, the legacy key read in `index.html`, the `ROM_CURATOR_DATA_DIR` fallback and the README section.
 
 ---
 

@@ -93,7 +93,7 @@ Known costs to budget for, so they aren't a surprise:
 
 ## Secrets at rest
 
-The archive.org S3 keys and session cookies are stored **in clear text** in the SQLite database (`~/.rom-curator/`). The account password itself is never stored — it's exchanged once for those keys and cookies.
+The archive.org S3 keys and session cookies are stored **in clear text** in the SQLite database (`~/.flemarr/`). The account password itself is never stored — it's exchanged once for those keys and cookies.
 
 This is acceptable for a homelab: the database file sits on the same machine, at the same trust level as the ROM folders next to it. But be clear-eyed about the implication — **if the machine itself is compromised, the stored keys and cookies are readable.** No amount of API-level auth changes that. If that matters to you later, the fix would be encrypting those columns with a key supplied at startup (out of scope for now).
 

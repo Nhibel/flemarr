@@ -22,7 +22,7 @@ docker-compose.yml
 # Local env, data, logs, coverage
 .env
 .env.*.local
-.rom-curator-data
+.flemarr-data
 **/coverage
 **/*.log
 

@@ -196,7 +196,7 @@ export default defineConfig({
         colors: {
           // Nine self-contained themes. Every value here is taken from the
           // validated design comps in
-          // .rom-curator-data/design-directions/project/*.dc.html — one
+          // .flemarr-data/design-directions/project/*.dc.html — one
           // artboard per theme — rather than re-derived. Where a comp gives
           // a value for a role, that hex is used verbatim, including its
           // rgba washes, which composite over whatever surface they sit on

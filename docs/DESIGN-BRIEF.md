@@ -17,8 +17,8 @@
 > périmées.
 >
 > Les deux canvas que ce brief a produits sont des Artifacts privés dont
-> les fichiers de travail vivent dans `.rom-curator-data/design-scratch/`
-> et `.rom-curator-data/design-directions/` — **gitignorés**, donc locaux à
+> les fichiers de travail vivent dans `.flemarr-data/design-scratch/`
+> et `.flemarr-data/design-directions/` — **gitignorés**, donc locaux à
 > la machine de Camille. Seules les URLs Artifact sont durables.
 
 Destiné à Claude Design. Ce document ne décrit pas l'implémentation (le code source est disponible séparément) — il couvre ce que le code ne dit pas : intention produit, parcours réels, friction ressentie, et attentes pour la direction visuelle.

@@ -170,7 +170,7 @@ Make the DAT upload step optional by pulling from Fresh1G1R automatically.
 - Endpoint `GET /api/dat-sources` — lists available DAT files in the Fresh1G1R repo for the chosen preset (PropeR by default, switchable to McLean or Hearto). Uses GitHub's contents API.
 - Endpoint `POST /api/dats/from-fresh1g1r` — body `{ preset, source, system }`. Downloads the DAT, parses it, registers it like an upload.
 - Frontend: a "Browse Fresh1G1R" view next to manual upload.
-- Cache fetched DATs to disk in a local data dir (e.g. `~/.rom-curator/cache/`) with the GitHub commit SHA as cache key.
+- Cache fetched DATs to disk in a local data dir (e.g. `~/.flemarr/cache/`) with the GitHub commit SHA as cache key.
 
 ### Acceptance criteria
 
@@ -216,7 +216,7 @@ Package everything into a single Docker image deployable to the homelab.
 
 - Multi-stage `Dockerfile`: build stage installs deps and builds web + server, runtime stage is Node 20 alpine with only the built artifacts.
 - Web app is served as static files by Hono (single port for both API and UI).
-- `docker-compose.yml` with a named volume for `~/.rom-curator/` and bind mounts for the user's ROM directories.
+- `docker-compose.yml` with a named volume for `~/.flemarr/` and bind mounts for the user's ROM directories.
 - Document env vars in `.env.example` and in `README.md`.
 - Bind the published port to `127.0.0.1` (not `0.0.0.0`) by default, and state in the README that internet exposure requires the auth work in [docs/security.md](./docs/security.md) — the app has no authentication of its own.
 
@@ -437,7 +437,7 @@ whether it looks right.
 - **Palettes.** Eight themes become seven: Nintendo and Megadrive dropped
   (navy plus a saturated red read poorly down a long list, and the two were
   hard to tell apart), Contraste added. Every value is taken verbatim from
-  the comps in `.rom-curator-data/design-directions/project/*.dc.html`,
+  the comps in `.flemarr-data/design-directions/project/*.dc.html`,
   read per role out of each artboard. Roles no comp covers (all borders,
   danger, info, the second accent) are marked `derived` in the config and
   built only from hues that same artboard already uses. Two comp

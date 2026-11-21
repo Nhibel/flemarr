@@ -6,7 +6,7 @@ This file is the canonical context for Claude Code working on this project. Read
 
 ## Project in one paragraph
 
-**Flemarr** (formerly `rom-curator` — the repository and a few on-disk identifiers keep the old name, see ARCHITECTURE.md § "Naming") is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs) either straight to the server's library or to the user's own browser. Access-restricted collections are supported via an archive.org account login. Downloaded disc-based games (PS1, Saturn, etc.) can be auto-converted to a single verified `.chd` file instead of staying as separate `.bin`/`.cue`.
+**Flemarr** (called `rom-curator` until 2026-11-21 — the leftover migration code is listed in ARCHITECTURE.md § "Naming") is a self-hosted web app that helps the user manage a personal ROM collection. It loads 1G1R DAT files (from Redump and No-Intro, processed through Retool — the [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R) project provides daily ones), lets the user pick which games they want per system, scans existing local ROM directories to detect what they already own and rename files to canonical 1G1R names, and downloads missing games individually from archive.org (not as full collection packs) either straight to the server's library or to the user's own browser. Access-restricted collections are supported via an archive.org account login. Downloaded disc-based games (PS1, Saturn, etc.) can be auto-converted to a single verified `.chd` file instead of staying as separate `.bin`/`.cue`.
 
 The user (Camille) runs a homelab. **Phases 0–8, 10 and 12–15 of [ROADMAP.md](./ROADMAP.md) are done — the app runs as a Docker service on the homelab and is in daily use. Phase 9 (Myrient as a secondary download source) is blocked: the service shut down on 31 March 2026. Phase 11 (display modes + ScreenScraper game info) was retired before completion (2026-11-08) — box art alone covers the need; see ROADMAP.md.**
 
@@ -37,7 +37,7 @@ The user (Camille) runs a homelab. **Phases 0–8, 10 and 12–15 of [ROADMAP.md
 ### Project layout
 
 ```
-rom-curator/
+flemarr/
 ├── apps/
 │   ├── web/                 # Vite + React frontend
 │   │   ├── src/
