@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { Button } from '@/components/Button.js';
@@ -22,9 +23,10 @@ function destinationLabel(destination: string): string {
 }
 
 /**
- * The DAT's downloads of the last 30 days, one line per game, failures
- * first. Past jobs keep no sources, so a failure is not retried from here:
- * the failed games go back into the selection, for the Sources tab.
+ * The DAT's downloads of the last 30 days, one line per game, in two named
+ * groups: the failures, then the finished ones — each newest first. Past
+ * jobs keep no sources, so a failure is not retried from here: the failed
+ * games go back into the selection, for the Sources tab.
  */
 export function DownloadHistory({ datId, gameNames, onSelectGames }: Props) {
   const { data: entries = [] } = useQuery({
@@ -34,37 +36,67 @@ export function DownloadHistory({ datId, gameNames, onSelectGames }: Props) {
   const games = summarizeHistory(entries);
   if (games.length === 0) return null;
 
-  const failedIds = games.filter((game) => game.status === 'failed').map((game) => game.gameId);
+  const failed = games.filter((game) => game.status === 'failed');
+  const done = games.filter((game) => game.status === 'done');
+  const failedIds = failed.map((game) => game.gameId);
+  const nameOf = (gameId: string) => gameNames.get(gameId) ?? gameId;
 
   return (
-    <section className={css({ display: 'flex', flexDirection: 'column', gap: '3', mt: '6' })}>
+    <section className={css({ display: 'flex', flexDirection: 'column', gap: '4', mt: '6' })}>
+      <h2 className={css({ fontSize: 'base', fontWeight: 'semibold', color: 'fg.heading' })}>
+        Historique · 30 derniers jours
+      </h2>
+      {failed.length > 0 && (
+        <HistoryGroup
+          title={`En échec (${failed.length})`}
+          games={failed}
+          nameOf={nameOf}
+          action={
+            <Button size="sm" variant="secondary" onClick={() => onSelectGames(failedIds)}>
+              Resélectionner {failed.length} {plural(failed.length, 'jeu', 'jeux')}
+            </Button>
+          }
+        />
+      )}
+      {done.length > 0 && (
+        <HistoryGroup title={`Terminés (${done.length})`} games={done} nameOf={nameOf} />
+      )}
+    </section>
+  );
+}
+
+function HistoryGroup({
+  title,
+  games,
+  nameOf,
+  action,
+}: {
+  title: string;
+  games: GameHistory[];
+  nameOf: (gameId: string) => string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
       <div className={css({ display: 'flex', alignItems: 'center', gap: '3', flexWrap: 'wrap' })}>
-        <h2
+        <h3
           className={css({
             flex: '1',
-            fontSize: 'base',
+            fontSize: 'sm',
             fontWeight: 'semibold',
-            color: 'fg.heading',
+            color: 'fg.default',
           })}
         >
-          Historique · 30 derniers jours
-        </h2>
-        {failedIds.length > 0 && (
-          <Button size="sm" variant="secondary" onClick={() => onSelectGames(failedIds)}>
-            Resélectionner {failedIds.length} {plural(failedIds.length, 'jeu', 'jeux')} en échec
-          </Button>
-        )}
+          {title}
+        </h3>
+        {action}
       </div>
       <ul className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
         {games.map((game) => (
-          <HistoryRow
-            key={game.gameId}
-            game={game}
-            name={gameNames.get(game.gameId) ?? game.gameId}
-          />
+          <HistoryRow key={game.gameId} game={game} name={nameOf(game.gameId)} />
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
 

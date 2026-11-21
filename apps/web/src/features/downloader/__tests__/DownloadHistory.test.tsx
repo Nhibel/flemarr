@@ -56,8 +56,8 @@ describe('DownloadHistory', () => {
     renderHistory();
     expect(await screen.findByText('Chrono Trigger (USA)')).toBeInTheDocument();
     expect(screen.getByText('CRC mismatch')).toBeInTheDocument();
-    expect(screen.getByText('Échec')).toBeInTheDocument();
-    expect(screen.getByText('Terminé')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'En échec (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Terminés (1)' })).toBeInTheDocument();
     expect(screen.getByText(/· navigateur$/)).toBeInTheDocument();
   });
 
@@ -74,9 +74,7 @@ describe('DownloadHistory', () => {
       },
     ]);
     const { onSelectGames } = renderHistory();
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Resélectionner 1 jeu en échec' }),
-    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Resélectionner 1 jeu' }));
     expect(onSelectGames).toHaveBeenCalledWith(['g1']);
   });
 });

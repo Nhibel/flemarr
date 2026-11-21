@@ -12,8 +12,8 @@ export interface GameHistory {
 
 /**
  * One line per game from the raw attempts: what counts is each rom's
- * latest attempt, so a game retried successfully reads as done. Failed
- * games first (what needs attention), then newest first.
+ * latest attempt, so a game retried successfully reads as done. Newest
+ * first; the view splits failures from the rest.
  */
 export function summarizeHistory(entries: DownloadHistoryEntry[]): GameHistory[] {
   // Entries arrive newest first: the first seen per rom is its latest.
@@ -43,8 +43,5 @@ export function summarizeHistory(entries: DownloadHistoryEntry[]): GameHistory[]
     }
   }
 
-  return [...games.values()].sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'failed' ? -1 : 1;
-    return b.lastAt - a.lastAt;
-  });
+  return [...games.values()].sort((a, b) => b.lastAt - a.lastAt);
 }

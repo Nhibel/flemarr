@@ -38,13 +38,13 @@ describe('summarizeHistory', () => {
     expect(games[0]).toMatchObject({ status: 'failed', lastAt: 3, errorMessage: 'a.bin failed' });
   });
 
-  it('lists failures first, then the newest', () => {
+  it('lists the newest first, whatever the outcome', () => {
     const games = summarizeHistory([
       attempt('new', 'n.bin', 'done', 9),
       attempt('old', 'o.bin', 'done', 1),
       attempt('bad', 'b.bin', 'failed', 5),
     ]);
-    expect(games.map((game) => game.gameId)).toEqual(['bad', 'new', 'old']);
+    expect(games.map((game) => game.gameId)).toEqual(['new', 'bad', 'old']);
   });
 
   it('has nothing to show without attempts', () => {
