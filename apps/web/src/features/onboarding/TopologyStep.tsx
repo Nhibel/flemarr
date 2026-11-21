@@ -14,7 +14,7 @@ export function TopologyStep({
       className={css({
         maxW: '3xl',
         mx: 'auto',
-        mt: { base: '8', md: '16' },
+        mt: { base: '4', md: '8' },
         px: { base: '4', md: '6' },
         pb: '12',
       })}

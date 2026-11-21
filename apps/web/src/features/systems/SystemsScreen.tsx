@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
+import { AppLogo } from '@/components/AppLogo.js';
 import { Button } from '@/components/Button.js';
 import { Dialog } from '@/components/Dialog.js';
 import { GearIcon, BookIcon, iconBtnClass } from '@/components/icons.js';
@@ -61,28 +62,14 @@ export function SystemsScreen({
         px: { base: '4', md: '6', lg: '8' },
       })}
     >
-      <div className={css({ display: 'flex', alignItems: 'center', gap: '1', mb: '6' })}>
-        <h1
-          className={css({
-            fontSize: '3xl',
-            fontWeight: 'bold',
-            color: 'fg.heading',
-            flex: 1,
-            _nightdrive: {
-              // The comps' own title glow strength. Night Drive and Matrix
-              // are the two themes whose artboard lights the page title;
-              // both read the colour from fg.heading, which is their
-              // accent. Lemon Grid and Keppel, drawn from the same palette
-              // as Night Drive, deliberately have none — Camille's call,
-              // 2026-11-18.
-              textShadow: '0 0 14px rgba(55, 235, 243, 0.3)',
-            },
-            _matrix: {
-              textShadow: '0 0 12px rgba(67, 245, 123, 0.28)',
-            },
-          })}
-        >
-          rom-curator
+      <div className={css({ display: 'flex', alignItems: 'center', gap: '1', mb: '10' })}>
+        {/* The home screen is the one place the logo shows large, as the
+            page title; App hides the small AppTopBar here so it is not shown
+            twice. The comps' title glow (Night Drive, Matrix) was a
+            text-shadow on the old text title and does not carry over to an
+            image with its own fixed colours. */}
+        <h1 className={css({ flex: 1, minWidth: 0 })}>
+          <AppLogo height={150} />
         </h1>
         <button onClick={onLexique} title="Lexique" aria-label="Lexique" className={iconBtnClass}>
           <BookIcon />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AppTopBar } from '@/components/AppTopBar.js';
 import { FontScaleControl } from '@/components/FontScaleControl.js';
 import { GameView } from '@/features/game-view/GameView.js';
 import { LexiqueDialog } from '@/features/lexique/LexiqueDialog.js';
@@ -67,12 +68,19 @@ export function App() {
   };
   const openLexique = () => setLexiqueOpen(true);
 
+  // The home screen (Mes systèmes) shows the logo large as its own title,
+  // so the small logo strip is left out there; every other screen has it.
+  // Left out while the DATs load too, so opening the app on its home
+  // screen does not flash the strip before the large logo replaces it.
+  let isHomeOrLoading = false;
   let content: ReactNode;
   if (isWaitingForDats) {
+    isHomeOrLoading = true;
     content = null;
   } else if (activeDat === null && isUnusedInstall) {
     content = <TopologyStep saving={chooseTopology.isPending} onChoose={chooseTopology.mutate} />;
   } else if (activeDat === null) {
+    isHomeOrLoading = true;
     content = (
       <SystemsScreen
         loaderMode={loaderMode}
@@ -95,8 +103,12 @@ export function App() {
     );
   }
 
+  // Settings covers the home screen without unmounting it, and shows the strip.
+  const showsTopBar = isSettingsOpen || !isHomeOrLoading;
+
   return (
     <>
+      {showsTopBar && <AppTopBar />}
       {isSettingsOpen && (
         <SettingsPage
           onClose={() => navigate(returnRoute)}

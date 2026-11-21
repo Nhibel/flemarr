@@ -35,7 +35,7 @@ export function SettingsPage({ onClose, onLexique, theme, onSetTheme }: Props) {
   const containerClass = css({
     maxW: '6xl',
     mx: 'auto',
-    mt: { base: '8', md: '16' },
+    mt: { base: '4', md: '8' },
     px: { base: '4', md: '6', lg: '8' },
   });
 

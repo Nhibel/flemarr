@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
+import { APP_TOP_BAR_HEIGHT } from '@/components/AppTopBar.js';
 import { SegmentedControl } from '@/components/SegmentedControl.js';
 import { GameFilters } from '@/features/game-list/GameFilters.js';
 import { GameList } from '@/features/game-list/GameList.js';
@@ -152,8 +153,7 @@ export function GameView({
       className={css({
         maxW: '6xl',
         mx: 'auto',
-        mt: { base: '6', md: '8' },
-        px: { base: '4', md: '6', lg: '10' },
+        px: { base: '4', md: '6', lg: '8' },
         pb: '12',
         // A real `height`, not `minHeight` — flex-grow only has space to
         // distribute when its container's own size is definite. With only
@@ -174,11 +174,17 @@ export function GameView({
         // failure mode for a *missing* height — worth confirming this
         // actually fixes it rather than treating it as proven). `vh` has
         // been supported everywhere for well over a decade.
-        height: '100vh',
+        //
+        // The height itself is set inline below: the viewport minus the
+        // logo strip (AppTopBar) above it, so the page itself never
+        // scrolls. Inline because Panda extracts styles at build time and
+        // cannot read an imported constant. No top margin either: the
+        // strip already spaces the header from the top of the screen.
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
       })}
+      style={{ height: `calc(100vh - ${APP_TOP_BAR_HEIGHT})` }}
     >
       <GameHeader
         dat={dat}

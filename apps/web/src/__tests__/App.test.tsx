@@ -66,7 +66,9 @@ describe('App', () => {
     // rather than behind the "+ Ajouter un système" button — a first run
     // would otherwise be an empty screen whose only content is a button.
     expect(await screen.findByRole('button', { name: /fresh1g1r/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /rom-curator/i })).toBeInTheDocument();
+    // Home shows the logo large as its title, without the small strip.
+    expect(screen.getByRole('heading', { level: 1, name: 'Flemarr' })).toBeInTheDocument();
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /importer un \.dat/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /ajouter un système/i })).not.toBeInTheDocument();
   });
@@ -109,6 +111,14 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: /où vivent tes jeux/i })).not.toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: /où vivent tes jeux/i })).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the small logo strip on the screens other than home', async () => {
+    render(<App />, { wrapper });
+    await screen.findByRole('heading', { name: /où vivent tes jeux/i });
+    expect(screen.getByRole('banner')).toContainElement(
+      screen.getByRole('img', { name: 'Flemarr' }),
     );
   });
 });
