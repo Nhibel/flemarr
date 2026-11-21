@@ -26,6 +26,9 @@ import type { Tab } from './tabs.js';
 
 interface Props {
   dat: DatUploadResponse;
+  /** The tab asked for (from the URL); the Scanner falls back to Games when hidden. */
+  tab: Tab;
+  onTabChange: (tab: Tab) => void;
   onReset: () => void;
   onSettings: () => void;
   onLexique: () => void;
@@ -36,8 +39,14 @@ interface Props {
  * Downloads tabs. Owns the state the tabs share — selection, last scan,
  * queued downloads — and hands each tab what it needs.
  */
-export function GameView({ dat, onReset, onSettings, onLexique }: Props) {
-  const [tab, setTab] = useState<Tab>('games');
+export function GameView({
+  dat,
+  tab: requestedTab,
+  onTabChange: setTab,
+  onReset,
+  onSettings,
+  onLexique,
+}: Props) {
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
   const { lastScan, lastScanAt, refresh: refreshLastScan } = useLastScan(dat.id, dat.system);
   const systemIcons = useSystemIcons([dat.system]);
@@ -73,6 +82,8 @@ export function GameView({ dat, onReset, onSettings, onLexique }: Props) {
   const { data: settings } = useSettings();
   const showScanner = (settings?.downloadTarget ?? 'server') !== 'browser';
   const tabs = visibleTabs(showScanner);
+  // A bookmarked Scanner tab in "browser" mode, where it does not exist.
+  const tab = tabs.includes(requestedTab) ? requestedTab : 'games';
   const tabOptions = tabs.map((t) => ({ value: t, label: TAB_LABELS[t] }));
 
   const {

@@ -9,7 +9,16 @@ import type * as ApiModule from '@/lib/api.js';
 
 vi.mock('@/lib/api.js', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>();
-  return { ...actual, getSettings: vi.fn(), listDats: vi.fn() };
+  return {
+    ...actual,
+    getSettings: vi.fn(),
+    listDats: vi.fn(),
+    // What a system's screen loads, so opening one needs no network.
+    fetchGames: vi.fn(async () => []),
+    fetchLastScan: vi.fn(async () => null),
+    fetchSources: vi.fn(async (system: string) => ({ system, sources: [] })),
+    fetchSystemIcons: vi.fn(async () => ({ icons: [] })),
+  };
 });
 
 const getSettingsMock = vi.mocked(getSettings);
@@ -36,6 +45,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 beforeEach(() => {
+  window.location.hash = '';
   getSettingsMock.mockReset();
   listDatsMock.mockReset();
   getSettingsMock.mockResolvedValue(settings());
@@ -141,5 +151,50 @@ describe('App — the systems screen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Fermer' }));
     expect(screen.queryByRole('button', { name: /fresh1g1r/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('App — the screen lives in the URL', () => {
+  const dats = [
+    { id: 'd1', system: 'Super Nintendo', gameCount: 1842, source: 'no-intro' as const },
+  ];
+
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue(settings({ topology: 'local' }));
+    listDatsMock.mockResolvedValue(dats);
+  });
+
+  it('puts an opened system and its tab in the hash', async () => {
+    const user = userEvent.setup();
+    render(<App />, { wrapper });
+    await user.click(await screen.findByRole('button', { name: /^Super Nintendo/ }));
+    expect(window.location.hash).toBe('#/systems/d1/games');
+    await user.click(screen.getByRole('button', { name: 'Sources' }));
+    expect(window.location.hash).toBe('#/systems/d1/sources');
+  });
+
+  // A reload lands back on the same system and tab.
+  it('opens the system and tab named in the hash', async () => {
+    window.location.hash = '#/systems/d1/sources';
+    render(<App />, { wrapper });
+    expect(await screen.findByRole('heading', { name: 'Super Nintendo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sources' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows the systems for a link to a removed system', async () => {
+    window.location.hash = '#/systems/gone/games';
+    render(<App />, { wrapper });
+    expect(await screen.findByRole('button', { name: /^Super Nintendo/ })).toBeInTheDocument();
+  });
+
+  it('returns from Settings to the system it was opened from', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/systems/d1/games';
+    render(<App />, { wrapper });
+    await screen.findByRole('heading', { name: 'Super Nintendo' });
+    await user.click(screen.getByRole('button', { name: 'Paramètres' }));
+    expect(window.location.hash).toBe('#/settings');
+    await user.click(await screen.findByRole('button', { name: '← Retour' }));
+    expect(window.location.hash).toBe('#/systems/d1/games');
   });
 });

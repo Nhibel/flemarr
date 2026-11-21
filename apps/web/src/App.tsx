@@ -13,18 +13,19 @@ import { queryKeys } from '@/lib/query-keys.js';
 import { useFontScale } from '@/lib/use-font-scale.js';
 import { useSettings } from '@/lib/use-settings.js';
 import { useTheme } from '@/lib/use-theme.js';
-import type { DatUploadResponse } from '@shared/api.js';
-
-type AppView = 'loader' | 'game' | 'settings' | 'lexique';
+import { useHashRoute } from '@/navigation/use-hash-route.js';
+import { openedSystem } from '@/navigation/app-route.js';
+import type { AppRoute } from '@/navigation/app-route.js';
 
 /**
- * Picks the screen to show — there is no router; navigation is this
- * component's state — and asks the install question on a fresh install.
+ * Picks the screen to show from the URL hash (see navigation/app-route.ts)
+ * and asks the install question on a fresh install.
  */
 export function App() {
-  const [activeDat, setActiveDat] = useState<DatUploadResponse | null>(null);
+  const { route, navigate } = useHashRoute();
   const [loaderMode, setLoaderMode] = useState<LoaderMode>('fresh1g1r');
-  const [view, setView] = useState<AppView>('loader');
+  // Where Settings and Lexique return to: the screen they were opened from.
+  const [returnRoute, setReturnRoute] = useState<AppRoute>({ screen: 'systems' });
   const { theme, setTheme } = useTheme();
   const { fontScale, setFontScale } = useFontScale();
   const queryClient = useQueryClient();
@@ -52,13 +53,21 @@ export function App() {
     Object.keys(rootSettings.systemPaths).length === 0 &&
     knownDats.length === 0;
 
-  const backFromPage = () => setView(activeDat ? 'game' : 'loader');
+  const { activeDat, isWaitingForDats } = openedSystem(route, knownDats);
+
+  const openPage = (screen: 'settings' | 'lexique') => {
+    setReturnRoute(route);
+    navigate({ screen });
+  };
+  const backFromPage = () => navigate(returnRoute);
 
   let content: ReactNode;
-  if (view === 'settings') {
+  if (route.screen === 'settings') {
     content = <SettingsPage onClose={backFromPage} theme={theme} onSetTheme={setTheme} />;
-  } else if (view === 'lexique') {
+  } else if (route.screen === 'lexique') {
     content = <LexiquePage onClose={backFromPage} />;
+  } else if (isWaitingForDats) {
+    content = null;
   } else if (activeDat === null && isUnusedInstall) {
     content = <TopologyStep saving={chooseTopology.isPending} onChoose={chooseTopology.mutate} />;
   } else if (activeDat === null) {
@@ -66,24 +75,20 @@ export function App() {
       <SystemsScreen
         loaderMode={loaderMode}
         onSetLoaderMode={setLoaderMode}
-        onOpenSystem={(dat) => {
-          setActiveDat(dat);
-          setView('game');
-        }}
-        onSettings={() => setView('settings')}
-        onLexique={() => setView('lexique')}
+        onOpenSystem={(dat) => navigate({ screen: 'game', datId: dat.id, tab: 'games' })}
+        onSettings={() => openPage('settings')}
+        onLexique={() => openPage('lexique')}
       />
     );
   } else {
     content = (
       <GameView
         dat={activeDat}
-        onReset={() => {
-          setActiveDat(null);
-          setView('loader');
-        }}
-        onSettings={() => setView('settings')}
-        onLexique={() => setView('lexique')}
+        tab={route.screen === 'game' ? route.tab : 'games'}
+        onTabChange={(tab) => navigate({ screen: 'game', datId: activeDat.id, tab })}
+        onReset={() => navigate({ screen: 'systems' })}
+        onSettings={() => openPage('settings')}
+        onLexique={() => openPage('lexique')}
       />
     );
   }
