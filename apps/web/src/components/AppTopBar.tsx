@@ -16,8 +16,12 @@ export const APP_TOP_BAR_HEIGHT = '72px';
  *
  * Its right end is left empty on purpose: FontScaleControl sits in the
  * viewport's top-right corner and lands inside this strip at scroll 0.
+ *
+ * The logo links home. A real link to `homeHref` rather than a click
+ * handler: routing lives in the URL hash, so following the href is the
+ * navigation, and a middle click opens the home screen in a new tab.
  */
-export function AppTopBar() {
+export function AppTopBar({ homeHref }: { homeHref: string }) {
   return (
     <header
       className={css({
@@ -36,7 +40,14 @@ export function AppTopBar() {
           alignItems: 'center',
         })}
       >
-        <AppLogo height={40} />
+        <a
+          href={homeHref}
+          aria-label="Flemarr — retour à Mes systèmes"
+          title="Mes systèmes"
+          className={css({ display: 'block', borderRadius: '8px' })}
+        >
+          <AppLogo height={40} />
+        </a>
       </div>
     </header>
   );

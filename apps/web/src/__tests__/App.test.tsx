@@ -186,6 +186,18 @@ describe('App — the screen lives in the URL', () => {
     expect(window.location.hash).toBe('#/systems/d1/sources');
   });
 
+  it('goes back to the systems from the logo', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/systems/d1/games';
+    render(<App />, { wrapper });
+    await screen.findByRole('heading', { name: 'Super Nintendo' });
+
+    await user.click(screen.getByRole('link', { name: /retour à Mes systèmes/ }));
+
+    expect(await screen.findByRole('button', { name: /^Super Nintendo/ })).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/');
+  });
+
   // A reload lands back on the same system and tab.
   it('opens the system and tab named in the hash', async () => {
     window.location.hash = '#/systems/d1/sources';

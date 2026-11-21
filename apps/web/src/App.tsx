@@ -15,7 +15,7 @@ import { useFontScale } from '@/lib/use-font-scale.js';
 import { useSettings } from '@/lib/use-settings.js';
 import { useTheme } from '@/lib/use-theme.js';
 import { useHashRoute } from '@/navigation/use-hash-route.js';
-import { openedSystem } from '@/navigation/app-route.js';
+import { openedSystem, routeToHash } from '@/navigation/app-route.js';
 import type { AppRoute } from '@/navigation/app-route.js';
 
 /**
@@ -108,7 +108,7 @@ export function App() {
 
   return (
     <>
-      {showsTopBar && <AppTopBar />}
+      {showsTopBar && <AppTopBar homeHref={routeToHash({ screen: 'systems' })} />}
       {isSettingsOpen && (
         <SettingsPage
           onClose={() => navigate(returnRoute)}
