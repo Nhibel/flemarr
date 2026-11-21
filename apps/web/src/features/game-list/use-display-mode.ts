@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage-keys.js';
 
 export type DisplayMode = 'compact' | 'normal';
 
 export const DISPLAY_MODES: DisplayMode[] = ['compact', 'normal'];
 
-const STORAGE_KEY = 'rom-curator.display-mode';
+const STORAGE_KEY = STORAGE_KEYS.displayMode;
 
 function load(): DisplayMode {
   try {

@@ -7,7 +7,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script>
       (function () {
-        var t = localStorage.getItem('rom-curator-theme');
+        // The second key is the pre-Flemarr name, read until migrateStorageKeys
+        // (src/lib/migrate-storage-keys.ts) has moved it on first load.
+        var t = localStorage.getItem('flemarr-theme') || localStorage.getItem('rom-curator-theme');
         var d = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         if (d === 'dark') document.documentElement.classList.add('dark');
       })();

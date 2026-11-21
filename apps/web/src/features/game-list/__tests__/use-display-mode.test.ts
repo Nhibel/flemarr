@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDisplayMode } from '../use-display-mode.js';
 
-const KEY = 'rom-curator.display-mode';
+const KEY = 'flemarr.display-mode';
 
 beforeEach(() => {
   localStorage.clear();

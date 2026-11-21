@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTheme } from '../use-theme.js';
 
-const STORAGE_KEY = 'rom-curator-theme';
+const STORAGE_KEY = 'flemarr-theme';
 
 beforeEach(() => {
   localStorage.clear();

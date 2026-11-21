@@ -17,6 +17,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from '@/App.js';
+import { migrateStorageKeys } from '@/lib/migrate-storage-keys.js';
+
+// Before the first render: the preference hooks read their key while
+// rendering, so the rom-curator keys must already sit under their new names.
+migrateStorageKeys(localStorage);
 
 const queryClient = new QueryClient();
 

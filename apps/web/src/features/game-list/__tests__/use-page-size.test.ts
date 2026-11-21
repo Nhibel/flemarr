@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePageSize, resolvePageSize, PAGE_SIZES } from '../use-page-size.js';
 
-const STORAGE_KEY = 'rom-curator.page-size';
+const STORAGE_KEY = 'flemarr.page-size';
 
 beforeEach(() => {
   localStorage.clear();

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage-keys.js';
 
 export type Theme =
   | 'light'
@@ -30,7 +31,7 @@ const THEMES: Theme[] = [
   'contraste',
 ];
 
-const STORAGE_KEY = 'rom-curator-theme';
+const STORAGE_KEY = STORAGE_KEYS.theme;
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);

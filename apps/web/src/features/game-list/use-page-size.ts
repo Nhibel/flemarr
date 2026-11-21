@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage-keys.js';
 
 /** 'all' is a sentinel, not a number — see resolvePageSize below. */
 export type PageSize = 20 | 50 | 100 | 'all';
 
 export const PAGE_SIZES: PageSize[] = [20, 50, 100, 'all'];
 
-const STORAGE_KEY = 'rom-curator.page-size';
+const STORAGE_KEY = STORAGE_KEYS.pageSize;
 
 function load(): PageSize {
   try {

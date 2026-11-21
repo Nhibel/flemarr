@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '@/lib/storage-keys.js';
 
 // Must stay equal to panda.config.ts's globalCss html.fontSize fallback —
 // two independent constants (Panda config vs TS), not wired together.
@@ -7,7 +8,7 @@ export const MIN_FONT_SCALE = 14;
 export const MAX_FONT_SCALE = 24;
 export const FONT_SCALE_STEP = 1;
 
-const STORAGE_KEY = 'rom-curator-font-scale';
+const STORAGE_KEY = STORAGE_KEYS.fontScale;
 
 function clamp(px: number): number {
   return Math.min(MAX_FONT_SCALE, Math.max(MIN_FONT_SCALE, px));

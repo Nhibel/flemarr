@@ -167,7 +167,7 @@ describe('GameList', () => {
   });
 
   it('compact mode issues no details request and hides boxart slots', async () => {
-    localStorage.setItem('rom-curator.display-mode', 'compact');
+    localStorage.setItem('flemarr.display-mode', 'compact');
     try {
       const { container } = renderList(GAMES);
       expect(screen.getByRole('button', { name: 'Compact' })).toHaveAttribute(
@@ -179,15 +179,15 @@ describe('GameList', () => {
       expect(fetchGameDetailsMock).not.toHaveBeenCalled();
       expect(container.querySelector('img')).toBeNull();
     } finally {
-      localStorage.removeItem('rom-curator.display-mode');
+      localStorage.removeItem('flemarr.display-mode');
     }
   });
 
   it('switching modes persists the choice', async () => {
     renderList(GAMES);
     await userEvent.click(screen.getByRole('button', { name: 'Compact' }));
-    expect(localStorage.getItem('rom-curator.display-mode')).toBe('compact');
-    localStorage.removeItem('rom-curator.display-mode');
+    expect(localStorage.getItem('flemarr.display-mode')).toBe('compact');
+    localStorage.removeItem('flemarr.display-mode');
   });
 
   it('requests details for the displayed page and shows boxarts', async () => {

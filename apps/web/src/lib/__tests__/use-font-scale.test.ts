@@ -7,7 +7,7 @@ import {
   MAX_FONT_SCALE,
 } from '../use-font-scale.js';
 
-const STORAGE_KEY = 'rom-curator-font-scale';
+const STORAGE_KEY = 'flemarr-font-scale';
 
 beforeEach(() => {
   localStorage.clear();
