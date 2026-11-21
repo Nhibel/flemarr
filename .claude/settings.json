@@ -38,12 +38,7 @@
       "Bash(git push -f:*)",
       "Bash(git reset --hard:*)"
     ],
-    "ask": [
-      "Bash(git rebase:*)",
-      "Bash(pnpm add:*)",
-      "Bash(pnpm remove:*)",
-      "Bash(pnpm update:*)"
-    ]
+    "ask": ["Bash(git rebase:*)", "Bash(pnpm add:*)", "Bash(pnpm remove:*)", "Bash(pnpm update:*)"]
   },
   "hooks": {
     "PostToolUse": [
@@ -52,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/format-on-save.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-on-save.sh"
           }
         ]
       }
