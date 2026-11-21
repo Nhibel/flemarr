@@ -65,7 +65,7 @@ This table covers only the env vars read at startup. Everything else — the Fre
 
 The app was called rom-curator until 2026-11-21. The compose service, container and volume are now named `flemarr`, and Docker cannot rename a volume, so an existing install moves its data once. The app itself renames `rom-curator.db` to `flemarr.db` on its first start.
 
-1. Find the old volume: `docker volume ls | grep rom-curator` (Portainer names it `<stack>_rom-curator-data`).
+1. Note the old volume's name, nothing else to do yet: `docker volume ls | grep rom-curator` (Portainer names it `<stack>_rom-curator-data`, so `rom-curator_rom-curator-data` for a stack called rom-curator). Steps 4 and 6 use it as `<old-volume>`.
 2. Stop the old stack (Portainer → Stacks → the old stack → Stop). This frees port 3000.
 3. Deploy a new stack named `flemarr` from this repository, as above, then **stop it right away**. This creates the empty `flemarr-data` volume.
 4. Copy the data across, replacing what the new stack just created:
