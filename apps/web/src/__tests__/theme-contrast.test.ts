@@ -124,6 +124,14 @@ const PAIRS: Pair[] = [
   { label: 'fg.muted on bg.surface', fg: 'fg.muted', bg: 'bg.surface', min: 4.5 },
   { label: 'fg.subtle on bg.surface', fg: 'fg.subtle', bg: 'bg.surface', min: 4.5 },
   { label: 'fg.subtle on bg.inset', fg: 'fg.subtle', bg: 'bg.inset', min: 4.5 },
+  // The folder path field: a bg.muted well inside the bg.surface bar.
+  {
+    label: 'fg.default on bg.muted',
+    fg: 'fg.default',
+    bg: 'bg.muted',
+    backdrop: 'bg.surface',
+    min: 4.5,
+  },
   // fg.faint is decorative (placeholder initials, timestamps), so it is
   // held to the 3:1 that applies to non-text and large text, not to 4.5.
   { label: 'fg.faint on bg.surface', fg: 'fg.faint', bg: 'bg.surface', min: 3 },

@@ -120,7 +120,9 @@ export function SystemFolderBar({ system }: { system: string }) {
           fontSize: 'sm',
           fontFamily: 'mono',
           borderRadius: 'md',
-          bg: 'bg.surface',
+          // Recessed against the bar's own bg.surface: on the same colour
+          // the field read as plain text, not as somewhere to type.
+          bg: 'bg.muted',
           outline: 'none',
           _focusVisible: {
             _nightdrive: {
