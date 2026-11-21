@@ -12,6 +12,34 @@ interface DatRow {
   games_json: string;
 }
 
+// Parsed DATs, per database. A big DAT is several MB of JSON (Redump PS1:
+// ~6 MB, ~40 ms to read and parse, blocking the event loop) and every
+// games, details, resolve and scan request needs it. Dropped on any write to
+// that DAT; capped so a session browsing many systems doesn't hold them all.
+// Callers must treat the returned DatFile as read-only.
+const PARSED_CACHE_SIZE = 4;
+const parsedDats = new WeakMap<Database, Map<string, DatFile>>();
+
+function parsedCache(db: Database): Map<string, DatFile> {
+  let cache = parsedDats.get(db);
+  if (cache === undefined) {
+    cache = new Map();
+    parsedDats.set(db, cache);
+  }
+  return cache;
+}
+
+function rememberParsed(db: Database, id: string, dat: DatFile): void {
+  const cache = parsedCache(db);
+  cache.delete(id);
+  cache.set(id, dat);
+  // Map keeps insertion order: the first key is the least recently used.
+  if (cache.size > PARSED_CACHE_SIZE) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+}
+
 export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
   // Re-loading a DAT for the same system replaces the previous one instead of
   // piling up duplicates, keeping the same id stable across the update.
@@ -20,6 +48,7 @@ export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
     .get(dat.system, dat.source) as { id: string } | undefined;
 
   if (existing) {
+    parsedCache(db).delete(existing.id);
     db.prepare(
       `UPDATE dats SET version = ?, date = ?, games_json = ?, created_at = unixepoch() WHERE id = ?`,
     ).run(dat.version ?? null, dat.date ?? null, JSON.stringify(dat.games), existing.id);
@@ -47,19 +76,27 @@ export function addDat(dat: DatFile, db: Database = getDb()): DatSummary {
 }
 
 export function deleteDat(id: string, db: Database = getDb()): boolean {
+  parsedCache(db).delete(id);
   return db.prepare(`DELETE FROM dats WHERE id = ?`).run(id).changes > 0;
 }
 
 export function getDat(id: string, db: Database = getDb()): DatFile | undefined {
+  const cached = parsedCache(db).get(id);
+  if (cached !== undefined) {
+    rememberParsed(db, id, cached);
+    return cached;
+  }
   const row = db.prepare(`SELECT * FROM dats WHERE id = ?`).get(id) as DatRow | undefined;
   if (!row) return undefined;
-  return {
+  const dat: DatFile = {
     system: row.system,
     source: row.source as DatFile['source'],
     version: row.version ?? undefined,
     date: row.date ?? undefined,
     games: JSON.parse(row.games_json) as DatFile['games'],
   };
+  rememberParsed(db, id, dat);
+  return dat;
 }
 
 export function listDats(db: Database = getDb()): Array<DatSummary & { id: string }> {

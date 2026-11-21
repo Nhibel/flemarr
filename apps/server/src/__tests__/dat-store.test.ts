@@ -133,3 +133,47 @@ describe('listDats', () => {
     expect(entry?.gameCount).toBe(2);
   });
 });
+
+describe('getDat — parsed cache', () => {
+  let db: Database;
+  beforeEach(() => {
+    db = createDb(':memory:');
+  });
+
+  it('parses a DAT once, then serves the same object', () => {
+    const { id } = addDat(SAMPLE_DAT, db);
+    expect(getDat(id, db)).toBe(getDat(id, db));
+  });
+
+  // Reloading a system's DAT keeps its id: the cache must not serve the old games.
+  it('serves the new games after the DAT is reloaded', () => {
+    const { id } = addDat(SAMPLE_DAT, db);
+    getDat(id, db);
+    addDat({ ...SAMPLE_DAT, games: SAMPLE_DAT.games.slice(0, 1) }, db);
+    expect(getDat(id, db)?.games).toHaveLength(1);
+  });
+
+  it('forgets a deleted DAT', () => {
+    const { id } = addDat(SAMPLE_DAT, db);
+    getDat(id, db);
+    deleteDat(id, db);
+    expect(getDat(id, db)).toBeUndefined();
+  });
+
+  it('keeps databases apart', () => {
+    const { id } = addDat(SAMPLE_DAT, db);
+    getDat(id, db);
+    expect(getDat(id, createDb(':memory:'))).toBeUndefined();
+  });
+
+  it('still answers past its size, re-reading what it evicted', () => {
+    const ids = ['A', 'B', 'C', 'D', 'E'].map(
+      (letter) => addDat({ ...SAMPLE_DAT, system: `System ${letter}` }, db).id,
+    );
+    const first = getDat(ids[0]!, db);
+    for (const id of ids.slice(1)) getDat(id, db);
+    const again = getDat(ids[0]!, db);
+    expect(again).toEqual(first);
+    expect(again).not.toBe(first);
+  });
+});
