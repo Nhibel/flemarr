@@ -15,6 +15,7 @@ export const queryKeys = {
   dats: () => ['dats'] as const,
   games: (datId: string) => ['games', datId] as const,
   lastScan: (datId: string) => ['last-scan', datId] as const,
+  runningDownloads: (datId: string) => ['running-downloads', datId] as const,
   gameDetails: (datId: string, gameIds: string[]) => ['game-details', datId, gameIds] as const,
   datSources: (preset: Fresh1g1rPreset) => ['dat-sources', preset] as const,
   archiveSources: (system: string) => ['archive-sources', system] as const,

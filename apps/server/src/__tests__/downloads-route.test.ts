@@ -10,10 +10,16 @@ vi.mock('../services/downloader/index.js', () => ({
   startDownload: vi.fn(),
   cancelJob: vi.fn(),
   findBrowserFile: vi.fn(),
+  runningDownloads: vi.fn(),
   downloadJobs: new Map(),
 }));
 
-import { startDownload, cancelJob, findBrowserFile } from '../services/downloader/index.js';
+import {
+  startDownload,
+  cancelJob,
+  findBrowserFile,
+  runningDownloads,
+} from '../services/downloader/index.js';
 
 const app = new Hono().route('/api', downloadsRoute);
 
@@ -104,6 +110,19 @@ describe('POST /api/downloads/:jobId/cancel', () => {
   });
 });
 
+describe('GET /api/dats/:id/downloads', () => {
+  it("lists the DAT's running jobs", async () => {
+    vi.mocked(runningDownloads).mockReturnValue([
+      { jobId: 'j1', datId: 'dat-001', target: 'browser', items: [], eventCount: 3 },
+    ]);
+    const res = await app.request('/api/dats/dat-001/downloads');
+    expect(runningDownloads).toHaveBeenCalledWith('dat-001');
+    expect(await res.json()).toEqual({
+      jobs: [{ jobId: 'j1', datId: 'dat-001', target: 'browser', items: [], eventCount: 3 }],
+    });
+  });
+});
+
 describe('GET /api/downloads/:jobId/events', () => {
   it('streams error event for unknown job', async () => {
     const res = await app.request('/api/downloads/unknown-job/events');
@@ -115,6 +134,7 @@ describe('GET /api/downloads/:jobId/events', () => {
   it('streams buffered events from a known job', async () => {
     downloadJobs.set('job-456', {
       status: 'done',
+      datId: 'dat-001',
       target: 'server',
       items: [],
       events: [{ type: 'complete' }],

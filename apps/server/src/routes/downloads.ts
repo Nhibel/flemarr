@@ -11,6 +11,7 @@ import {
   cancelItem,
   downloadJobs,
   findBrowserFile,
+  runningDownloads,
 } from '@/services/downloader/index.js';
 import { PathTraversalError, NoRootsConfiguredError } from '@/lib/fs-safety.js';
 import { errorJson, errorMessage, parseJsonBody } from '@/lib/http.js';
@@ -35,6 +36,11 @@ downloadsRoute.post('/downloads', async (c) => {
   }
 
   return c.json({ jobId }, 202);
+});
+
+// The DAT's jobs still running: a page reloaded mid-download picks them up.
+downloadsRoute.get('/dats/:id/downloads', (c) => {
+  return c.json({ jobs: runningDownloads(c.req.param('id')) });
 });
 
 downloadsRoute.get('/downloads/:jobId/events', (c) => {

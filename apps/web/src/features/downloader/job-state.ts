@@ -13,6 +13,12 @@ export interface QueuedDownload {
   items: DownloadItem[];
   target: 'server' | 'browser';
   destinationDir?: string;
+  /**
+   * Events a previous page already handled, for a job picked up after a
+   * reload: the stream replays them, and a browser save among them must not
+   * run twice (the server serves each file once).
+   */
+  handledEvents?: number;
 }
 
 /**

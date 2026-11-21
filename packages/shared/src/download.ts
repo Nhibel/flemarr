@@ -48,6 +48,24 @@ export const downloadJobSchema = z.object({
   jobId: z.string(),
 });
 
+// A job still running on the server, for a page that reloaded mid-download
+// to pick it up again. eventCount: events emitted so far — the event stream
+// replays them all, and the ones already handled (a browser save, notably)
+// must not act twice.
+const runningDownloadSchema = z.object({
+  jobId: z.string(),
+  datId: z.string(),
+  items: z.array(downloadItemSchema),
+  target: z.enum(['server', 'browser']),
+  destinationDir: z.string().optional(),
+  eventCount: z.number().int().nonnegative(),
+});
+export type RunningDownload = z.infer<typeof runningDownloadSchema>;
+
+export const runningDownloadsResponseSchema = z.object({
+  jobs: z.array(runningDownloadSchema),
+});
+
 export const downloadEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('progress'),

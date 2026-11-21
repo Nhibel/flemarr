@@ -18,7 +18,7 @@ import {
 import { BROWSER_STAGING_DIR, downloadJobs } from './job-store.js';
 import type { DownloadItemState, DownloadJobState } from './job-store.js';
 
-export { downloadJobs } from './job-store.js';
+export { downloadJobs, runningDownloads } from './job-store.js';
 export type { DownloadJobState } from './job-store.js';
 
 const TEMP_DIR_NAME = '.rom-curator-tmp';
@@ -75,6 +75,8 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   const events: DownloadEvent[] = [];
   const job: DownloadJobState = {
     status: 'running',
+    datId,
+    destinationDir,
     target,
     items: jobItems,
     events,

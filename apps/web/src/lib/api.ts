@@ -9,8 +9,12 @@ import {
 import type { DatUploadResponse, GamesResponse, ListDatsResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema, lastScanResponseSchema } from '@shared/scan.js';
 import type { ScanJob, RenameRequest, RenameResult, LastScan } from '@shared/scan.js';
-import { downloadJobSchema, downloadEventSchema } from '@shared/download.js';
-import type { DownloadRequest, DownloadEvent } from '@shared/download.js';
+import {
+  downloadJobSchema,
+  downloadEventSchema,
+  runningDownloadsResponseSchema,
+} from '@shared/download.js';
+import type { DownloadRequest, DownloadEvent, RunningDownload } from '@shared/download.js';
 import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
 import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
 import { settingsResponseSchema } from '@shared/settings.js';
@@ -202,6 +206,12 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
     body: JSON.stringify(request),
   });
   return parseResponse(res, downloadJobSchema).then((j) => j.jobId);
+}
+
+/** The DAT's download jobs still running on the server. */
+export async function fetchRunningDownloads(datId: string): Promise<RunningDownload[]> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/downloads`);
+  return parseResponse(res, runningDownloadsResponseSchema).then((r) => r.jobs);
 }
 
 export function openDownloadEvents(jobId: string): EventSource {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
@@ -12,6 +12,7 @@ import { SourcesPanel } from '@/features/archive/SourcesPanel.js';
 import { SystemFolderBar } from '@/features/folders/SystemFolderBar.js';
 import { DownloadManager } from '@/features/downloader/DownloadManager.js';
 import type { QueuedDownload } from '@/features/downloader/job-state.js';
+import { useRunningDownloads } from '@/features/downloader/use-running-downloads.js';
 import { fetchGames } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
@@ -50,6 +51,16 @@ export function GameView({
   const [downloadJobs, setDownloadJobs] = useState<QueuedDownload[]>([]);
   const { lastScan, lastScanAt, refresh: refreshLastScan } = useLastScan(dat.id, dat.system);
   const systemIcons = useSystemIcons([dat.system]);
+
+  // Jobs still running server-side, after a reload: shown again, once each.
+  const addRunningDownloads = useCallback((running: QueuedDownload[]) => {
+    setDownloadJobs((prev) => {
+      const known = new Set(prev.map((job) => job.jobId));
+      const fresh = running.filter((job) => !known.has(job.jobId));
+      return fresh.length === 0 ? prev : [...prev, ...fresh];
+    });
+  }, []);
+  useRunningDownloads(dat.id, addRunningDownloads);
 
   const handleQueueDownload = (job: QueuedDownload) => {
     setDownloadJobs((prev) => [...prev, job]);

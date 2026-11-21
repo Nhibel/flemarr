@@ -1,6 +1,11 @@
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { DownloadEvent, DownloadTarget, DownloadSource } from '@shared/download.js';
+import type {
+  DownloadEvent,
+  DownloadTarget,
+  DownloadSource,
+  RunningDownload,
+} from '@shared/download.js';
 
 // Browser-target files are staged here (outside any library root — they
 // never get placed, only served once and then deleted).
@@ -25,6 +30,9 @@ export interface DownloadItemState {
 
 export interface DownloadJobState {
   status: 'running' | 'cancelled' | 'done';
+  // What the job was started with, so a reloaded page can pick it up.
+  datId: string;
+  destinationDir?: string;
   target: DownloadTarget;
   items: DownloadItemState[];
   events: DownloadEvent[];
@@ -63,6 +71,28 @@ export interface DownloadJobState {
 }
 
 export const downloadJobs = new Map<string, DownloadJobState>();
+
+/** The jobs of a DAT still running, in start order, as a reloaded page needs them. */
+export function runningDownloads(datId: string): RunningDownload[] {
+  const running: RunningDownload[] = [];
+  for (const [jobId, job] of downloadJobs) {
+    if (job.datId !== datId || job.status !== 'running') continue;
+    running.push({
+      jobId,
+      datId,
+      target: job.target,
+      destinationDir: job.destinationDir,
+      items: job.items.map(({ gameId, romName, expectedCrc, sources }) => ({
+        gameId,
+        romName,
+        expectedCrc,
+        sources,
+      })),
+      eventCount: job.events.length,
+    });
+  }
+  return running;
+}
 
 /** Where the client fetches a browser-target file (or a converted .chd) from. */
 export function browserFileUrl(jobId: string, gameId: string, filename: string): string {

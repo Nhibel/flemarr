@@ -16,6 +16,7 @@ vi.mock('@/lib/api.js', async (importOriginal) => {
     // What a system's screen loads, so opening one needs no network.
     fetchGames: vi.fn(async () => []),
     fetchLastScan: vi.fn(async () => null),
+    fetchRunningDownloads: vi.fn(async () => []),
     fetchSources: vi.fn(async (system: string) => ({ system, sources: [] })),
     fetchSystemIcons: vi.fn(async () => ({ icons: [] })),
   };

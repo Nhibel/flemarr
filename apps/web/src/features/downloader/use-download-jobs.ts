@@ -50,12 +50,17 @@ export function useDownloadJobs({ jobs, onGamesDownloaded, onAllDone }: Options)
 
       const stream = openDownloadEvents(queued.jobId);
       streams.current.set(queued.jobId, stream);
+      let received = 0;
 
       stream.onmessage = (message) => {
         const parsed = downloadEventSchema.safeParse(JSON.parse(message.data as string) as unknown);
         if (!parsed.success) return;
         const event = parsed.data;
-        if (event.type === 'file-ready') triggerBrowserSave(event.downloadUrl, event.romName);
+        received++;
+        const isReplayed = received <= (queued.handledEvents ?? 0);
+        if (event.type === 'file-ready' && !isReplayed) {
+          triggerBrowserSave(event.downloadUrl, event.romName);
+        }
         applyEvent(queued.jobId, event);
         if (isFinalEvent(event)) stream.close();
       };
