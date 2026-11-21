@@ -9,6 +9,10 @@ import type { CrcEntry } from './matcher.js';
 import type { ScanMatch } from '@shared/scan.js';
 
 /**
+ * The scanner's fallback for a .chd whose name matches no game (see
+ * chd-name-match.ts, tried first): extracting a whole disc takes long
+ * seconds, so only a .chd that cannot be identified otherwise pays for it.
+ *
  * Matches a .chd on disk against the DAT by extracting it (chdman
  * extractcd) and CRC32-hashing each extracted track — the .chd's own bytes
  * never produce the DAT's raw CRC32, and chdman exposes no per-track hash

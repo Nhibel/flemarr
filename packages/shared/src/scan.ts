@@ -48,7 +48,14 @@ export const lastScanResponseSchema = z.object({
 export type LastScanResponse = z.infer<typeof lastScanResponseSchema>;
 
 export const scanEventSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('progress'), scanned: z.number(), total: z.number() }),
+  z.object({
+    type: z.literal('progress'),
+    scanned: z.number(),
+    total: z.number(),
+    // The .chd being decompressed to identify it — long enough to look
+    // frozen without it. Absent the rest of the time.
+    extracting: z.string().optional(),
+  }),
   z.object({ type: z.literal('done'), result: scanResultSchema }),
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
