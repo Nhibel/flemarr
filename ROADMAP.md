@@ -465,7 +465,8 @@ whether it looks right.
   carries a tag at all**: tagging 1500 rows "missing" on no evidence is
   worse than silence.
 - **The install question.** One new setting, `topology`
-  (`local | mounted | remote | null`), asked once before anything else
+  (`local | mounted | remote | null` — `mounted` since folded into `local`,
+  see the 2026-11-21 revision below), asked once before anything else
   because its answer decides both where downloads land and whether a scan
   can see anything. `local` and `mounted` produce identical settings; they
   are separate answers because "on this machine or a network share?" is
@@ -626,6 +627,29 @@ looked at in a browser.**
 A `cyberpunk` left in a browser's localStorage needs no migration:
 `getInitialTheme()` already drops an unknown theme and falls back, as it
 did for `nintendo` and `megadrive`.
+
+### Revision — the install question asks where downloads land (2026-11-21)
+
+Camille, reading the question on a fresh local database, could not tell
+answers 1 and 2 apart — and there was nothing to tell: `local` and
+`mounted` wrote the same settings and no code read the difference. Framing
+by where the collection physically lives also misfired on her own setup:
+Flemarr in Docker on the homelab with the library mounted at `/roms` is
+"this machine", "a mounted network disk" and "a homelab" at once.
+
+The question is now **« Où arrivent les jeux téléchargés ? »**, with one
+answer per `downloadTarget`:
+
+- **Dans un dossier du serveur** (`local`, `downloadTarget: 'server'`) —
+  the body names local disks, Docker volumes and mounted shares, so the
+  three cases it absorbs all recognise themselves.
+- **Dans les téléchargements de mon navigateur** (`remote`,
+  `downloadTarget: 'browser'`) — still says the app will not know what you
+  own, the one consequence beyond the destination.
+
+`mounted` is gone from the schema. `migration010` rewrites a recorded
+`mounted` to `local`, since the response schema would otherwise reject it.
+`topology` itself stays: its being `null` is what gates the install flow.
 
 ---
 
