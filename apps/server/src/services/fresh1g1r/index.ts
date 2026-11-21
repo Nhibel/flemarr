@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 import type { Fresh1g1rPreset, DatSourceEntry } from '@shared/fresh1g1r.js';
 import type { DatSummary } from '@shared/dat.js';
-import { parseDat, addDat } from '@/services/dat/index.js';
+import { parseDat, addDat, setDatOrigin } from '@/services/dat/index.js';
 import { dataDir } from '@/lib/db.js';
 
 const REPO = 'UnluckyForSome/Fresh1G1R';
@@ -56,7 +56,7 @@ function systemFromFilename(name: string): string {
   return name.replace(/\s+\([^)]*Fresh1G1R[^)]*\)\.dat$/i, '').trim();
 }
 
-function rawUrl(path: string): string {
+export function rawUrl(path: string): string {
   return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURI(path)}`;
 }
 
@@ -135,7 +135,7 @@ export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSource
 }
 
 export async function fetchDat(
-  _preset: Fresh1g1rPreset,
+  preset: Fresh1g1rPreset,
   path: string,
   sha: string,
 ): Promise<DatSummary> {
@@ -152,5 +152,7 @@ export async function fetchDat(
   }
 
   const dat = parseDat(content);
-  return addDat(dat);
+  const summary = addDat(dat);
+  setDatOrigin(summary.id, preset, path);
+  return summary;
 }

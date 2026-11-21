@@ -9,8 +9,8 @@ import { applyMigrations } from '../lib/migrations.js';
  */
 describe('migration005 — (identifier, system) source key', () => {
   // The schema as migration001 created it, at the user_version that leaves
-  // migration005 and the later ones to run. game_details is there because
-  // migration007 touches it.
+  // migration005 and the later ones to run. game_details and dats are there
+  // because migration007 and migration009 touch them.
   function legacyDb(): DatabaseConstructor.Database {
     const db = new DatabaseConstructor(':memory:');
     db.exec(`
@@ -27,6 +27,15 @@ describe('migration005 — (identifier, system) source key', () => {
         boxart_url TEXT,
         fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
         PRIMARY KEY (dat_id, game_id)
+      );
+      CREATE TABLE dats (
+        id TEXT PRIMARY KEY,
+        system TEXT NOT NULL,
+        source TEXT NOT NULL,
+        version TEXT,
+        date TEXT,
+        games_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
     db.pragma('user_version = 4');
@@ -128,6 +137,15 @@ describe('migration007 — boxart misses re-probed', () => {
         fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
         PRIMARY KEY (dat_id, game_id)
       );
+      CREATE TABLE dats (
+        id TEXT PRIMARY KEY,
+        system TEXT NOT NULL,
+        source TEXT NOT NULL,
+        version TEXT,
+        date TEXT,
+        games_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
     `);
     db.pragma('user_version = 6');
     const insert = db.prepare(
@@ -140,5 +158,20 @@ describe('migration007 — boxart misses re-probed', () => {
       game_id: string;
     }>;
     expect(rows.map((row) => row.game_id)).toEqual(['hit']);
+  });
+});
+
+describe('migration009 — DAT origin', () => {
+  it('leaves existing DATs without an origin', () => {
+    const db = new DatabaseConstructor(':memory:');
+    applyMigrations(db);
+    db.prepare(`INSERT INTO dats (id, system, source, games_json) VALUES (?, ?, ?, ?)`).run(
+      'd1',
+      'SNES',
+      'no-intro',
+      '[]',
+    );
+    const row = db.prepare(`SELECT fresh1g1r_preset, fresh1g1r_path FROM dats`).get();
+    expect(row).toEqual({ fresh1g1r_preset: null, fresh1g1r_path: null });
   });
 });

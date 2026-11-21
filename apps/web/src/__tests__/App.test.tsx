@@ -17,6 +17,7 @@ vi.mock('@/lib/api.js', async (importOriginal) => {
     fetchGames: vi.fn(async () => []),
     fetchLastScan: vi.fn(async () => null),
     fetchRunningDownloads: vi.fn(async () => []),
+    fetchDatUpdates: vi.fn(async () => []),
     fetchSources: vi.fn(async (system: string) => ({ system, sources: [] })),
     fetchSystemIcons: vi.fn(async () => ({ icons: [] })),
   };

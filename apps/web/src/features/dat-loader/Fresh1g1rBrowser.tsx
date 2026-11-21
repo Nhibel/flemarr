@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { listDatSources, fetchDatFromFresh1g1r } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
+import { invalidateLoadedDat } from '@/lib/invalidate-loaded-dat.js';
 import { useSettings } from '@/lib/use-settings.js';
 import type { Fresh1g1rPreset, ListSourcesResponse } from '@/lib/api.js';
 import type { DatUploadResponse } from '@shared/api.js';
@@ -54,7 +55,7 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
     onSuccess: (dat) => {
       // The new DAT joins the systems list here, not in the caller: a write
       // resyncs its own queries.
-      void queryClient.invalidateQueries({ queryKey: queryKeys.dats() });
+      invalidateLoadedDat(queryClient, dat.id);
       onSuccess?.(dat);
     },
     onError: (err) => setLoadError(err instanceof Error ? err.message : 'Erreur'),

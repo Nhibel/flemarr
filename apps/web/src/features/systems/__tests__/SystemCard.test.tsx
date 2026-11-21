@@ -49,3 +49,23 @@ describe('SystemCard', () => {
     expect(screen.getByRole('button', { name: 'Retirer Sony - PlayStation' })).toBeDisabled();
   });
 });
+
+describe('SystemCard — newer set version', () => {
+  it('says nothing while the set is current', () => {
+    renderCard();
+    expect(screen.queryByRole('button', { name: 'Mettre à jour' })).not.toBeInTheDocument();
+  });
+
+  it('offers the newer version, apart from opening the system', async () => {
+    const { onUpdate, onOpen } = renderCard({ newVersion: '20261120-000000', onUpdate: vi.fn() });
+    expect(screen.getByText('Nouvelle version du set : 20261120-000000')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mettre à jour' }));
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('locks the button while the update loads', () => {
+    renderCard({ newVersion: 'v2', onUpdate: vi.fn(), updating: true });
+    expect(screen.getByRole('button', { name: 'Mise à jour…' })).toBeDisabled();
+  });
+});

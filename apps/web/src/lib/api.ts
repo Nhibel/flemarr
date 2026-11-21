@@ -15,8 +15,18 @@ import {
   runningDownloadsResponseSchema,
 } from '@shared/download.js';
 import type { DownloadRequest, DownloadEvent, RunningDownload } from '@shared/download.js';
-import { listSourcesResponseSchema, fetchDatResponseSchema } from '@shared/fresh1g1r.js';
-import type { Fresh1g1rPreset, ListSourcesResponse, FetchDatRequest } from '@shared/fresh1g1r.js';
+import {
+  listSourcesResponseSchema,
+  fetchDatResponseSchema,
+  datUpdatesResponseSchema,
+} from '@shared/fresh1g1r.js';
+import type {
+  Fresh1g1rPreset,
+  ListSourcesResponse,
+  FetchDatRequest,
+  DatUpdate,
+} from '@shared/fresh1g1r.js';
+export type { DatUpdate };
 import { settingsResponseSchema } from '@shared/settings.js';
 import type { SettingsResponse, UpdateSettings } from '@shared/settings.js';
 import { gameDetailsResponseSchema } from '@shared/game-details.js';
@@ -243,6 +253,12 @@ export { downloadEventSchema };
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<ListSourcesResponse> {
   const res = await fetch(`/api/dat-sources?preset=${encodeURIComponent(preset)}`);
   return parseResponse(res, listSourcesResponseSchema);
+}
+
+/** Loaded DATs whose set has a newer version on Fresh1G1R. */
+export async function fetchDatUpdates(): Promise<DatUpdate[]> {
+  const res = await fetch('/api/dats/updates');
+  return parseResponse(res, datUpdatesResponseSchema).then((r) => r.updates);
 }
 
 export async function fetchDatFromFresh1g1r(request: FetchDatRequest): Promise<DatUploadResponse> {

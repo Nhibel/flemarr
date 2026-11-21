@@ -16,7 +16,12 @@ export const queryKeys = {
   games: (datId: string) => ['games', datId] as const,
   lastScan: (datId: string) => ['last-scan', datId] as const,
   runningDownloads: (datId: string) => ['running-downloads', datId] as const,
-  gameDetails: (datId: string, gameIds: string[]) => ['game-details', datId, gameIds] as const,
+  /** Without gameIds: every cached page of the DAT, for an invalidation. */
+  gameDetails: (datId: string, gameIds?: string[]) =>
+    gameIds === undefined
+      ? (['game-details', datId] as const)
+      : (['game-details', datId, gameIds] as const),
+  datUpdates: () => ['dat-updates'] as const,
   datSources: (preset: Fresh1g1rPreset) => ['dat-sources', preset] as const,
   archiveSources: (system: string) => ['archive-sources', system] as const,
   listDirs: (path?: string) =>

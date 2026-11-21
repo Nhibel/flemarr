@@ -11,6 +11,7 @@ import type { DatUploadResponse } from '@shared/api.js';
 import { AddSystem } from './AddSystem.js';
 import type { LoaderMode } from './AddSystem.js';
 import { SystemCard } from './SystemCard.js';
+import { useDatUpdates } from './use-dat-updates.js';
 
 interface Props {
   loaderMode: LoaderMode;
@@ -40,6 +41,7 @@ export function SystemsScreen({
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.dats() }),
   });
   const systemIcons = useSystemIcons(existingDats.map((d) => d.system));
+  const { updatesByDat, applyUpdate, updatingDatId } = useDatUpdates();
   const hasSystems = existingDats.length > 0;
 
   const addSystem = (
@@ -128,6 +130,12 @@ export function SystemsScreen({
                 removing={removeDat.isPending}
                 onOpen={() => onOpenSystem(dat)}
                 onRemove={() => removeDat.mutate(dat.id)}
+                newVersion={updatesByDat.get(dat.id)?.version}
+                updating={updatingDatId === dat.id}
+                onUpdate={() => {
+                  const update = updatesByDat.get(dat.id);
+                  if (update) applyUpdate(update);
+                }}
               />
             ))}
           </div>

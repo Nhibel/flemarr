@@ -27,4 +27,16 @@ export const fetchDatRequestSchema = z.object({
 });
 export type FetchDatRequest = z.infer<typeof fetchDatRequestSchema>;
 
+// A loaded DAT whose set has a newer version on Fresh1G1R. preset, path
+// and sha are what POST /dats/from-fresh1g1r needs to load it.
+const datUpdateSchema = fetchDatRequestSchema.extend({
+  datId: z.string(),
+  version: z.string(),
+});
+export type DatUpdate = z.infer<typeof datUpdateSchema>;
+
+export const datUpdatesResponseSchema = z.object({
+  updates: z.array(datUpdateSchema),
+});
+
 export const fetchDatResponseSchema = datSummarySchema;

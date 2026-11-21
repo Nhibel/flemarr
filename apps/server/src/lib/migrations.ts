@@ -7,6 +7,7 @@ import { migration005 } from './migrations/005-source-system-key.js';
 import { migration006 } from './migrations/006-source-searched.js';
 import { migration007 } from './migrations/007-retry-boxart-misses.js';
 import { migration008 } from './migrations/008-last-scan.js';
+import { migration009 } from './migrations/009-dat-origin.js';
 
 // Ordered, append-only. PRAGMA user_version records how many have been applied,
 // so migrations run exactly once and don't need to stay idempotent forever.
@@ -19,6 +20,7 @@ const MIGRATIONS: string[] = [
   migration006,
   migration007,
   migration008,
+  migration009,
 ];
 
 export function applyMigrations(db: Database): void {

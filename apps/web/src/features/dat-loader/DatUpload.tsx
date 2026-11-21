@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { css } from '@/styled-system/css';
 import { uploadDat } from '@/lib/api.js';
-import { queryKeys } from '@/lib/query-keys.js';
+import { invalidateLoadedDat } from '@/lib/invalidate-loaded-dat.js';
 import type { DatUploadResponse } from '@shared/api.js';
 
 interface Props {
@@ -19,7 +19,7 @@ export function DatUpload({ onSuccess }: Props) {
     onSuccess: (data) => {
       // The new DAT joins the systems list here, not in the caller: a write
       // resyncs its own queries.
-      void queryClient.invalidateQueries({ queryKey: queryKeys.dats() });
+      invalidateLoadedDat(queryClient, data.id);
       onSuccess(data);
     },
   });

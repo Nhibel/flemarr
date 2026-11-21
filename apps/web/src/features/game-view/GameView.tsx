@@ -78,9 +78,9 @@ export function GameView({
   } = useQuery({
     queryKey: queryKeys.games(dat.id),
     queryFn: () => fetchGames(dat.id),
-    // Immutable: reloading a DAT stores it under a new id (randomUUID in
-    // the server's dat store), so a given id's games never change. Without
-    // this, reopening a system refetched its whole catalogue every time.
+    // Immutable until the DAT is reloaded, which keeps its id: the loaders
+    // invalidate it then (lib/invalidate-loaded-dat.ts). Without this,
+    // reopening a system refetched its whole catalogue every time.
     staleTime: Infinity,
     gcTime: Infinity,
   });

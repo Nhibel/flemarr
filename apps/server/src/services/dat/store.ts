@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Database } from 'better-sqlite3';
 import type { DatFile, DatSummary } from '@shared/dat.js';
+import type { Fresh1g1rPreset } from '@shared/fresh1g1r.js';
 import { getDb } from '@/lib/db.js';
 
 interface DatRow {
@@ -97,6 +98,38 @@ export function getDat(id: string, db: Database = getDb()): DatFile | undefined 
   };
   rememberParsed(db, id, dat);
   return dat;
+}
+
+/** Records that a DAT was loaded from Fresh1G1R, so its updates can be found. */
+export function setDatOrigin(
+  id: string,
+  preset: Fresh1g1rPreset,
+  path: string,
+  db: Database = getDb(),
+): void {
+  db.prepare(`UPDATE dats SET fresh1g1r_preset = ?, fresh1g1r_path = ? WHERE id = ?`).run(
+    preset,
+    path,
+    id,
+  );
+}
+
+export interface Fresh1g1rDat {
+  id: string;
+  version: string | null;
+  preset: Fresh1g1rPreset;
+  path: string;
+}
+
+/** The DATs loaded from Fresh1G1R, with what is needed to look for a newer one. */
+export function listFresh1g1rDats(db: Database = getDb()): Fresh1g1rDat[] {
+  const rows = db
+    .prepare(
+      `SELECT id, version, fresh1g1r_preset AS preset, fresh1g1r_path AS path
+       FROM dats WHERE fresh1g1r_preset IS NOT NULL AND fresh1g1r_path IS NOT NULL`,
+    )
+    .all() as Fresh1g1rDat[];
+  return rows;
 }
 
 export function listDats(db: Database = getDb()): Array<DatSummary & { id: string }> {

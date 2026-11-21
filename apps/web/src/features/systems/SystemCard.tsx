@@ -1,5 +1,6 @@
 import { css } from '@/styled-system/css';
 import { Card } from '@/components/Card.js';
+import { Button } from '@/components/Button.js';
 import { SystemIcon } from '@/components/SystemIcon.js';
 import type { SystemIconStyle } from '@shared/system-icon.js';
 import type { DatUploadResponse } from '@shared/api.js';
@@ -12,10 +13,24 @@ interface Props {
   onOpen: () => void;
   /** Removes the DAT, not the files on disk. */
   onRemove: () => void;
+  /** A newer set version on Fresh1G1R, when there is one. */
+  newVersion?: string;
+  updating?: boolean;
+  onUpdate?: () => void;
 }
 
 /** One registered system on the home screen: click to open it, ✕ to remove it. */
-export function SystemCard({ dat, iconStyle, removing, onOpen, onRemove }: Props) {
+export function SystemCard({
+  dat,
+  iconStyle,
+  removing,
+  onOpen,
+  onRemove,
+  newVersion,
+  updating = false,
+  onUpdate,
+}: Props) {
+  const hasUpdate = newVersion !== undefined && onUpdate !== undefined;
   return (
     // The card recipe, not a hand-rolled surface: it carries the per-theme
     // shadows, Sonic Mania's and Cyberpunk's included.
@@ -102,6 +117,28 @@ export function SystemCard({ dat, iconStyle, removing, onOpen, onRemove }: Props
       >
         ✕
       </button>
+      {/* Its own row, under the card's target: loading the new version is
+          a second action, not what clicking the card does. */}
+      {hasUpdate && (
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2',
+            px: '4',
+            pb: '3',
+            fontSize: 'xs',
+            color: 'fg.muted',
+          })}
+        >
+          <span className={css({ flex: '1', minW: '0', truncate: true })}>
+            Nouvelle version du set : {newVersion}
+          </span>
+          <Button size="sm" variant="secondary" disabled={updating} onClick={onUpdate}>
+            {updating ? 'Mise à jour…' : 'Mettre à jour'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
