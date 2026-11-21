@@ -3,6 +3,7 @@ import { unlink } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
+import { streamJobEvents } from '@/lib/job-event-stream.js';
 import { downloadRequestSchema } from '@shared/download.js';
 import {
   startDownload,
@@ -39,30 +40,14 @@ downloadsRoute.post('/downloads', async (c) => {
 downloadsRoute.get('/downloads/:jobId/events', (c) => {
   const jobId = c.req.param('jobId');
 
-  return streamSSE(c, async (stream) => {
-    let lastSent = 0;
-
-    const send = async (event: unknown) => {
-      await stream.writeSSE({ data: JSON.stringify(event) });
-    };
-
-    while (true) {
-      const job = downloadJobs.get(jobId);
-      if (job === undefined) {
-        await send({ type: 'error', message: `Job ${jobId} not found` });
-        return;
-      }
-
-      while (lastSent < job.events.length) {
-        await send(job.events[lastSent]);
-        lastSent++;
-      }
-
-      if (job.status === 'done' || job.status === 'cancelled') return;
-
-      await stream.sleep(100);
-    }
-  });
+  return streamSSE(c, (stream) =>
+    streamJobEvents(
+      stream,
+      jobId,
+      (id) => downloadJobs.get(id),
+      (job) => job.status === 'done' || job.status === 'cancelled',
+    ),
+  );
 });
 
 // Serves a validated browser-target file exactly once, then deletes the
