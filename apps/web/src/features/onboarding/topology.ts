@@ -32,7 +32,7 @@ export const TOPOLOGY_OPTIONS: {
     value: 'local',
     title: 'Sur cette machine',
     hint: 'le plus simple',
-    body: "rom-curator tourne là où ta collection est stockée. Les jeux téléchargés sont rangés et renommés tout seuls, et l'app reconnaît ce que tu as déjà.",
+    body: "Flemarr tourne là où ta collection est stockée. Les jeux téléchargés sont rangés et renommés tout seuls, et l'app reconnaît ce que tu as déjà.",
   },
   {
     value: 'mounted',
@@ -41,7 +41,7 @@ export const TOPOLOGY_OPTIONS: {
   },
   {
     value: 'remote',
-    title: 'Ailleurs — rom-curator tourne sur un serveur, un NAS, un homelab',
+    title: 'Ailleurs — Flemarr tourne sur un serveur, un NAS, un homelab',
     body: "Les jeux arrivent dans les téléchargements de ton navigateur, tu les ranges ensuite. Aucun dossier ne te sera demandé : le serveur ne peut pas voir ton disque, donc l'app affichera le catalogue complet sans savoir ce que tu possèdes.",
   },
 ];

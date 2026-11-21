@@ -1,4 +1,4 @@
-# rom-curator
+# Flemarr
 
 A personal ROM library curator built around 1G1R DAT files.
 

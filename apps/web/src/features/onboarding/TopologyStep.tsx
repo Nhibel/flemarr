@@ -24,8 +24,8 @@ export function TopologyStep({
       </h1>
       <p className={css({ fontSize: 'sm', color: 'fg.muted', mb: '6' })}>
         Une seule question, posée une fois pour toute l&apos;application. C&apos;est elle qui
-        détermine où arrivent les téléchargements et si rom-curator peut reconnaître ce que tu
-        possèdes déjà.
+        détermine où arrivent les téléchargements et si Flemarr peut reconnaître ce que tu possèdes
+        déjà.
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
@@ -90,7 +90,7 @@ export function TopologyStep({
 
       <p className={css({ mt: '6', fontSize: 'xs', color: 'fg.faint' })}>
         Tu pourras changer d&apos;avis dans les réglages. Ce choix ne touche jamais à tes fichiers :
-        il décide seulement de ce que rom-curator a le droit de lire et d&apos;écrire.
+        il décide seulement de ce que Flemarr a le droit de lire et d&apos;écrire.
       </p>
     </main>
   );

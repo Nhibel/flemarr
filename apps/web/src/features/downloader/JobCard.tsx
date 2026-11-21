@@ -166,7 +166,7 @@ function JobNote({
     return (
       <p className={css({ fontSize: 'xs', color: 'status.info.text', lineHeight: '1.5' })}>
         Vérifiés côté serveur <strong>avant</strong> l&apos;envoi, les fichiers arrivent dans les
-        téléchargements de ton navigateur : rom-curator ne les touche plus ensuite.
+        téléchargements de ton navigateur : Flemarr ne les touche plus ensuite.
       </p>
     );
   }

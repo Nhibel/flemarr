@@ -37,8 +37,8 @@ RUN pnpm -r run build
 
 # Flat, production-only node_modules for the server (includes the
 # better-sqlite3/chdman native binaries, excludes tsup/vitest/typescript/
-# @rom-curator/shared).
-RUN pnpm --filter @rom-curator/server deploy --prod /prod
+# @flemarr/shared).
+RUN pnpm --filter @flemarr/server deploy --prod /prod
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 # Only the built artifacts and production deps. No pnpm, no source, no compilers.

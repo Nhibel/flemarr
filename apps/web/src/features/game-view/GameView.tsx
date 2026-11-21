@@ -357,8 +357,8 @@ function UnscannedNotice() {
         fontSize: 'xs',
       })}
     >
-      Aucun dossier n&apos;a encore été vérifié, donc tout le catalogue s&apos;affiche : rom-curator
-      ne peut pas savoir quels jeux tu as déjà. Pointe ton dossier une fois et chaque ligne dira où
+      Aucun dossier n&apos;a encore été vérifié, donc tout le catalogue s&apos;affiche : Flemarr ne
+      peut pas savoir quels jeux tu as déjà. Pointe ton dossier une fois et chaque ligne dira où
       elle en est.
     </p>
   );

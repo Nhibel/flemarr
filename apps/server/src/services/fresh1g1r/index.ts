@@ -100,7 +100,7 @@ async function getPresetTreeSha(
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSourceEntry[]> {
   const headers = {
     Accept: 'application/vnd.github+json',
-    'User-Agent': 'rom-curator/1.0',
+    'User-Agent': 'flemarr/1.0',
   };
 
   const presetSha = await getPresetTreeSha(preset, headers);
@@ -143,7 +143,7 @@ export async function fetchDat(
   let content = await readCache(sha);
 
   if (content === null) {
-    const res = await githubFetch(rawUrl(path), { 'User-Agent': 'rom-curator/1.0' });
+    const res = await githubFetch(rawUrl(path), { 'User-Agent': 'flemarr/1.0' });
     if (!res.ok) {
       throw new Error(`Failed to download DAT: HTTP ${res.status}`);
     }

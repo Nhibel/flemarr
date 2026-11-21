@@ -307,6 +307,22 @@ records the decisions and the deliberate departures from the comps.
 
 ---
 
+## Naming
+
+The app is called **Flemarr** since 2026-11-21; it was `rom-curator` before. The name changed everywhere a person reads it: the UI, the browser tab, the server logs, the GitHub User-Agent, the workspace packages (`@flemarr/*`) and the docs.
+
+A few identifiers keep the old name **on purpose**, because they point at data an existing install already has. Renaming one silently orphans that data:
+
+- `ROM_CURATOR_DATA_DIR`, `~/.rom-curator/` and `rom-curator.db` — the database and DAT cache location.
+- The compose service, container, image and the `rom-curator-data` volume — a renamed volume comes up empty, and a renamed service leaves the old container running and holding the port.
+- The `localStorage` keys (`rom-curator-theme`, `rom-curator.page-size`, …) — renaming resets every browser's theme, font size and list preferences.
+- `.rom-curator-tmp` in the library and the `rom-curator-*` scratch dirs under the OS temp dir — never shown, and renaming would strand an in-flight download's staging files.
+- The repository and its local folder.
+
+Each can move to the new name later, but only together with a migration (read the old key or path, write the new one), never by search-and-replace.
+
+---
+
 ## What we deliberately do not do
 
 - **No Redux, Zustand, Jotai.** TanStack Query covers server state; React's built-ins cover the rest.

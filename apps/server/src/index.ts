@@ -16,7 +16,7 @@ if (WEB_ROOT) {
 // Startup banner — visible in `docker logs` / Portainer to confirm the
 // container picked up its configuration (port, library root, data dir).
 const romsRoot = libraryRoot();
-console.log('rom-curator: starting…');
+console.log('Flemarr: starting…');
 console.log(`  port:      ${PORT}`);
 console.log(
   `  ROM root:  ${romsRoot ?? '(ROMS_ROOT not set — directory browsing is not confined)'}`,
@@ -27,11 +27,11 @@ console.log(
 );
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`rom-curator: ready — http://localhost:${info.port}`);
+  console.log(`Flemarr: ready — http://localhost:${info.port}`);
 });
 
 function shutdown(signal: string): void {
-  console.log(`rom-curator: ${signal} received, shutting down`);
+  console.log(`Flemarr: ${signal} received, shutting down`);
   server.close(() => {
     closeDb();
     process.exit(0);

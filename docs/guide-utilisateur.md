@@ -1,4 +1,4 @@
-# Guide d'utilisation — rom-curator
+# Guide d'utilisation — Flemarr
 
 Ce document explique ce que fait l'application, comment elle fonctionne, et ce qu'elle propose — sans supposer de connaissances techniques. Si un mot vous est inconnu, il est expliqué la première fois qu'il apparaît.
 
@@ -6,7 +6,7 @@ Ce document explique ce que fait l'application, comment elle fonctionne, et ce q
 
 ## En une phrase
 
-**rom-curator** aide à organiser une collection personnelle de jeux vidéo rétro (des « ROMs », voir plus bas) : savoir ce qu'on a déjà, ce qui manque, et télécharger ce qui manque — proprement, sans doublons, avec des noms de fichiers cohérents.
+**Flemarr** aide à organiser une collection personnelle de jeux vidéo rétro (des « ROMs », voir plus bas) : savoir ce qu'on a déjà, ce qui manque, et télécharger ce qui manque — proprement, sans doublons, avec des noms de fichiers cohérents.
 
 ---
 

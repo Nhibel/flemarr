@@ -188,7 +188,7 @@ function indexCachePath(): string {
 async function fetchNames(): Promise<Record<string, string[]>> {
   const res = await fetch(
     `https://api.github.com/repos/${REPO}/git/trees/${ASSETS_SHA}?recursive=1`,
-    { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'rom-curator/1.0' } },
+    { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'flemarr/1.0' } },
   );
   if (!res.ok) throw new Error(`GitHub API returned ${res.status} listing retroarch-assets`);
   const parsed = treeSchema.safeParse(await res.json());

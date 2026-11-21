@@ -1,4 +1,4 @@
-# Brief UX/UI — rom-curator
+# Brief UX/UI — Flemarr
 
 > **Document historique — rédigé le 2026-11-14, avant le redesign.**
 >
@@ -27,7 +27,7 @@ Destiné à Claude Design. Ce document ne décrit pas l'implémentation (le code
 
 ## 1. Objectif de l'app et utilisateurs cibles
 
-**Ce que l'app fait** : rom-curator aide à constituer une collection personnelle de jeux rétro propre et complète. Elle part d'une liste officielle de jeux pour une console (un fichier DAT), compare cette liste à ce que l'utilisateur possède déjà sur disque, et télécharge individuellement ce qui manque depuis archive.org — jamais une collection complète à décompresser. Un detail technique notable pour la hiérarchie d'info : la vérification d'intégrité (CRC32) après chaque téléchargement est au cœur de la confiance dans l'outil — ce n'est pas un détail secondaire, l'app ne garde jamais un fichier dont elle n'a pas pu confirmer qu'il correspond exactement à l'entrée officielle.
+**Ce que l'app fait** : Flemarr aide à constituer une collection personnelle de jeux rétro propre et complète. Elle part d'une liste officielle de jeux pour une console (un fichier DAT), compare cette liste à ce que l'utilisateur possède déjà sur disque, et télécharge individuellement ce qui manque depuis archive.org — jamais une collection complète à décompresser. Un detail technique notable pour la hiérarchie d'info : la vérification d'intégrité (CRC32) après chaque téléchargement est au cœur de la confiance dans l'outil — ce n'est pas un détail secondaire, l'app ne garde jamais un fichier dont elle n'a pas pu confirmer qu'il correspond exactement à l'entrée officielle.
 
 **Utilisateurs cibles** (deux profils réels, à concilier) :
 

@@ -1,5 +1,5 @@
 {
-  "name": "@rom-curator/server",
+  "name": "@flemarr/server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -23,7 +23,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@rom-curator/shared": "workspace:*",
+    "@flemarr/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
     "tsup": "^8.5.1",

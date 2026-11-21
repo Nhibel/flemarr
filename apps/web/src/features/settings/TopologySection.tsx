@@ -39,7 +39,7 @@ export function TopologySection({
         Où vivent tes jeux ?
       </h2>
       <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '3' })}>
-        Décide où arrivent les téléchargements et si rom-curator peut reconnaître ce que tu possèdes
+        Décide où arrivent les téléchargements et si Flemarr peut reconnaître ce que tu possèdes
         déjà. Ce choix ne touche jamais à tes fichiers.
       </p>
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '1.5' })}>

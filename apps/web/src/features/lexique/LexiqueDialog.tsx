@@ -50,7 +50,7 @@ const SECTIONS: Section[] = [
       {
         term: 'DAT',
         definition:
-          'Fichier XML qui liste tous les jeux officiels d’un système avec leurs empreintes (CRC32, MD5, SHA1) — rom-curator s’en sert pour savoir quoi chercher et vérifier.',
+          'Fichier XML qui liste tous les jeux officiels d’un système avec leurs empreintes (CRC32, MD5, SHA1) — Flemarr s’en sert pour savoir quoi chercher et vérifier.',
       },
       {
         term: 'Retool',
@@ -131,7 +131,7 @@ const SECTIONS: Section[] = [
       {
         term: 'Layout direct / zip-collection / auto',
         definition:
-          'Comment les ROMs sont stockées dans la collection : fichiers séparés, ou un seul ZIP contenant tout. En mode "auto", rom-curator le détecte lui-même.',
+          'Comment les ROMs sont stockées dans la collection : fichiers séparés, ou un seul ZIP contenant tout. En mode "auto", Flemarr le détecte lui-même.',
       },
       {
         term: 'Collection en série (partN / discN / cdN / diskN)',

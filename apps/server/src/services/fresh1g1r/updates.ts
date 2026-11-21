@@ -22,7 +22,7 @@ export function forgetDatUpdates(): void {
 /** The set version in a published DAT's header, reading only its first bytes. */
 export async function publishedVersion(path: string): Promise<string | null> {
   const res = await fetch(rawUrl(path), {
-    headers: { Range: `bytes=0-${HEADER_BYTES - 1}`, 'User-Agent': 'rom-curator/1.0' },
+    headers: { Range: `bytes=0-${HEADER_BYTES - 1}`, 'User-Agent': 'flemarr/1.0' },
   });
   if (!res.ok) return null;
   return VERSION_PATTERN.exec(await res.text())?.[1]?.trim() ?? null;
