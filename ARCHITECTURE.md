@@ -142,10 +142,10 @@ SHA1 / MD5 from the DAT are validated only if the user explicitly requests deep 
 
 Disc-based systems (anything with a `.cue` in the DAT) can be auto-converted from raw `.bin`/`.cue` to a single `.chd` after download (`settings.autoConvertChd`, off by default) — via the `chdman` npm package, which wraps MAME's CHD tool. `chdman` ships only native, per-platform binaries; there's no WASM build, which is why the runtime image is `node:20-slim` (glibc) rather than alpine (musl) — see the Dockerfile's comments.
 
-A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so both the conversion step and the scanner verify/match by **decompressing and re-hashing**, never by trusting a CHD-level checksum:
+A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so the conversion step and the scanner's fallback verify/match by **decompressing and re-hashing**, never by trusting a CHD-level checksum:
 
 - **Conversion** (`services/downloader/chd.ts`): `chdman createcd`, then `chdman extractcd` back out to a scratch dir and CRC32 each extracted file against the DAT's expected CRCs. Only a full match deletes the originals; any mismatch or tool error leaves them untouched.
-- **Scanning** (`services/scanner/chd-match.ts`): the same extract-then-CRC32 approach feeds a `.chd`'s contents into the ordinary CRC-matching path, so a library that's already been converted still scans as fully owned. The DAT's own `.cue` rom is inferred matched once every other rom of the game has matched by CRC — a CHD's regenerated cue sheet is never byte-identical to the original, so it can never match on its own.
+- **Scanning**: a `.chd` is first matched **by name** (`services/scanner/chd-name-match.ts`): a file named exactly after a DAT game counts as that game's roms, no extraction. Only when the name matches nothing does `services/scanner/chd-match.ts` fall back to the same extract-then-CRC32 approach, feeding the `.chd`'s contents into the ordinary CRC-matching path; a `.chd` neither identifies lands in `unmatched`. Name first was a product choice (2026-11-22): extracting every disc on every scan took long seconds per game, and the trade-off — a well-named but corrupt `.chd` passes — was accepted, since every `.chd` the app writes was verified track by track when it was converted. Either way a converted library still scans as fully owned. The DAT's own `.cue` rom is inferred matched once every other rom of the game has matched by CRC — a CHD's regenerated cue sheet is never byte-identical to the original, so it can never match on its own.
 
 ---
 
