@@ -316,7 +316,7 @@ The app is called **Flemarr** since 2026-11-21; it was `rom-curator` before. Eve
 | `localStorage` keys              | `apps/web/src/lib/migrate-storage-keys.ts`, before the first render; `index.html` reads both theme keys until then.                                                                      |
 | Data dir, env var, database file | `apps/server/src/lib/data-dir.ts`, on the first `dataDir()` call: moves `~/.rom-curator`, renames `rom-curator.db` and its WAL files, still reads `ROM_CURATOR_DATA_DIR` with a warning. |
 | Library and browser staging dirs | `apps/server/src/services/downloader/legacy-staging.ts`: each download deletes the leftover pre-rename staging dir next to it.                                                           |
-| Docker volume                    | Manual, one time: README § "Migrating an install from rom-curator". Docker cannot rename a volume.                                                                                       |
+| Docker volume                    | Manual, one time: docs/migrating-from-rom-curator.md. Docker cannot rename a volume.                                                                                                     |
 
 All of it is temporary. Once the homelab install and the browsers that use it have each run the new version once, delete the three files above, the legacy key read in `index.html`, the `ROM_CURATOR_DATA_DIR` fallback and the README section.
 

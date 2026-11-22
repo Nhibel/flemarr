@@ -1,94 +1,113 @@
-# Flemarr
+<p align="center">
+  <img src="apps/web/src/assets/logo.svg" alt="Flemarr" width="480">
+</p>
 
-A personal ROM library curator built around 1G1R DAT files.
+<p align="center">
+  <strong>A self-hosted manager for your retro game ROM collection.</strong><br>
+  Pick a console, see every game released on it, tick the ones you want, download them one by one.
+</p>
 
-## What it does
+<p align="center">
+  🇫🇷 <a href="./README.fr.md">Lire en français</a>
+</p>
 
-- **Load DAT files** from Redump and No-Intro collections (manual upload, or auto-fetch from [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R)).
-- **Browse and filter** games per system, with box art.
-- **Scan a local directory** for ROMs you already own, match them against the DAT by CRC32, and rename to the canonical 1G1R filenames.
-- **Pick the games you want** and download them individually from archive.org sources — either straight to the server's library, or to your own browser.
-- **Validate** every downloaded file against the DAT's CRC32 / SHA1 before keeping it.
-- **Auto-convert disc-based games** (PS1, Saturn, etc.) to a single verified `.chd` file instead of leaving separate `.bin`/`.cue` files behind — optional, off by default.
+---
 
-New here? [docs/guide-utilisateur.md](./docs/guide-utilisateur.md) explains what the app does and how to use it, in plain French, no technical background assumed.
+Downloading a whole collection pack to get one game, or clicking through ad-ridden sites to fetch a single Game Boy ROM, gets old fast. Flemarr gives you the clean list of games for each system, tells you which ones you already have, and fetches the missing ones individually.
 
-## Stack
+## Features
 
-- **Frontend:** Vite + React + TypeScript + Panda CSS
-- **Backend:** Hono + Node 20+ + TypeScript
-- **Monorepo:** pnpm workspaces
+- **Clean game lists.** Each system's list comes from the No-Intro (cartridges) and Redump (discs) references, filtered to **one version per game** (1G1R) — no duplicates, no betas, no ten regional variants. The lists are fetched from [Fresh1G1R](https://github.com/UnluckyForSome/Fresh1G1R), updated daily; you can also import your own `.dat` file.
+- **Box art** for every game, from libretro-thumbnails.
+- **Know what you own.** Scan a system's folder: files are identified by their content (CRC32), not their name, so the app recognises games even when they are badly named — and offers to rename them to their official name.
+- **Download game by game** from archive.org, either straight into the system's folder on the server, or through your browser to your own computer. Every file is checked against the reference before it is kept.
+- **Disc games in one file.** PlayStation, Saturn and other disc games can be converted automatically from `.bin`/`.cue` to a single `.chd`, verified track by track before the originals are deleted. Optional.
+- **Downloads keep running** in the background, survive a page reload, and leave a 30-day history.
+- Several themes, adjustable text size, and a layout that works on a Steam Deck or a phone.
 
-## Status
+## How it works
 
-Phases 0–8, 10, 12 and 13 are done and in daily use. Phase 9 (Myrient as a secondary source) is blocked — the service shut down. Phase 11 (ScreenScraper game info) was retired before completion — box art alone covers the need. See [ROADMAP.md](./ROADMAP.md).
+Flemarr is a web app that runs in Docker on your own machine — a NAS, a home server or a PC — and that you open in your browser.
 
-## Running with Docker
+On first launch it asks one question: **where should downloaded games land?**
 
-The app ships as a single image: Hono serves the API at `/api/*` and the built UI at `/` on one port.
+- **In a folder on the server** — games are filed and named for you, and the app can scan the folder to see what you already have.
+- **In your browser's downloads** — you file the games yourself; the app shows the full list without knowing what you own.
+
+Then add a system, choose its folder, and browse.
+
+New to all this? The [user guide](./docs/guide-utilisateur.md) (in French) explains ROMs, DAT files and 1G1R from scratch, no technical background assumed.
+
+## Requirements
+
+- **Docker** with Docker Compose.
+- **An archive.org account** (free). Most ROM collections on archive.org are access-restricted: you log in once from the app's settings. Your password is exchanged for access keys and never stored.
+
+## Quick start
 
 ```sh
-cp .env.example .env        # optional — adjust BIND_ADDR / PORT
+git clone https://github.com/Nhibel/flemarr.git
+cd flemarr
+cp .env.example .env        # then set ROMS_HOST_DIR to your ROM library folder
 docker compose up -d --build
 ```
 
-The UI is then at `http://127.0.0.1:3000`. Data (the SQLite database and DAT cache) lives in the named volume `flemarr-data`.
+Open `http://127.0.0.1:3000`.
+
+There is no prebuilt image: the stack builds from the Dockerfile, which takes a few minutes the first time.
 
 ### Mounting your ROM library
 
-Point `ROMS_HOST_DIR` **directly at your library folder** (not at its parent); it is mounted at `/roms` in the container, and that path (`ROMS_ROOT=/roms`) is the single root everything is confined to. The UI shows paths relative to that root (`/` is the library itself), so the mount point name never appears. In the app you then pick — or create on the spot — the folder of each system once, in the bar at the top of the system view; scans and downloads both use it. Nothing can touch the filesystem outside the library.
+Point `ROMS_HOST_DIR` **directly at your library folder**, not at its parent. It is mounted at `/roms` in the container, and everything the app does on disk is confined to it — nothing outside the library can be read or written. In the app, you then pick (or create) each system's folder once, in the bar at the top of the system view.
 
 ```sh
 # .env
-ROMS_HOST_DIR=/srv/roms   # the library folder itself — pointing at its parent
-                          # would nest everything one level deeper in the app
+ROMS_HOST_DIR=/srv/roms
 ```
 
 ### Configuration
 
-| Variable           | Default     | Purpose                                                                                                                                     |
-| ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BIND_ADDR`        | `127.0.0.1` | Host address the port binds to. Loopback by default (see security note).                                                                    |
-| `PORT`             | `3000`      | Host port the app is published on.                                                                                                          |
-| `ROMS_HOST_DIR`    | `./roms`    | Host directory holding your ROM library; mounted at `/roms`.                                                                                |
-| `ROMS_ROOT`        | `/roms`     | In-container library root that browsing/scan/download are confined to.                                                                      |
-| `FLEMARR_DATA_DIR` | `/data`     | Where the SQLite DB and DAT cache live (a volume in the compose file). The pre-rename `ROM_CURATOR_DATA_DIR` is still read, with a warning. |
+| Variable           | Default     | Purpose                                                                       |
+| ------------------ | ----------- | ----------------------------------------------------------------------------- |
+| `BIND_ADDR`        | `127.0.0.1` | Host address the port binds to. Loopback by default — see Security below.     |
+| `PORT`             | `3000`      | Host port the app is published on.                                            |
+| `ROMS_HOST_DIR`    | `./roms`    | Host directory holding your ROM library; mounted at `/roms`.                  |
+| `ROMS_ROOT`        | `/roms`     | In-container library root that browsing, scans and downloads are confined to. |
+| `FLEMARR_DATA_DIR` | `/data`     | Where the SQLite database and DAT cache live (the `flemarr-data` volume).     |
 
-This table covers only the env vars read at startup. Everything else — the Fresh1G1R preset, downloader concurrency, per-system folders, archive.org credentials, whether downloads land on the server or in the browser, and whether disc games auto-convert to `.chd` — is configured from the app's **Settings page** (gear icon) and persisted in the SQLite database, not via environment variables.
+Everything else — the 1G1R preset, download concurrency, per-system folders, the archive.org account, where downloads land, `.chd` conversion — is set from the app's **Settings** page and stored in its database.
 
 ### Deploying on a homelab server
 
-- **Portainer** — Stacks → Add stack → _Repository_, point it at this repo and `docker-compose.yml`; Portainer clones and builds. (`better-sqlite3` compiles inside the image, so it adapts to the server's architecture.)
+- **Portainer** — Stacks → Add stack → _Repository_, point it at this repository and `docker-compose.yml`. Portainer clones and builds it.
 - **SSH** — `git clone`, then `docker compose up -d --build`.
 
-### Migrating an install from rom-curator
+To update, pull the latest commit and rebuild (in Portainer: _Pull and redeploy_).
 
-The app was called rom-curator until 2026-11-21. The compose service, container and volume are now named `flemarr`, and Docker cannot rename a volume, so an existing install moves its data once. The app itself renames `rom-curator.db` to `flemarr.db` on its first start.
+Coming from rom-curator, the app's former name? See [docs/migrating-from-rom-curator.md](./docs/migrating-from-rom-curator.md).
 
-1. Note the old volume's name, nothing else to do yet: `docker volume ls | grep rom-curator` (Portainer names it `<stack>_rom-curator-data`, so `rom-curator_rom-curator-data` for a stack called rom-curator). Steps 4 and 6 use it as `<old-volume>`.
-2. Stop the old stack (Portainer → Stacks → the old stack → Stop). This frees port 3000.
-3. Deploy a new stack named `flemarr` from this repository, as above, then **stop it right away**. This creates the empty `flemarr-data` volume.
-4. Copy the data across, replacing what the new stack just created:
+## ⚠️ Security
 
-   ```sh
-   docker run --rm -v <old-volume>:/from -v flemarr-data:/to alpine \
-     sh -c 'rm -rf /to/* && cp -a /from/. /to/'
-   ```
+Flemarr has **no authentication**. It is meant for localhost or a trusted home network only, which is why the compose file binds to `127.0.0.1`. Set `BIND_ADDR=0.0.0.0` only on a LAN you trust, and **never** expose it to the internet without an authenticated reverse proxy or a VPN in front, over HTTPS: anyone who reaches it can use your archive.org account and write to your library. Details and options: [docs/security.md](./docs/security.md).
 
-5. Start the `flemarr` stack. Its log shows `migrated: /data/rom-curator.db -> /data/flemarr.db`; check your systems and settings are there.
-6. Delete the old stack, then the old volume: `docker volume rm <old-volume>`.
+## Legal
 
-### ⚠️ Security — read before exposing
+Flemarr is a collection manager: it hosts no games and ships no ROMs. Copyright law on ROMs varies by country; only download games you are entitled to.
 
-The app has **no authentication**. It is safe on localhost or a trusted LAN only. The compose file binds to `127.0.0.1` on purpose. **Do not** expose it to the internet without an authenticated reverse proxy or a VPN in front, over HTTPS. The risks and options are in [docs/security.md](./docs/security.md).
+## Development
 
-## Local development
+pnpm workspaces monorepo: Vite + React + TypeScript + Panda CSS for the web app, Hono on Node 20+ for the server, SQLite for storage, Vitest for tests.
 
 ```sh
 pnpm install
 pnpm dev        # web on :5173 (proxies /api), server on :3000
+pnpm -r test
 ```
 
-## Working with Claude Code
+[ARCHITECTURE.md](./ARCHITECTURE.md) covers the design, [ROADMAP.md](./ROADMAP.md) what was built and why, and [CLAUDE.md](./CLAUDE.md) the conventions the code follows — the project is developed with Claude Code.
 
-The repo is set up for Claude Code. Start by reading [CLAUDE.md](./CLAUDE.md).
+Ideas, bugs, feedback: open an issue.
+
+## License
+
+[MIT](./LICENSE)
