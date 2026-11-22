@@ -88,16 +88,25 @@ export function SystemsScreen({
           open it. The ✕ removes the DAT, not the files. */}
       {hasSystems && (
         <section className={css({ mb: '6' })}>
-          <h2
+          {/* The add button sits above the list, beside its title: with a
+              dozen systems, a button below the cards ended up off screen. */}
+          <div
             className={css({
-              fontSize: 'sm',
-              fontWeight: 'semibold',
-              color: 'fg.default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '3',
+              flexWrap: 'wrap',
               mb: '3',
             })}
           >
-            Mes systèmes
-          </h2>
+            <h2 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.default' })}>
+              Mes systèmes
+            </h2>
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              + Ajouter un système
+            </Button>
+          </div>
           <div
             className={css({
               display: 'grid',
@@ -136,14 +145,9 @@ export function SystemsScreen({
           is a button, and the thing you have to do is the only thing on
           screen anyway. */}
       {hasSystems ? (
-        <>
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            + Ajouter un système
-          </Button>
-          <Dialog open={adding} onClose={() => setAdding(false)} title="Ajouter un système">
-            {addSystem}
-          </Dialog>
-        </>
+        <Dialog open={adding} onClose={() => setAdding(false)} title="Ajouter un système">
+          {addSystem}
+        </Dialog>
       ) : (
         addSystem
       )}
