@@ -100,7 +100,7 @@ export function SystemsScreen({
               mb: '3',
             })}
           >
-            <h2 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.default' })}>
+            <h2 className={css({ fontSize: 'xl', fontWeight: 'semibold', color: 'fg.heading' })}>
               Mes systèmes
             </h2>
             <Button variant="primary" onClick={() => setAdding(true)}>
