@@ -24,6 +24,9 @@ const wrongNameEntrySchema = z.object({
   canonicalName: z.string(),
   crc: z.string(),
   gameName: z.string(),
+  // Set when several games share this exact file and nothing tells which one
+  // it belongs to: the user picks the name. Includes canonicalName.
+  alternatives: z.array(z.string()).optional(),
 });
 export type WrongNameEntry = z.infer<typeof wrongNameEntrySchema>;
 
