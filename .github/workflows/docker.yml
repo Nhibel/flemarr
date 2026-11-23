@@ -1,11 +1,12 @@
-# Publishes the image to ghcr.io on every version tag (git tag v0.1.0 &&
-# git push origin v0.1.0). The checks run first so a tag on a broken commit
-# never becomes an image people pull.
+# Publishes the image to ghcr.io on every version tag (git tag 0.1.0 &&
+# git push origin 0.1.0) — tags carry no "v" prefix in this repository. The
+# checks run first so a tag on a broken commit never becomes an image people
+# pull.
 name: Publish Docker image
 
 on:
   push:
-    tags: ['v*']
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
 
 env:
   # Lowercase is mandatory for registry names, whatever the repository's case.
@@ -44,7 +45,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # v0.1.0 → tags 0.1.0, 0.1 and latest.
+      # 0.1.0 → tags 0.1.0, 0.1 and latest.
       - id: meta
         uses: docker/metadata-action@v5
         with:
