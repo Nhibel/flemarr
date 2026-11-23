@@ -106,9 +106,15 @@ describe('DownloadManager — clear completed', () => {
     const jobA = makeJob('job-a', 'g1', 'Game A.sfc');
     renderManager({ jobs: [jobA], onClearCompleted: vi.fn() });
 
-    act(() => {
-      sources.get('job-a')!.onerror!();
-    });
+    // The stream is reopened five times before it counts as lost.
+    vi.useFakeTimers();
+    for (let failure = 0; failure < 6; failure++) {
+      act(() => {
+        sources.get('job-a')!.onerror!();
+        vi.advanceTimersByTime(16_000);
+      });
+    }
+    vi.useRealTimers();
 
     expect(screen.getByRole('button', { name: /vider/i })).not.toBeDisabled();
   });

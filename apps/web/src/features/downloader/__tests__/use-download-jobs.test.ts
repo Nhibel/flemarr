@@ -76,4 +76,24 @@ describe('useDownloadJobs — browser saves', () => {
     emit({ type: 'complete' });
     expect(result.current.jobStates.get('j1')?.status).toBe('done');
   });
+
+  it('does not save a file twice when the stream is cut and replayed', () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useDownloadJobs({ jobs: [browserJob()] }));
+      emit(fileReady('a.bin'));
+      act(() => stream.onerror!());
+      expect(result.current.jobStates.get('j1')?.status).toBe('running');
+
+      act(() => void vi.advanceTimersByTime(1000));
+      emit(fileReady('a.bin'));
+      expect(triggerBrowserSave).toHaveBeenCalledOnce();
+      emit(fileReady('b.bin'));
+      expect(triggerBrowserSave).toHaveBeenCalledTimes(2);
+      const statuses = result.current.jobStates.get('j1')?.items.map((item) => item.status);
+      expect(statuses).toEqual(['done', 'done']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

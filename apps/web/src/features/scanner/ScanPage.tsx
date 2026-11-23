@@ -1,6 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { css } from '@/styled-system/css';
 import { startScan, openScanEvents } from '@/lib/api.js';
+import { openJobStream } from '@/lib/job-stream.js';
+import type { JobStream } from '@/lib/job-stream.js';
 import { Button } from '@/components/Button.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
 import { displayPath } from '@/lib/paths.js';
@@ -31,11 +33,11 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
   const { folder: directory, loaded } = useSystemFolder(system);
   const romsRoot = useRomsRoot();
   const [scan, setScan] = useState<ScanState>({ phase: 'idle' });
-  const esRef = useRef<EventSource | null>(null);
+  const streamRef = useRef<JobStream | null>(null);
 
   const runScan = useCallback(async () => {
     if (!directory) return;
-    esRef.current?.close();
+    streamRef.current?.close();
     setScan({ phase: 'scanning', scanned: 0, total: 0 });
 
     let job: { jobId: string };
@@ -46,11 +48,8 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
       return;
     }
 
-    const es = openScanEvents(job.jobId);
-    esRef.current = es;
-
-    es.onmessage = (e) => {
-      const parsed = scanEventSchema.safeParse(JSON.parse(e.data as string) as unknown);
+    const handleMessage = (data: string) => {
+      const parsed = scanEventSchema.safeParse(JSON.parse(data) as unknown);
       if (!parsed.success) return;
       const event: ScanEvent = parsed.data;
 
@@ -66,20 +65,26 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
         case 'done':
           setScan({ phase: 'done', result: event.result, directory });
           onScanComplete?.(event.result);
-          es.close();
+          stream.close();
           break;
         case 'error':
           setScan({ phase: 'error', message: event.message });
-          es.close();
+          stream.close();
           break;
       }
     };
 
-    es.onerror = () => {
-      setScan({ phase: 'error', message: 'Connexion au flux de scan perdue' });
-      es.close();
-    };
+    const stream = openJobStream({
+      open: () => openScanEvents(job.jobId),
+      onMessage: handleMessage,
+      // Progress events carry totals, not increments: replaying them is harmless.
+      onReplay: () => {},
+      onLost: () => setScan({ phase: 'error', message: 'Connexion au flux de scan perdue' }),
+    });
+    streamRef.current = stream;
   }, [datId, directory, onScanComplete]);
+
+  useEffect(() => () => streamRef.current?.close(), []);
 
   const wrongNames = scan.phase === 'done' ? scan.result.wrongName : NO_ENTRIES;
   const renames = useRenames(wrongNames, runScan);

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { downloadEventSchema, openDownloadEvents } from '@/lib/api.js';
 import type { DownloadEvent } from '@/lib/api.js';
+import { openJobStream } from '@/lib/job-stream.js';
+import type { JobStream } from '@/lib/job-stream.js';
 import { triggerBrowserSave } from '@/lib/browser-save.js';
 import { fullyDownloadedGameIds } from './completed-games.js';
 import { applyDownloadEvent, initJobState, isFinalEvent } from './job-state.js';
@@ -20,7 +22,7 @@ interface Options {
  */
 export function useDownloadJobs({ jobs, onGamesDownloaded, onAllDone }: Options) {
   const [jobStates, setJobStates] = useState<Map<string, JobState>>(new Map());
-  const streams = useRef<Map<string, EventSource>>(new Map());
+  const streams = useRef<Map<string, JobStream>>(new Map());
 
   // Initialise new jobs as they arrive
   useEffect(() => {
@@ -43,21 +45,27 @@ export function useDownloadJobs({ jobs, onGamesDownloaded, onAllDone }: Options)
     });
   }, []);
 
+  const restartJob = useCallback((queued: QueuedDownload) => {
+    setJobStates((prev) => {
+      if (!prev.has(queued.jobId)) return prev;
+      return new Map(prev).set(queued.jobId, initJobState(queued));
+    });
+  }, []);
+
   // Open one SSE stream per job, once.
   useEffect(() => {
     for (const queued of jobs) {
       if (streams.current.has(queued.jobId)) continue;
 
-      const stream = openDownloadEvents(queued.jobId);
-      streams.current.set(queued.jobId, stream);
       let received = 0;
+      let handled = queued.handledEvents ?? 0;
 
-      stream.onmessage = (message) => {
-        const parsed = downloadEventSchema.safeParse(JSON.parse(message.data as string) as unknown);
+      const handleMessage = (data: string) => {
+        const parsed = downloadEventSchema.safeParse(JSON.parse(data) as unknown);
         if (!parsed.success) return;
         const event = parsed.data;
         received++;
-        const isReplayed = received <= (queued.handledEvents ?? 0);
+        const isReplayed = received <= handled;
         if (event.type === 'file-ready' && !isReplayed) {
           triggerBrowserSave(event.downloadUrl, event.romName);
         }
@@ -65,14 +73,24 @@ export function useDownloadJobs({ jobs, onGamesDownloaded, onAllDone }: Options)
         if (isFinalEvent(event)) stream.close();
       };
 
-      // Connection lost — the job may still run server-side, but we can't
-      // observe it anymore; report an error instead of pretending it finished.
-      stream.onerror = () => {
-        applyEvent(queued.jobId, { type: 'error', message: 'Connexion au flux perdue' });
-        stream.close();
-      };
+      const stream = openJobStream({
+        open: () => openDownloadEvents(queued.jobId),
+        onMessage: handleMessage,
+        // Rebuilt from the replayed events; the files already saved are not
+        // saved again.
+        onReplay: () => {
+          handled = Math.max(handled, received);
+          received = 0;
+          restartJob(queued);
+        },
+        // The job may still run server-side, but we can't observe it anymore;
+        // report an error instead of pretending it finished.
+        onLost: () =>
+          applyEvent(queued.jobId, { type: 'error', message: 'Connexion au flux perdue' }),
+      });
+      streams.current.set(queued.jobId, stream);
     }
-  }, [jobs, applyEvent]);
+  }, [jobs, applyEvent, restartJob]);
 
   // Close every stream on unmount.
   useEffect(() => {
