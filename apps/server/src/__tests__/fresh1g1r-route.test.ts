@@ -20,11 +20,11 @@ const MOCK_SOURCES = [
     name: 'Nintendo - Super Nintendo Entertainment System.dat',
     system: 'Nintendo - Super Nintendo Entertainment System',
     path: 'PropeR/Nintendo - Super Nintendo Entertainment System.dat',
-    sha: 'abc123',
+    revision: 'abc12345-42',
   },
 ];
 
-const VALID_SHA = 'a'.repeat(40);
+const VALID_REVISION = 'aaaaaaaa-1234';
 
 const MOCK_SUMMARY = {
   id: 'dat-001',
@@ -65,7 +65,7 @@ describe('GET /api/dat-sources', () => {
   });
 
   it('returns 502 when GitHub fetch fails', async () => {
-    vi.mocked(listDatSources).mockRejectedValue(new Error('GitHub API returned 403'));
+    vi.mocked(listDatSources).mockRejectedValue(new Error('GitHub returned 403'));
     const res = await app.request('/api/dat-sources');
     expect(res.status).toBe(502);
   });
@@ -85,16 +85,16 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'BadPreset', path: 'a/b.dat', sha: 'abc' }),
+      body: JSON.stringify({ preset: 'BadPreset', path: 'a/b.dat', revision: 'abc' }),
     });
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 for a malformed sha (not 40-hex)', async () => {
+  it('returns 400 for a malformed revision', async () => {
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'PropeR', path: 'a/b.dat', sha: '../../../evil' }),
+      body: JSON.stringify({ preset: 'PropeR', path: 'a/b.dat', revision: '../../../evil' }),
     });
     expect(res.status).toBe(400);
     expect(vi.mocked(fetchDat)).not.toHaveBeenCalled();
@@ -105,7 +105,7 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/test.dat', sha: VALID_SHA }),
+      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/test.dat', revision: VALID_REVISION }),
     });
     expect(res.status).toBe(201);
     const body = (await res.json()) as { system: string; gameCount: number };
@@ -121,7 +121,11 @@ describe('POST /api/dats/from-fresh1g1r', () => {
     const res = await app.request('/api/dats/from-fresh1g1r', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preset: 'PropeR', path: 'PropeR/missing.dat', sha: VALID_SHA }),
+      body: JSON.stringify({
+        preset: 'PropeR',
+        path: 'PropeR/missing.dat',
+        revision: VALID_REVISION,
+      }),
     });
     expect(res.status).toBe(502);
   });

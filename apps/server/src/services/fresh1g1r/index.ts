@@ -1,158 +1,74 @@
-import { join } from 'node:path';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { z } from 'zod';
 import type { Fresh1g1rPreset, DatSourceEntry } from '@shared/fresh1g1r.js';
 import type { DatSummary } from '@shared/dat.js';
 import { parseDat, addDat, setDatOrigin } from '@/services/dat/index.js';
-import { dataDir } from '@/lib/db.js';
-
-const REPO = 'UnluckyForSome/Fresh1G1R';
-const BRANCH = 'main';
-
-function cacheDir(): string {
-  return join(dataDir(), 'cache');
-}
-
-const githubFileSchema = z.object({
-  name: z.string(),
-  path: z.string(),
-  sha: z.string(),
-  type: z.string(),
-});
-
-const githubContentsSchema = z.array(githubFileSchema);
-
-const githubTreeSchema = z.object({
-  tree: z.array(
-    z.object({
-      path: z.string(),
-      type: z.string(),
-      sha: z.string(),
-    }),
-  ),
-});
-
-// GitHub's API occasionally gateway-times-out (502/503/504) on this repo —
-// the Contents API response for a ~250-entry directory runs ~340KB (every
-// entry repeats 5 full URLs), and at a 60s edge-cache window most requests
-// recompute at origin. Retrying a couple of times absorbs that transient
-// flakiness; see docs/archive-org-strategy.md for the same pattern against
-// archive.org's own retryable statuses.
-const RETRYABLE_STATUS = new Set([502, 503, 504]);
-const MAX_RETRIES = 2;
-
-async function githubFetch(url: string, headers: Record<string, string>): Promise<Response> {
-  let attempt = 0;
-  for (;;) {
-    const res = await fetch(url, { headers });
-    if (res.ok || !RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) return res;
-    await new Promise((r) => setTimeout(r, (attempt + 1) * 300));
-    attempt++;
-  }
-}
+import { logger } from '@/lib/logger.js';
+import { cacheDat, readCachedDat } from './dat-cache.js';
+import { COLLECTIONS, assetName, datPath, locateDat } from './dat-path.js';
+import type { Collection } from './dat-path.js';
+import { listEntries, readEntry } from './release-asset.js';
+import type { ZipEntry } from './zip-index.js';
 
 function systemFromFilename(name: string): string {
   // Strip "(No-Intro - Fresh1G1R - PropeR).dat" / "(Redump - Fresh1G1R - PropeR).dat" suffix
   return name.replace(/\s+\([^)]*Fresh1G1R[^)]*\)\.dat$/i, '').trim();
 }
 
-export function rawUrl(path: string): string {
-  return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURI(path)}`;
+/** Identifies a DAT by its content: it names the cache file (see the wire schema). */
+function revisionOf(entry: ZipEntry): string {
+  return `${entry.crc32}-${entry.size}`;
 }
 
-async function readCache(sha: string): Promise<string | null> {
-  try {
-    const content = await readFile(join(cacheDir(), `${sha}.dat`), 'utf8');
-    return content;
-  } catch {
-    return null;
-  }
-}
-
-async function writeCache(sha: string, content: string): Promise<void> {
-  await mkdir(cacheDir(), { recursive: true });
-  await writeFile(join(cacheDir(), `${sha}.dat`), content, 'utf8');
-}
-
-// The preset's own tree sha, from the small (~2KB) top-level listing — one
-// recursive Trees API call scoped to it then replaces two heavy Contents API
-// calls (no-intro + redump), at a fraction of the payload (see the retry
-// comment above for why that matters).
-async function getPresetTreeSha(
+async function listCollection(
   preset: Fresh1g1rPreset,
-  headers: Record<string, string>,
-): Promise<string | null> {
-  const res = await githubFetch(
-    `https://api.github.com/repos/${REPO}/contents/daily-1g1r-dat`,
-    headers,
-  );
-  if (!res.ok) {
-    throw new Error(`GitHub API returned ${res.status} listing daily-1g1r-dat`);
-  }
-  const raw: unknown = await res.json();
-  const parsed = githubContentsSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error('Unexpected GitHub API response shape');
-  }
-  return parsed.data.find((f) => f.name === preset && f.type === 'dir')?.sha ?? null;
+  collection: Collection,
+): Promise<DatSourceEntry[]> {
+  const entries = await listEntries(assetName(preset, collection));
+  return entries
+    .filter((entry) => entry.name.toLowerCase().endsWith('.dat'))
+    .map((entry) => ({
+      name: entry.name,
+      system: systemFromFilename(entry.name),
+      path: datPath(preset, collection, entry.name),
+      revision: revisionOf(entry),
+    }));
 }
 
 export async function listDatSources(preset: Fresh1g1rPreset): Promise<DatSourceEntry[]> {
-  const headers = {
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'flemarr/1.0',
-  };
-
-  const presetSha = await getPresetTreeSha(preset, headers);
-  if (presetSha === null) return []; // preset folder absent, nothing to list
-
-  const res = await githubFetch(
-    `https://api.github.com/repos/${REPO}/git/trees/${presetSha}?recursive=1`,
-    headers,
+  const lists = await Promise.all(
+    COLLECTIONS.map((collection) => listCollection(preset, collection)),
   );
-  if (!res.ok) {
-    throw new Error(`GitHub API returned ${res.status} for preset ${preset} tree`);
-  }
-  const raw: unknown = await res.json();
-  const parsed = githubTreeSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error('Unexpected GitHub API response shape');
-  }
+  const sources = lists.flat();
+  logger.info({ preset, dats: sources.length }, 'Fresh1G1R DATs listed');
+  return sources.sort((a, b) => a.system.localeCompare(b.system));
+}
 
-  const results: DatSourceEntry[] = parsed.data.tree
-    .filter((e) => e.type === 'blob' && e.path.toLowerCase().endsWith('.dat'))
-    .map((e) => {
-      const name = e.path.slice(e.path.lastIndexOf('/') + 1);
-      return {
-        name,
-        system: systemFromFilename(name),
-        path: `daily-1g1r-dat/${preset}/${e.path}`,
-        sha: e.sha,
-      };
-    });
-
-  return results.sort((a, b) => a.system.localeCompare(b.system));
+async function downloadDat(path: string): Promise<string> {
+  const { asset, name } = locateDat(path);
+  const start = Date.now();
+  const { entry, content } = await readEntry(asset, name);
+  const text = content.toString('utf8');
+  // Under the revision actually read: a new release may have come out since
+  // the list the user picked from.
+  await cacheDat(revisionOf(entry), text);
+  logger.info({ path, bytes: content.length, ms: Date.now() - start }, 'DAT downloaded');
+  return text;
 }
 
 export async function fetchDat(
   preset: Fresh1g1rPreset,
   path: string,
-  sha: string,
+  revision: string,
 ): Promise<DatSummary> {
-  // Check disk cache first
-  let content = await readCache(sha);
+  locateDat(path); // a path that cannot be looked up later must not be stored
+  const cached = await readCachedDat(revision);
+  logger.debug({ path, revision, hit: cached !== null }, 'DAT cache lookup');
+  const content = cached ?? (await downloadDat(path));
 
-  if (content === null) {
-    const res = await githubFetch(rawUrl(path), { 'User-Agent': 'flemarr/1.0' });
-    if (!res.ok) {
-      throw new Error(`Failed to download DAT: HTTP ${res.status}`);
-    }
-    content = await res.text();
-    await writeCache(sha, content);
-  }
-
-  const dat = parseDat(content);
-  const summary = addDat(dat);
+  const summary = addDat(parseDat(content));
   setDatOrigin(summary.id, preset, path);
+  logger.info(
+    { datId: summary.id, system: summary.system, games: summary.gameCount, preset },
+    'DAT loaded from Fresh1G1R',
+  );
   return summary;
 }

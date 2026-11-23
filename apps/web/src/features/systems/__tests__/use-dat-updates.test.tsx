@@ -13,7 +13,7 @@ const UPDATE: DatUpdate = {
   datId: 'd1',
   preset: 'PropeR',
   path: 'daily-1g1r-dat/PropeR/x.dat',
-  sha: 'a'.repeat(40),
+  revision: 'aaaaaaaa-1234',
   version: '20261120-000000',
 };
 
@@ -63,7 +63,7 @@ describe('useDatUpdates', () => {
       expect(api.fetchDatFromFresh1g1r).toHaveBeenCalledWith({
         preset: 'PropeR',
         path: UPDATE.path,
-        sha: UPDATE.sha,
+        revision: UPDATE.revision,
       }),
     );
     await waitFor(() =>

@@ -45,13 +45,13 @@ export function Fresh1g1rBrowser({ onSuccess }: Props) {
   } = useQuery({
     queryKey: queryKeys.datSources(resolvedPreset),
     queryFn: () => listDatSources(resolvedPreset),
-    staleTime: 5 * 60 * 1000, // 5 min — GitHub contents don't change that fast
+    staleTime: 5 * 60 * 1000, // 5 min — releases are daily
   });
 
   const queryClient = useQueryClient();
   const loadMutation = useMutation({
     mutationFn: (entry: ListSourcesResponse['sources'][number]) =>
-      fetchDatFromFresh1g1r({ preset: resolvedPreset, path: entry.path, sha: entry.sha }),
+      fetchDatFromFresh1g1r({ preset: resolvedPreset, path: entry.path, revision: entry.revision }),
     onSuccess: (dat) => {
       // The new DAT joins the systems list here, not in the caller: a write
       // resyncs its own queries.

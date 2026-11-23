@@ -44,7 +44,7 @@ fresh1g1rRoute.post('/dats/from-fresh1g1r', async (c) => {
 
   let summary;
   try {
-    summary = await fetchDat(body.data.preset, body.data.path, body.data.sha);
+    summary = await fetchDat(body.data.preset, body.data.path, body.data.revision);
   } catch (err) {
     return errorJson(c, 502, 'FETCH_ERROR', errorMessage(err, 'DAT fetch failed'));
   }

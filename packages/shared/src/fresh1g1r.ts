@@ -8,7 +8,7 @@ const datSourceEntrySchema = z.object({
   name: z.string(),
   system: z.string(),
   path: z.string(),
-  sha: z.string(),
+  revision: z.string(),
 });
 export type DatSourceEntry = z.infer<typeof datSourceEntrySchema>;
 
@@ -21,14 +21,14 @@ export type ListSourcesResponse = z.infer<typeof listSourcesResponseSchema>;
 export const fetchDatRequestSchema = z.object({
   preset: fresh1g1rPresetSchema,
   path: z.string().min(1),
-  // Git blob SHA — also used as cache filename, so the format must be strict
+  // CRC32 and size — also used as cache filename, so the format must be strict
   // (an unconstrained string would allow path traversal in the cache dir).
-  sha: z.string().regex(/^[0-9a-f]{40}$/),
+  revision: z.string().regex(/^[0-9a-f]{8}-\d{1,12}$/),
 });
 export type FetchDatRequest = z.infer<typeof fetchDatRequestSchema>;
 
 // A loaded DAT whose set has a newer version on Fresh1G1R. preset, path
-// and sha are what POST /dats/from-fresh1g1r needs to load it.
+// and revision are what POST /dats/from-fresh1g1r needs to load it.
 const datUpdateSchema = fetchDatRequestSchema.extend({
   datId: z.string(),
   version: z.string(),

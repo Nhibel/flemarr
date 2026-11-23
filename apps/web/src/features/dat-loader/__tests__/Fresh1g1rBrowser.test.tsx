@@ -9,9 +9,19 @@ import { Fresh1g1rBrowser } from '../Fresh1g1rBrowser.js';
 
 vi.mock('@/lib/api.js');
 
-const SHA = 'a'.repeat(40);
-const SNES = { name: 'snes.dat', system: 'Nintendo - SNES', path: 'PropeR/snes.dat', sha: SHA };
-const PSX = { name: 'psx.dat', system: 'Sony - PlayStation', path: 'PropeR/psx.dat', sha: SHA };
+const REVISION = 'aaaaaaaa-1234';
+const SNES = {
+  name: 'snes.dat',
+  system: 'Nintendo - SNES',
+  path: 'PropeR/snes.dat',
+  revision: REVISION,
+};
+const PSX = {
+  name: 'psx.dat',
+  system: 'Sony - PlayStation',
+  path: 'PropeR/psx.dat',
+  revision: REVISION,
+};
 
 function renderBrowser(onSuccess = vi.fn()) {
   const queryClient = new QueryClient({
@@ -78,7 +88,7 @@ describe('Fresh1g1rBrowser', () => {
     expect(api.fetchDatFromFresh1g1r).toHaveBeenCalledWith({
       preset: 'McLean',
       path: SNES.path,
-      sha: SHA,
+      revision: REVISION,
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.dats() });
     expect(onSuccess).toHaveBeenCalledWith(dat);

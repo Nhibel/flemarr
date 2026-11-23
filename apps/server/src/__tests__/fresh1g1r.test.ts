@@ -1,20 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { closeDb } from '../lib/db.js';
-
-vi.mock('node:os', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:os')>();
-  return {
-    ...actual,
-    homedir: () => join(actual.tmpdir(), 'flemarr-fresh1g1r-test'),
-  };
-});
-
 import { listDatSources, fetchDat } from '../services/fresh1g1r/index.js';
+import { forgetAssetIndexes } from '../services/fresh1g1r/release-asset.js';
+import { dataDir } from '../lib/db.js';
+import { stubReleases, zipOf } from './helpers/fake-releases.js';
 
-const MINIMAL_DAT = `<?xml version="1.0"?>
+function datOf(game: string): string {
+  return `<?xml version="1.0"?>
 <!DOCTYPE datafile PUBLIC "-//Logiqx//DTD ROM Management Datafile//EN" "http://www.logiqx.com/Dats/datafile.dtd">
 <datafile>
   <header>
@@ -22,178 +15,155 @@ const MINIMAL_DAT = `<?xml version="1.0"?>
     <description>Nintendo - Super Nintendo Entertainment System</description>
     <url>https://www.no-intro.org</url>
   </header>
-  <game name="Test Game (USA)">
-    <description>Test Game (USA)</description>
-    <rom name="Test Game (USA).sfc" size="524288" crc="b19ed489" md5="00000000000000000000000000000000" sha1="0000000000000000000000000000000000000000"/>
+  <game name="${game}">
+    <description>${game}</description>
+    <rom name="${game}.sfc" size="524288" crc="b19ed489" md5="00000000000000000000000000000000" sha1="0000000000000000000000000000000000000000"/>
   </game>
 </datafile>`;
+}
 
-// Top-level `daily-1g1r-dat` listing — gives each preset's own tree sha.
-const PRESET_DIRS_RESPONSE = [
-  { name: 'PropeR', path: 'daily-1g1r-dat/PropeR', sha: 'preset-sha-proper', type: 'dir' },
-  { name: 'McLean', path: 'daily-1g1r-dat/McLean', sha: 'preset-sha-mclean', type: 'dir' },
-];
+const SNES_FILE =
+  'Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat';
+const PSX_FILE = 'Sony - PlayStation (Redump - Fresh1G1R - PropeR).dat';
+const SNES_PATH = `daily-1g1r-dat/PropeR/no-intro/${SNES_FILE}`;
+const UNCACHED = '00000000-1';
 
-// Recursive tree scoped to one preset — paths are relative to it.
-const PROPER_TREE_RESPONSE = {
-  tree: [
-    { path: 'no-intro', type: 'tree', sha: 'tree-no-intro' },
-    {
-      path: 'no-intro/Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
-      type: 'blob',
-      sha: 'abc123def456',
-    },
-    { path: 'no-intro/README.md', type: 'blob', sha: 'aaaa' },
-    { path: 'redump', type: 'tree', sha: 'tree-redump' },
-    {
-      path: 'redump/Sony - PlayStation (Redump - Fresh1G1R - PropeR).dat',
-      type: 'blob',
-      sha: 'deadbeef1234',
-    },
-  ],
-};
-
-function mockFetch(responses: { url: RegExp; body: unknown; status?: number }[]) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation((url: string) => {
-      const match = responses.find((r) => r.url.test(url));
-      const status = match?.status ?? 200;
-      return Promise.resolve({
-        ok: status >= 200 && status < 300,
-        status,
-        text: () =>
-          Promise.resolve(
-            typeof match?.body === 'string' ? match.body : JSON.stringify(match?.body),
-          ),
-        json: () => Promise.resolve(match?.body),
-      });
-    }),
-  );
+function properAssets(game = 'Test Game (USA)') {
+  return {
+    'Fresh1G1R-PropeR-No-Intro.zip': zipOf({ 'README.md': 'x', [SNES_FILE]: datOf(game) }),
+    'Fresh1G1R-PropeR-Redump.zip': zipOf({ [PSX_FILE]: datOf(game) }),
+  };
 }
 
 beforeEach(() => {
-  vi.restoreAllMocks();
+  forgetAssetIndexes();
+  vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 500 });
 });
 
 afterEach(async () => {
-  closeDb(); // release SQLite file lock before deleting the temp dir
-  await rm(join(tmpdir(), 'flemarr-fresh1g1r-test'), { recursive: true, force: true });
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  await rm(join(dataDir(), 'cache'), { recursive: true, force: true });
 });
 
 describe('listDatSources', () => {
-  it('returns only .dat files, not README etc.', async () => {
-    mockFetch([
-      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
-      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
-    ]);
+  it('lists the DATs of both collections, without other files', async () => {
+    stubReleases({ assets: properAssets() });
     const sources = await listDatSources('PropeR');
-    expect(sources).toHaveLength(2);
-    expect(sources.every((s) => s.name.endsWith('.dat'))).toBe(true);
+    expect(sources.map((s) => s.system)).toEqual([
+      'Nintendo - Super Nintendo Entertainment System',
+      'Sony - PlayStation',
+    ]);
   });
 
-  it('extracts system name, stripping the Fresh1G1R suffix', async () => {
-    mockFetch([
-      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
-      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
-    ]);
+  // The path is stored with each loaded DAT: those loaded before the releases
+  // must still be found.
+  it('keeps the paths DATs had in the repository', async () => {
+    stubReleases({ assets: properAssets() });
     const sources = await listDatSources('PropeR');
-    const systems = sources.map((s) => s.system);
-    expect(systems).toContain('Nintendo - Super Nintendo Entertainment System');
-    expect(systems).toContain('Sony - PlayStation');
+    expect(sources.map((s) => s.path)).toEqual([
+      SNES_PATH,
+      `daily-1g1r-dat/PropeR/redump/${PSX_FILE}`,
+    ]);
+    expect(sources[0]?.revision).toMatch(/^[0-9a-f]{8}-\d+$/);
   });
 
-  it('reconstructs the full repo-relative path for each entry', async () => {
-    mockFetch([
-      { url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE },
-      { url: /\/git\/trees\//, body: PROPER_TREE_RESPONSE },
-    ]);
-    const sources = await listDatSources('PropeR');
-    const snes = sources.find((s) => s.system.includes('Super Nintendo'));
-    expect(snes?.path).toBe(
-      'daily-1g1r-dat/PropeR/no-intro/Nintendo - Super Nintendo Entertainment System (No-Intro - Fresh1G1R - PropeR).dat',
+  it('reads an index larger than the first range', async () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 900 }, (_, i) => [`System ${i} ${'x'.repeat(60)}.dat`, 'x']),
+    );
+    const assets = { ...properAssets(), 'Fresh1G1R-PropeR-Redump.zip': zipOf(many) };
+    stubReleases({ assets });
+    expect(await listDatSources('PropeR')).toHaveLength(901);
+  });
+
+  it('reads the index once for a while', async () => {
+    const { fetchMock } = stubReleases({ assets: properAssets() });
+    await listDatSources('PropeR');
+    const calls = fetchMock.mock.calls.length;
+    await listDatSources('PropeR');
+    expect(fetchMock.mock.calls.length).toBe(calls);
+  });
+
+  it('retries a gateway error', async () => {
+    stubReleases({ assets: properAssets(), failures: [503] });
+    expect(await listDatSources('PropeR')).toHaveLength(2);
+  });
+
+  it('fails with the status once the retries are used up', async () => {
+    stubReleases({ assets: properAssets(), failures: Array<number>(6).fill(503) });
+    await expect(listDatSources('PropeR')).rejects.toThrow('GitHub returned 503');
+  });
+
+  it('names the missing asset rather than returning a partial list', async () => {
+    const assets = { 'Fresh1G1R-PropeR-No-Intro.zip': zipOf({ [SNES_FILE]: 'x' }) };
+    stubReleases({ assets });
+    await expect(listDatSources('PropeR')).rejects.toThrow(
+      'GitHub returned 404 for Fresh1G1R-PropeR-Redump.zip',
     );
   });
 
-  it('returns an empty list when the preset folder is absent', async () => {
-    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: PRESET_DIRS_RESPONSE }]);
-    const sources = await listDatSources('Hearto');
-    expect(sources).toEqual([]);
+  it('never reads a whole archive', async () => {
+    stubReleases({ assets: properAssets(), ignoreRange: true });
+    await expect(listDatSources('PropeR')).rejects.toThrow('Byte ranges are not served');
   });
 
-  it('retries once on a 503 from the preset listing, then succeeds', async () => {
-    let calls = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((url: string) => {
-        if (/\/contents\/daily-1g1r-dat$/.test(url)) {
-          calls++;
-          if (calls === 1) {
-            return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve(null) });
-          }
-          return Promise.resolve({
-            ok: true,
-            status: 200,
-            json: () => Promise.resolve(PRESET_DIRS_RESPONSE),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(PROPER_TREE_RESPONSE),
-        });
-      }),
-    );
-    const sources = await listDatSources('PropeR');
-    expect(calls).toBe(2);
-    expect(sources).toHaveLength(2);
-  });
-
-  it('throws when GitHub returns a non-retryable error', async () => {
-    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: null, status: 403 }]);
-    await expect(listDatSources('PropeR')).rejects.toThrow('GitHub API returned 403');
-  });
-
-  it('throws when the exhausted retries still fail', async () => {
-    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: null, status: 503 }]);
-    await expect(listDatSources('PropeR')).rejects.toThrow('GitHub API returned 503');
-  });
-
-  it('throws when GitHub response has unexpected shape', async () => {
-    mockFetch([{ url: /\/contents\/daily-1g1r-dat$/, body: { unexpected: true } }]);
-    await expect(listDatSources('PropeR')).rejects.toThrow('Unexpected GitHub API response shape');
+  it('gives the network reason when GitHub is unreachable', async () => {
+    const cause = Object.assign(new Error('getaddrinfo'), { code: 'ENOTFOUND' });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed', { cause })));
+    await expect(listDatSources('PropeR')).rejects.toThrow('ENOTFOUND');
   });
 });
 
 describe('fetchDat', () => {
-  it('downloads and registers a DAT, returns summary', async () => {
-    mockFetch([{ url: /raw\.githubusercontent/, body: MINIMAL_DAT }]);
-    const summary = await fetchDat(
-      'PropeR',
-      'PropeR/Nintendo - Super Nintendo Entertainment System.dat',
-      'sha-001',
-    );
-    expect(summary.system).toBe('Nintendo - Super Nintendo Entertainment System');
-    expect(summary.gameCount).toBe(1);
-    expect(summary.source).toBe('no-intro');
+  it('downloads and registers a DAT', async () => {
+    stubReleases({ assets: properAssets() });
+    const summary = await fetchDat('PropeR', SNES_PATH, UNCACHED);
+    expect(summary).toMatchObject({
+      system: 'Nintendo - Super Nintendo Entertainment System',
+      gameCount: 1,
+      source: 'no-intro',
+    });
   });
 
-  it('uses disk cache on second call — does not refetch', async () => {
-    mockFetch([{ url: /raw\.githubusercontent/, body: MINIMAL_DAT }]);
-    await fetchDat('PropeR', 'PropeR/test.dat', 'sha-002');
-    await fetchDat('PropeR', 'PropeR/test.dat', 'sha-002');
-    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  it('reuses a DAT it already downloaded', async () => {
+    const { fetchMock } = stubReleases({ assets: properAssets() });
+    const revision = (await listDatSources('PropeR'))[0]!.revision;
+    await fetchDat('PropeR', SNES_PATH, revision);
+    const calls = fetchMock.mock.calls.length;
+    await fetchDat('PropeR', SNES_PATH, revision);
+    expect(fetchMock.mock.calls.length).toBe(calls);
   });
 
-  it('fetches again when SHA changes (cache miss)', async () => {
-    mockFetch([{ url: /raw\.githubusercontent/, body: MINIMAL_DAT }]);
-    await fetchDat('PropeR', 'PropeR/test.dat', 'sha-003a');
-    await fetchDat('PropeR', 'PropeR/test.dat', 'sha-003b');
-    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+  it('keeps reading the release it indexed when a newer one comes out', async () => {
+    const { releases, fetchMock } = stubReleases({ assets: properAssets() });
+    await listDatSources('PropeR');
+    releases.tag = 'daily-2';
+    await fetchDat('PropeR', SNES_PATH, UNCACHED);
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toContain('/daily-1/');
   });
 
-  it('throws when download fails', async () => {
-    mockFetch([{ url: /raw\.githubusercontent/, body: null, status: 404 }]);
-    await expect(fetchDat('PropeR', 'PropeR/missing.dat', 'sha-004')).rejects.toThrow('HTTP 404');
+  it('moves to the latest release when the indexed one is gone', async () => {
+    const { releases, fetchMock } = stubReleases({ assets: properAssets() });
+    await listDatSources('PropeR');
+    releases.tag = 'daily-2';
+    releases.goneTags = ['daily-1'];
+    await fetchDat('PropeR', SNES_PATH, UNCACHED);
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toContain('/daily-2/');
   });
+
+  it('fails when the DAT is not in the release', async () => {
+    stubReleases({ assets: properAssets() });
+    const path = 'daily-1g1r-dat/PropeR/redump/missing.dat';
+    await expect(fetchDat('PropeR', path, UNCACHED)).rejects.toThrow('is not in');
+  });
+
+  it.each(['evil.dat', 'daily-1g1r-dat/PropeR/other/a.dat', 'daily-1g1r-dat/Bad/redump/a.dat'])(
+    'refuses the path %s without asking GitHub',
+    async (path) => {
+      const { fetchMock } = stubReleases();
+      await expect(fetchDat('PropeR', path, UNCACHED)).rejects.toThrow('Unknown Fresh1G1R path');
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 });

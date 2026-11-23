@@ -4,7 +4,7 @@ import type { DatUpdate } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { invalidateLoadedDat } from '@/lib/invalidate-loaded-dat.js';
 
-// The server keeps its own answer for hours (GitHub's rate limit); asking
+// The server keeps its own answer for hours (releases are daily); asking
 // it more often than hourly only re-reads that answer.
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -24,7 +24,8 @@ export function useDatUpdates() {
   });
 
   const apply = useMutation({
-    mutationFn: ({ preset, path, sha }: DatUpdate) => fetchDatFromFresh1g1r({ preset, path, sha }),
+    mutationFn: ({ preset, path, revision }: DatUpdate) =>
+      fetchDatFromFresh1g1r({ preset, path, revision }),
     onSuccess: (_dat, { datId }) => invalidateLoadedDat(queryClient, datId),
   });
 
