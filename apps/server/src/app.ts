@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { logger } from '@/lib/logger.js';
+import { runWithRequestId } from '@/lib/request-context.js';
 import { errorJson, errorMessage } from '@/lib/http.js';
 import { healthRoute } from '@/routes/health.js';
 import { datsRoute } from '@/routes/dats.js';
@@ -14,10 +16,20 @@ import { systemIconsRoute } from '@/routes/system-icons.js';
 
 export const app = new Hono();
 
+// Polled by healthchecks and monitors: not worth a line each.
+const QUIET_PATH = '/api/health';
+
+app.use('*', (c, next) => {
+  const requestId = randomUUID();
+  c.header('X-Request-Id', requestId);
+  return runWithRequestId(requestId, next);
+});
+
 app.use('*', async (c, next) => {
   const start = Date.now();
   await next();
-  logger.info(
+  const level = c.req.path === QUIET_PATH ? 'debug' : 'info';
+  logger[level](
     { method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - start },
     'request',
   );
@@ -30,7 +42,7 @@ app.use('*', async (c, next) => {
 // code should still catch and classify their own errors — this only
 // guarantees the envelope's shape for whatever slips through.
 app.onError((err, c) => {
-  logger.error({ method: c.req.method, path: c.req.path, err: String(err) }, 'unhandled error');
+  logger.error({ method: c.req.method, path: c.req.path, err }, 'unhandled error');
   return errorJson(c, 500, 'INTERNAL_ERROR', errorMessage(err, 'Internal server error'));
 });
 

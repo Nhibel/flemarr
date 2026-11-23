@@ -6,6 +6,8 @@ import { createRequire } from 'node:module';
 import { unzipSync } from 'fflate';
 import { Crc32Accumulator, computeCrc32Buffer } from '@/lib/crc32.js';
 import { stripInesHeaderIfMatches } from '@/lib/ines-header.js';
+import { logger } from '@/lib/logger.js';
+import { logTarget } from '@/lib/logged-fetch.js';
 import { archiveFetch } from '@/services/archive-org/fetch.js';
 
 export type WorkerResult = 'done' | 'crc-mismatch' | 'cancelled' | 'error';
@@ -37,7 +39,8 @@ async function extractAndValidate(tempPath: string, expectedCrc: string): Promis
     rom =
       values.find((b) => computeCrc32Buffer(Buffer.from(b)) === expectedCrc.toLowerCase()) ??
       values[0];
-  } catch {
+  } catch (err) {
+    logger.warn({ tempPath, err }, 'downloaded ZIP unreadable');
     await deleteFile(tempPath);
     throw new Error('failed to extract downloaded ZIP');
   }
@@ -56,6 +59,7 @@ async function extractAndValidate(tempPath: string, expectedCrc: string): Promis
     await writeFile(tempPath, stripped);
     return 'done';
   }
+  logger.warn({ tempPath, expectedCrc, foundCrc: computeCrc32Buffer(romBuf) }, 'CRC mismatch');
   await deleteFile(tempPath);
   return 'crc-mismatch';
 }
@@ -157,7 +161,8 @@ export async function extractContainerEntry(
   let rom: Buffer;
   try {
     rom = await readFile(join(extractDir, innerPath));
-  } catch {
+  } catch (err) {
+    logger.warn({ containerPath, innerPath, err }, 'container entry not extracted');
     await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
     throw new Error(`entry not found in container: ${innerPath}`);
   }
@@ -172,6 +177,7 @@ export async function extractContainerEntry(
     await writeFile(outputPath, stripped);
     return 'done';
   }
+  logger.warn({ innerPath, expectedCrc, foundCrc: computeCrc32Buffer(rom) }, 'CRC mismatch');
   return 'crc-mismatch';
 }
 
@@ -222,6 +228,10 @@ async function fetchWithRetry(url: string, signal: AbortSignal): Promise<Respons
     if (!RETRYABLE_STATUS.has(res.status) || attempt >= MAX_RETRIES) return res;
 
     const waitSeconds = retryDelaySeconds(res.headers.get('retry-after'), attempt);
+    logger.warn(
+      { target: logTarget(url), status: res.status, attempt: attempt + 1, waitSeconds },
+      'download rate-limited, retrying',
+    );
     try {
       await abortableSleep(waitSeconds * 1000, signal);
     } catch {
@@ -334,6 +344,7 @@ async function checkCrc(
     await writeFile(tempPath, stripped);
     return 'done';
   }
+  logger.warn({ tempPath, expectedCrc, foundCrc: computeCrc32Buffer(buf) }, 'CRC mismatch');
 
   await deleteFile(tempPath);
   return 'crc-mismatch';

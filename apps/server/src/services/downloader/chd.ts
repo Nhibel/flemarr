@@ -42,6 +42,8 @@ export async function convertGameToChd(
   const chdPath = join(destinationDir, `${basename(cueRom.name, '.cue')}.chd`);
   const scratchDir = join(tmpdir(), `flemarr-chd-verify-${randomUUID()}`);
 
+  const start = Date.now();
+  logger.info({ cuePath }, 'CHD conversion started');
   try {
     await chdman.createCd({ inputFilename: cuePath, outputFilename: chdPath, force: true });
   } catch (err) {
@@ -94,6 +96,6 @@ export async function convertGameToChd(
     await rm(join(destinationDir, rom.name), { force: true }).catch(() => undefined);
   }
 
-  logger.info({ chdPath }, 'converted disc game to CHD');
+  logger.info({ chdPath, ms: Date.now() - start }, 'converted disc game to CHD');
   return { ok: true, chdPath };
 }

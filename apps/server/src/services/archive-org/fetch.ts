@@ -1,3 +1,4 @@
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { getSettings } from '@/services/settings/index.js';
 
 /**
@@ -50,7 +51,7 @@ export async function archiveFetch(url: string, init?: RequestInit): Promise<Res
 
   for (let i = 0; i <= MAX_REDIRECTS; i++) {
     const auth = isArchiveHost(current) ? archiveAuthHeaders() : {};
-    const res = await fetch(current, {
+    const res = await loggedFetch(current, {
       ...rest,
       headers: { ...auth, ...(rest.headers ?? {}) },
       redirect: 'manual',

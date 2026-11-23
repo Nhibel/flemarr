@@ -6,6 +6,7 @@
  * <Game> is the canonical game name with forbidden characters replaced.
  */
 
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { stripDatSystemTags } from '@/lib/dat-system.js';
 
 const BASE_URL = 'https://thumbnails.libretro.com';
@@ -58,7 +59,7 @@ export function mirrorOf(url: string): string | null {
 
 /** Does the thumbnail exist upstream? HEAD probe, no body transferred. */
 export async function probeBoxart(url: string): Promise<boolean> {
-  const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+  const res = await loggedFetch(url, { method: 'HEAD', redirect: 'follow' });
   return res.ok;
 }
 
@@ -85,12 +86,12 @@ export async function findBoxart(url: string): Promise<string | null> {
 /** The thumbnail's bytes, from its mirror when the provider fails. */
 export async function fetchBoxart(url: string): Promise<Response> {
   const mirror = mirrorOf(url);
-  if (mirror === null) return fetch(url);
+  if (mirror === null) return loggedFetch(url);
   try {
-    const response = await fetch(url);
+    const response = await loggedFetch(url);
     if (response.ok) return response;
   } catch {
     // The provider is down: the mirror answers instead.
   }
-  return fetch(mirror);
+  return loggedFetch(mirror);
 }

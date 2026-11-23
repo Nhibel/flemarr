@@ -17,6 +17,14 @@ services:
       # The single library root. Browsing, scan and download are confined to
       # it; in the app you navigate inside it to pick (or create) subfolders.
       - ROMS_ROOT=/roms
+      # debug traces every external request and cache lookup.
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    # Keeps the logs from growing without bound.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     volumes:
       # SQLite DB + DAT cache — survives container recreation.
       - flemarr-data:/data

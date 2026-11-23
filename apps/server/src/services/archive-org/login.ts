@@ -1,3 +1,4 @@
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { z } from 'zod';
 import { updateSettings } from '@/services/settings/index.js';
 import { clearUrlCheckCache } from './url-check.js';
@@ -37,7 +38,7 @@ export class ArchiveLoginError extends Error {
 }
 
 export async function exchangeArchiveLogin(email: string, password: string): Promise<void> {
-  const res = await fetch('https://archive.org/services/xauthn/?op=login', {
+  const res = await loggedFetch('https://archive.org/services/xauthn/?op=login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ email, password }).toString(),
@@ -51,6 +52,7 @@ export async function exchangeArchiveLogin(email: string, password: string): Pro
   if (!parsed.success) throw new Error('Unexpected xauthn response shape');
 
   if (!parsed.data.success) {
+    logger.warn({ reason: parsed.data.values?.reason }, 'archive.org login refused');
     throw new ArchiveLoginError(parsed.data.values?.reason ?? 'unknown');
   }
 

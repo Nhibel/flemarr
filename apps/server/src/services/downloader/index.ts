@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { assertWithinConfiguredRoots } from '@/lib/fs-safety.js';
+import { logger } from '@/lib/logger.js';
 import { getSettings } from '@/services/settings/index.js';
 import { libraryRoots } from '@/lib/library-root.js';
 import type { DownloadRequest, DownloadEvent, DownloadTarget } from '@shared/download.js';
@@ -88,7 +89,13 @@ export async function startDownload(request: DownloadRequest): Promise<string> {
   };
   downloadJobs.set(jobId, job);
 
-  runQueue(jobId, datId, target, destinationDir).catch(() => undefined);
+  logger.info(
+    { jobId, datId, target, destinationDir, items: items.length },
+    'download job started',
+  );
+  runQueue(jobId, datId, target, destinationDir).catch((err: unknown) => {
+    logger.error({ jobId, err }, 'download job crashed');
+  });
 
   return jobId;
 }
@@ -223,6 +230,15 @@ async function runQueue(
     job.events.push({ type: 'complete' });
   }
   job.completedAt = Date.now();
+  logger.info(
+    {
+      jobId,
+      status: job.status,
+      done: job.items.filter((item) => item.status === 'done').length,
+      failed: job.items.filter((item) => item.status === 'failed').length,
+    },
+    'download job finished',
+  );
 }
 
 /**

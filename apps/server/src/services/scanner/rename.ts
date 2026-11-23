@@ -1,5 +1,6 @@
 import { rename, access } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { logger } from '@/lib/logger.js';
 import type { RenameRequest, RenameResult } from '@shared/scan.js';
 
 type RenameEntry = RenameRequest['renames'][number];
@@ -42,10 +43,12 @@ export async function renameWithRollback(renames: RenameEntry[]): Promise<Rename
       done.push(entry);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      logger.error({ from: entry.from, to: entry.to, err }, 'rename failed, rolling back');
       const rolledBack = await rollBack(done);
       return { done, failed: [{ entry, error: message }], rolledBack };
     }
   }
+  logger.info({ files: done.length }, 'files renamed');
   return { done, failed: [], rolledBack: [] };
 }
 
@@ -55,8 +58,9 @@ async function rollBack(done: RenameEntry[]): Promise<string[]> {
     try {
       await rename(renameDestination(completed), completed.from);
       rolledBack.push(completed.from);
-    } catch {
+    } catch (err) {
       // best-effort — log but continue
+      logger.error({ from: completed.from, to: completed.to, err }, 'rename rollback failed');
     }
   }
   return rolledBack;

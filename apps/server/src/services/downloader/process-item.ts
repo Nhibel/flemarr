@@ -1,6 +1,7 @@
 import { rename } from 'node:fs/promises';
 import { join, basename, dirname } from 'node:path';
 import { assertWithinRoot } from '@/lib/fs-safety.js';
+import { logTarget, networkErrorReason } from '@/lib/logged-fetch.js';
 import { logger } from '@/lib/logger.js';
 import type { DownloadSource, DownloadTarget } from '@shared/download.js';
 import { downloadFile, extractContainerEntry } from './worker.js';
@@ -48,12 +49,12 @@ export async function processItem(
     // Covers both "still queued, never started" and "was downloading,
     // now aborted" — either way, nothing ran, so there's nothing to clean
     // up beyond the event that tells the UI to drop this row.
-    markCancelled(job, item);
+    markCancelled(context, item);
     return;
   }
 
   item.status = 'downloading';
-  const fetched = await fetchFromSources(job, item, signal, throttledProgress(job, item));
+  const fetched = await fetchFromSources(context, item, signal, throttledProgress(job, item));
   let result = fetched.result;
   let lastError = fetched.lastError;
 
@@ -70,7 +71,7 @@ export async function processItem(
   }
 
   if (result === 'cancelled') {
-    markCancelled(job, item);
+    markCancelled(context, item);
     return;
   }
 
@@ -106,7 +107,7 @@ function throttledProgress(job: DownloadJobState, item: DownloadItemState): Prog
 // mismatch means a bad source, not a glitch — per
 // docs/archive-org-strategy.md).
 async function fetchFromSources(
-  job: DownloadJobState,
+  { job, jobId }: JobContext,
   item: DownloadItemState,
   signal: AbortSignal,
   onProgress: ProgressCallback,
@@ -115,13 +116,16 @@ async function fetchFromSources(
   for (const source of item.sources) {
     if (signal.aborted) return { result: 'cancelled', lastError };
     try {
-      logger.info({ romName: item.romName, url: source.url }, 'download started');
+      logger.info(
+        { jobId, romName: item.romName, target: logTarget(source.url) },
+        'download started',
+      );
       const result = await fetchFromSource(job, item, source, signal, onProgress);
       return { result, lastError };
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
       logger.warn(
-        { romName: item.romName, url: source.url, error: lastError },
+        { jobId, romName: item.romName, target: logTarget(source.url), error: networkErrorReason(err) },
         'download source failed',
       );
     }
@@ -198,7 +202,7 @@ function finishForBrowser(context: JobContext, item: DownloadItemState, eligible
   // Stays at item.tempPath — the route streams it to the browser on
   // request, then deletes it. Never placed anywhere on this host.
   item.status = 'done';
-  logger.info({ romName: item.romName }, 'download ready for browser pickup');
+  logger.info({ jobId, romName: item.romName }, 'download ready for browser pickup');
   recordDownload({
     gameId: item.gameId,
     romName: item.romName,
@@ -235,7 +239,7 @@ async function placeOnServer(context: JobContext, item: DownloadItemState): Prom
     assertWithinRoot(dest, destinationDir);
     await rename(item.tempPath, dest);
     item.status = 'done';
-    logger.info({ romName: item.romName, dest }, 'download done');
+    logger.info({ jobId: context.jobId, romName: item.romName, dest }, 'download done');
     job.events.push({ type: 'file-done', gameId: item.gameId, romName: item.romName });
     recordDownload({
       gameId: item.gameId,
@@ -247,11 +251,16 @@ async function placeOnServer(context: JobContext, item: DownloadItemState): Prom
     });
     return null;
   } catch (err) {
+    logger.error(
+      { jobId: context.jobId, romName: item.romName, destinationDir, err },
+      'could not place the file in the library',
+    );
     return err instanceof Error ? err.message : String(err);
   }
 }
 
-function markCancelled(job: DownloadJobState, item: DownloadItemState): void {
+function markCancelled({ job, jobId }: JobContext, item: DownloadItemState): void {
+  logger.info({ jobId, romName: item.romName }, 'download cancelled');
   item.status = 'cancelled';
   job.events.push({ type: 'file-cancelled', gameId: item.gameId, romName: item.romName });
 }
@@ -259,7 +268,7 @@ function markCancelled(job: DownloadJobState, item: DownloadItemState): void {
 function failItem(context: JobContext, item: DownloadItemState, reason: string): void {
   const { job, datId, target } = context;
   item.status = 'failed';
-  logger.warn({ romName: item.romName, reason }, 'download failed');
+  logger.warn({ jobId: context.jobId, romName: item.romName, reason }, 'download failed');
   job.events.push({ type: 'file-failed', gameId: item.gameId, romName: item.romName, reason });
   const destination =
     target === 'browser' ? '<browser>' : join(context.destinationDir!, basename(item.romName));

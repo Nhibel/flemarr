@@ -2,6 +2,8 @@ import { serve } from '@hono/node-server';
 import { app } from '@/app.js';
 import { closeDb, dataDir } from '@/lib/db.js';
 import { serveWeb } from '@/lib/serve-web.js';
+import { logger } from '@/lib/logger.js';
+import { warnIfNotWritable } from '@/lib/startup-checks.js';
 import { libraryRoot } from '@/lib/library-root.js';
 
 const PORT = Number(process.env['PORT'] ?? 3000);
@@ -13,25 +15,31 @@ if (WEB_ROOT) {
   serveWeb(app, WEB_ROOT);
 }
 
-// Startup banner — visible in `docker logs` / Portainer to confirm the
+// Startup summary — visible in `docker logs` / Portainer to confirm the
 // container picked up its configuration (port, library root, data dir).
 const romsRoot = libraryRoot();
-console.log('Flemarr: starting…');
-console.log(`  port:      ${PORT}`);
-console.log(
-  `  ROM root:  ${romsRoot ?? '(ROMS_ROOT not set — directory browsing is not confined)'}`,
+logger.info(
+  {
+    version: process.env['APP_VERSION'] ?? 'dev',
+    node: process.version,
+    port: PORT,
+    logLevel: logger.level,
+    // null: ROMS_ROOT not set, directory browsing is not confined
+    romsRoot,
+    dataDir: dataDir(),
+    // null: dev mode, the UI is served by Vite
+    webRoot: WEB_ROOT ?? null,
+  },
+  'Flemarr starting',
 );
-console.log(`  data dir:  ${dataDir()}`);
-console.log(
-  `  web UI:    ${WEB_ROOT ? `served from ${WEB_ROOT}` : '(not set — dev mode, served by Vite)'}`,
-);
+if (romsRoot !== null) warnIfNotWritable(romsRoot);
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`Flemarr: ready — http://localhost:${info.port}`);
+  logger.info({ port: info.port }, 'Flemarr ready');
 });
 
 function shutdown(signal: string): void {
-  console.log(`Flemarr: ${signal} received, shutting down`);
+  logger.info({ signal }, 'Flemarr shutting down');
   server.close(() => {
     closeDb();
     process.exit(0);
@@ -45,3 +53,12 @@ function shutdown(signal: string): void {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// The state after either is unknown: log the cause, then let Docker restart.
+function crash(err: unknown, message: string): void {
+  logger.fatal({ err }, message);
+  process.exit(1);
+}
+
+process.on('uncaughtException', (err) => crash(err, 'uncaught exception'));
+process.on('unhandledRejection', (reason) => crash(reason, 'unhandled rejection'));

@@ -1,3 +1,4 @@
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { z } from 'zod';
 import type { SearchResult } from '@shared/archive.js';
 import { logger } from '@/lib/logger.js';
@@ -25,7 +26,7 @@ export async function searchArchive(query: string, rows = 20): Promise<SearchRes
     `&sort[]=downloads+desc`;
 
   const start = Date.now();
-  const res = await fetch(url);
+  const res = await loggedFetch(url);
   if (!res.ok) {
     logger.warn({ query, status: res.status }, 'archive search failed');
     throw new Error(`archive.org search returned ${res.status}`);

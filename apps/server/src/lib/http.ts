@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { z } from 'zod';
+import { logger } from '@/lib/logger.js';
 
 type ErrorStatus = 400 | 401 | 404 | 409 | 500 | 502;
 
@@ -11,6 +12,11 @@ export function errorJson(
   message: string,
   details?: unknown,
 ): Response {
+  const level = status >= 500 ? 'error' : 'warn';
+  logger[level](
+    { method: c.req.method, path: c.req.path, status, code, reason: message },
+    'error response',
+  );
   return c.json({ error: { code, message, ...(details !== undefined && { details }) } }, status);
 }
 

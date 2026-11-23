@@ -16,6 +16,7 @@
  * removes files, and a pinned tree means the name index below is immutable,
  * so it is fetched once and never goes stale.
  */
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { join } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
@@ -186,7 +187,7 @@ function indexCachePath(): string {
 }
 
 async function fetchNames(): Promise<Record<string, string[]>> {
-  const res = await fetch(
+  const res = await loggedFetch(
     `https://api.github.com/repos/${REPO}/git/trees/${ASSETS_SHA}?recursive=1`,
     { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'flemarr/1.0' } },
   );

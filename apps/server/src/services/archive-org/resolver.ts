@@ -19,6 +19,7 @@ import {
   isReencodedDump,
   stripExtension,
 } from './system-name.js';
+import { networkErrorReason } from '@/lib/logged-fetch.js';
 import { logger } from '@/lib/logger.js';
 import { mapInBatches } from '@/lib/batches.js';
 import type { ArchiveFile } from '@shared/archive.js';
@@ -204,7 +205,8 @@ async function resolveViaZipListing(
     let entries: string[];
     try {
       entries = await getZipListing(info.server, info.dir, zip.name);
-    } catch {
+    } catch (err) {
+      logger.warn({ identifier, zipName: zip.name, err }, 'zip listing unavailable');
       // The listing fetch failed — but an exact per-game match doesn't
       // actually need it for the fast path itself (only for an optional
       // zip-view fallback below), so don't give up on it over a transient
@@ -402,7 +404,9 @@ async function resolveOneGame(
       let info: ArchiveItemInfo;
       try {
         info = await getItemInfo(source.identifier);
-      } catch {
+      } catch (err) {
+        // Reported once by prefetchItemInfo; per ROM it would flood the log.
+        logger.debug({ identifier: source.identifier, romName: rom.name, err }, 'source skipped');
         // Source unreachable — skip, don't fail the whole resolution
         return null;
       }
@@ -432,7 +436,9 @@ async function resolveOneGame(
 // source, as it always did.
 async function prefetchItemInfo(identifiers: string[]): Promise<void> {
   await mapInBatches(identifiers, ARCHIVE_CONCURRENCY, (identifier) =>
-    getItemInfo(identifier).catch(() => undefined),
+    getItemInfo(identifier).catch((err: unknown) => {
+      logger.warn({ identifier, reason: networkErrorReason(err) }, 'source unreachable');
+    }),
   );
 }
 
@@ -491,5 +497,16 @@ export async function resolveGames(
     results.push(resolved);
   }
 
+  const roms = results.flatMap((game) => game.roms);
+  logger.info(
+    {
+      datId,
+      games: results.length,
+      roms: roms.length,
+      missing: roms.filter((rom) => rom.sources.length === 0).length,
+      sources: sources.length,
+    },
+    'games resolved',
+  );
   return results;
 }

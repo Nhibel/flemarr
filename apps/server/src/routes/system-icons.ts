@@ -1,3 +1,4 @@
+import { loggedFetch } from '@/lib/logged-fetch.js';
 import { Hono } from 'hono';
 import { systemIconsRequestSchema } from '@shared/system-icon.js';
 import { getSystemIcons, systemIconUrl } from '@/services/system-icon/index.js';
@@ -40,7 +41,7 @@ systemIconsRoute.get('/systems/icon', async (c) => {
 
   let upstream: Response;
   try {
-    upstream = await fetch(url);
+    upstream = await loggedFetch(url);
   } catch (err) {
     return errorJson(c, 502, 'PROVIDER_ERROR', errorMessage(err, 'System icon fetch failed'));
   }

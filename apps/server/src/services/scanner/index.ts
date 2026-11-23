@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { logger } from '@/lib/logger.js';
 import { getDat } from '@/services/dat/index.js';
 import { scanFiles } from './scan-files.js';
 import { walkDir } from './walk.js';
@@ -32,6 +33,9 @@ export async function runScan(datId: string, directory: string): Promise<string>
   const events: ScanEvent[] = [];
   scanJobs.set(jobId, { status: 'running', events });
 
+  const start = Date.now();
+  logger.info({ jobId, datId, directory }, 'scan started');
+
   // Run in background — caller gets jobId immediately
   (async () => {
     try {
@@ -47,10 +51,23 @@ export async function runScan(datId: string, directory: string): Promise<string>
       // Stored before the done event goes out, so a client refetching on
       // that event reads this scan.
       saveLastScan(datId, directory, result, completedAt);
+      logger.info(
+        {
+          jobId,
+          datId,
+          files: filePaths.length,
+          matched: result.matched.length,
+          wrongName: result.wrongName.length,
+          unmatched: result.unmatched.length,
+          ms: Date.now() - start,
+        },
+        'scan done',
+      );
       events.push(doneEvent);
       scanJobs.set(jobId, { status: 'done', events, result, completedAt });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      logger.error({ jobId, datId, directory, err }, 'scan failed');
       const errorEvent: ScanEvent = { type: 'error', message };
       events.push(errorEvent);
       scanJobs.set(jobId, { status: 'error', events, message, completedAt: Date.now() });

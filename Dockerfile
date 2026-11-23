@@ -44,11 +44,15 @@ RUN pnpm --filter @flemarr/server deploy --prod /prod
 # Only the built artifacts and production deps. No pnpm, no source, no compilers.
 FROM node:20-slim AS runtime
 
+# Shown in the startup log; the release workflow passes the version tag.
+ARG APP_VERSION=dev
+
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
     FLEMARR_DATA_DIR=/data \
-    WEB_ROOT=/app/web
+    WEB_ROOT=/app/web \
+    APP_VERSION=$APP_VERSION
 
 COPY --from=builder /prod/node_modules ./node_modules
 COPY --from=builder /app/apps/server/dist ./dist
