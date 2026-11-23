@@ -706,6 +706,34 @@ line away, the order of `STYLES`, if the mix ever stops working.
 
 ---
 
+## Phase 16 — Reliable scan, safe renames, manual links
+
+From an outside tester's first session: 113 GBC files reported "not found", and
+a rename batch refused because of one duplicate.
+
+- [x] **Shared CRCs.** The scanner kept one ROM per CRC, but disc tracks are
+      often identical (878 CRCs under several names in the PropeR PlayStation
+      DAT). A correctly named track could be offered a rename to another
+      game's. Every ROM is now kept; a file nothing can attribute waits for the
+      user to pick its name.
+- [x] **Partial renames.** A taken destination is skipped and listed, the rest
+      is renamed, and the results stay on screen.
+- [x] **Manual links.** The "not found" files were other versions (Europe,
+      France) of games the 1G1R DAT keeps in one version only. The user can
+      attach such a file to a game: shown as "Autre version", counted as owned,
+      left out of the missing games. Single-file games only, no renaming.
+- [x] **Streams reopen** after a cut, instead of reporting a running job as lost.
+- [x] **arm64 built natively** in the publish workflow.
+- [ ] The publish workflow has run on a tag (the arm64 change cannot be tried
+      without one).
+- [ ] The tester confirms. The cause of their fetch errors is not known.
+
+Left for later: identifying those files with a complete No-Intro set
+(libretro-database) and suggesting links from Retool's clone lists, which know
+translated titles.
+
+---
+
 ## Beyond the numbered phases — Authentication (only if exposing beyond the LAN)
 
 Not planned as committed work, but tracked so it isn't forgotten. The app currently has **no authentication**; it is safe only on localhost or a trusted LAN. Making it reachable from the internet requires adding a gate first. The concrete risks, the options (VPN, authenticated reverse proxy, or a ~100-line single-password gate in the app), and the trade-offs are written up in [docs/security.md](./docs/security.md). Pick this up if and when internet exposure actually happens.

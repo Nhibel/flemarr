@@ -116,11 +116,12 @@ app.post('/api/scan', async (c) => {
 
 ## Filesystem safety
 
-The scanner, renamer, and downloader all touch the user's filesystem. Three rules:
+The scanner, renamer, and downloader all touch the user's filesystem. Four rules:
 
 1. **Configured roots only.** Every operation must target a path inside an allowed root. When `ROMS_ROOT` is set (the Docker deployment) it is _the_ single allowed root — the whole library lives under one bind-mounted tree, directory browsing is confined to it, and the UI only ever picks subfolders within it. When unset (local dev) the allowed roots fall back to the per-system paths from settings. This is centralized in `libraryRoots()` (`apps/server/src/lib/library-root.ts`), consumed by the scan/download guards and the `/fs` browse + create-dir routes. Within the root, each system's folder is chosen once in the system view (`SystemFolderBar`, persisted in `settings.systemPaths` keyed by the DAT system name) and both the scanner and the download destination read it — there is no per-operation path input. The UI displays paths relative to `ROMS_ROOT` (`apps/web/src/lib/paths.ts`); the API always exchanges absolute paths.
 2. **No path traversal.** Resolve every user-provided path to its absolute form, then check that it's a prefix-match of an allowed root. Reject `..` segments before resolution.
-3. **Renames are local.** Renames never cross filesystems (because they'd stop being atomic). If a destination is on a different mount, fail explicitly rather than silently copy.
+3. **Renames never overwrite.** A file whose destination exists is skipped and reported; the rest of the batch goes on. A disk failure stops the batch and rolls it back, last rename first.
+4. **Renames are local.** Renames never cross filesystems (because they'd stop being atomic). If a destination is on a different mount, fail explicitly rather than silently copy.
 
 Implement these checks in one place (`apps/server/src/lib/fs-safety.ts`) and use it everywhere. Don't reinvent the guard per route.
 
@@ -151,6 +152,8 @@ A CHD's own bytes never reproduce the DAT's raw-byte CRC32, so the conversion st
 
 ## Concurrency
 
+- **Shared CRCs:** the scanner's index maps a CRC to _every_ ROM that has it, since disc tracks are often identical. A file named like any of them is right; otherwise the game with the most ROMs in the same folder wins, and a tie is left to the user (`alternatives`).
+- **Manual links** (`game_links`, `services/scanner/game-links.ts`): a file whose CRC the DAT does not list, attached by the user to a single-ROM game. Keyed by DAT and CRC, so it survives renames and rescans; it counts only while the last scan still finds the file. Found again by game name when a DAT update changes the game's id.
 - **Scanner:** parallelize CRC32 computation across files. Limit to `os.cpus().length` workers (use `worker_threads` if necessary, or just `Promise.all` with a queue — start simple).
 - **Downloader:** `settings.downloaderConcurrency` (default 2) bounds how many **games** are in flight at once, not how many files — every rom of an admitted game starts together, uncapped by the setting. A multi-file disc game (bin + bin + cue) must not, by itself, occupy every slot and starve other queued games; see `runQueue`'s per-game grouping in `apps/server/src/services/downloader/index.ts`.
 - **CHD conversion** (see below) runs in its own background FIFO queue, entirely decoupled from the download concurrency pool — it must never hold a game's download slot for its own (CPU/disk-bound) duration.
