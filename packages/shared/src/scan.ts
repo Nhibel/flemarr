@@ -30,10 +30,18 @@ const wrongNameEntrySchema = z.object({
 });
 export type WrongNameEntry = z.infer<typeof wrongNameEntrySchema>;
 
-const scanResultSchema = z.object({
+// A file whose CRC the DAT does not list. The CRC is absent for a .chd, and in
+// scans stored before it was kept, where the entry was the bare path.
+const unmatchedFileSchema = z.union([
+  z.string().transform((filePath): { filePath: string; crc?: string } => ({ filePath })),
+  z.object({ filePath: z.string(), crc: z.string().optional() }),
+]);
+export type UnmatchedFile = z.infer<typeof unmatchedFileSchema>;
+
+export const scanResultSchema = z.object({
   matched: z.array(scanMatchSchema),
   wrongName: z.array(wrongNameEntrySchema),
-  unmatched: z.array(z.string()),
+  unmatched: z.array(unmatchedFileSchema),
 });
 export type ScanResult = z.infer<typeof scanResultSchema>;
 

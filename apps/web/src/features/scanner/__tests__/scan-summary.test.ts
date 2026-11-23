@@ -49,7 +49,7 @@ describe('scannedFileCount', () => {
           gameName: 'X',
         },
       ],
-      unmatched: ['/roms/psx/junk.txt'],
+      unmatched: [{ filePath: '/roms/psx/junk.txt' }],
     };
     expect(scannedFileCount(result)).toBe(3);
   });

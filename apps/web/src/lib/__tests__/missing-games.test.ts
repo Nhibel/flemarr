@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeMissingGameIds, computeOwnership, countOwned } from '../missing-games.js';
+import {
+  computeMissingGameIds,
+  computeOwnership,
+  countOwned,
+  linkedGameIds,
+} from '../missing-games.js';
 import type { Game } from '@shared/dat.js';
 import type { ScanResult } from '@shared/scan.js';
 
@@ -148,5 +153,35 @@ describe('countOwned', () => {
 
   it('is zero for an empty scan', () => {
     expect(countOwned(new Map())).toBe(0);
+  });
+});
+
+describe('games owned in another version', () => {
+  const games = [game('a', ['0000aaaa']), game('b', ['0000bbbb'])];
+  const withStray = {
+    ...scan(['0000aaaa']),
+    unmatched: [{ filePath: '/roms/b-europe.bin', crc: 'deadbeef' }],
+  };
+  const link = (gameId: string | null, fileCrc = 'deadbeef') => ({
+    gameId,
+    fileCrc,
+    gameName: 'x',
+  });
+
+  it('counts as owned and not as missing', () => {
+    const linked = linkedGameIds([link('b')], withStray);
+    const ownership = computeOwnership(games, withStray, linked);
+    expect(ownership.get('b')).toBe('otherVersion');
+    expect(countOwned(ownership)).toBe(2);
+    expect(computeMissingGameIds(['a', 'b'], games, withStray, linked)).toEqual([]);
+  });
+
+  it('yields to the exact version', () => {
+    const linked = linkedGameIds([link('a')], withStray);
+    expect(computeOwnership(games, withStray, linked).get('a')).toBe('owned');
+  });
+
+  it('ignores a link whose file is gone or whose game left the DAT', () => {
+    expect(linkedGameIds([link('b', '99999999'), link(null)], withStray).size).toBe(0);
   });
 });

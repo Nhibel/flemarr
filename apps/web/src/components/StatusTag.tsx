@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { css } from '@/styled-system/css';
-import { CheckIcon, WarningIcon, PlusIcon } from './icons.js';
+import { CheckIcon, WarningIcon, PlusIcon, VersionsIcon } from './icons.js';
 import type { Ownership } from '@/lib/missing-games.js';
 
 /**
@@ -9,7 +9,7 @@ import type { Ownership } from '@/lib/missing-games.js';
  * Separate from Chip, which reads "N label" for an aggregate (the scanner's
  * totals). This is the state of a single row, so it carries a word, not a
  * count — but it follows the same rules: a `chip.*` fill, no border, a
- * literal 8px radius, and a pictogram so the three states differ by shape
+ * literal 8px radius, and a pictogram so the four states differ by shape
  * as well as by hue and by lightness. A red/green pair is never the only
  * signal.
  *
@@ -27,6 +27,11 @@ const TAGS = {
     label: 'Mal nommé',
     Icon: WarningIcon,
     style: css.raw({ bg: 'chip.warning.bg', color: 'chip.warning.fg' }),
+  },
+  otherVersion: {
+    label: 'Autre version',
+    Icon: VersionsIcon,
+    style: css.raw({ bg: 'chip.info.bg', color: 'chip.info.fg' }),
   },
   missing: {
     label: 'Manquant',

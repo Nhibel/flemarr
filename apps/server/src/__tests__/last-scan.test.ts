@@ -13,7 +13,11 @@ import { addDat } from '../services/dat/index.js';
 import { scanRoute } from '../routes/scan.js';
 import { datsRoute } from '../routes/dats.js';
 
-const RESULT: ScanResult = { matched: [], wrongName: [], unmatched: ['/roms/x.bin'] };
+const RESULT: ScanResult = {
+  matched: [],
+  wrongName: [],
+  unmatched: [{ filePath: '/roms/x.bin', crc: 'aabbccdd' }],
+};
 
 describe('last scan store', () => {
   let db: Database;
@@ -38,6 +42,14 @@ describe('last scan store', () => {
     saveLastScan('dat1', '/old', RESULT, 1, db);
     saveLastScan('dat1', '/new', { ...RESULT, unmatched: [] }, 2, db);
     expect(getLastScan('dat1', db)).toMatchObject({ directory: '/new', scannedAt: 2 });
+  });
+
+  it('reads a scan stored when an unmatched file was a bare path', () => {
+    const stored = { matched: [], wrongName: [], unmatched: ['/roms/old.bin'] };
+    db.prepare(
+      `INSERT INTO last_scans (dat_id, directory, result_json, scanned_at) VALUES (?, ?, ?, ?)`,
+    ).run('dat1', '/roms', JSON.stringify(stored), 1);
+    expect(getLastScan('dat1', db)?.result.unmatched).toEqual([{ filePath: '/roms/old.bin' }]);
   });
 
   it('forgets a deleted DAT', () => {
@@ -89,7 +101,9 @@ describe('a finished scan, through the routes', () => {
       lastScan: { directory: string; result: ScanResult };
     };
     expect(lastScan.directory).toBe(ROOT);
-    expect(lastScan.result.unmatched).toEqual([join(ROOT, 'stray.bin')]);
+    expect(lastScan.result.unmatched).toEqual([
+      { filePath: join(ROOT, 'stray.bin'), crc: '352441c2' },
+    ]);
 
     await app.request(`/api/dats/${id}`, { method: 'DELETE' });
     const after = await app.request(`/api/dats/${id}/last-scan`);

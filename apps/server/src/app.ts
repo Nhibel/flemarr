@@ -6,6 +6,7 @@ import { errorJson, errorMessage } from '@/lib/http.js';
 import { healthRoute } from '@/routes/health.js';
 import { datsRoute } from '@/routes/dats.js';
 import { scanRoute } from '@/routes/scan.js';
+import { gameLinksRoute } from '@/routes/game-links.js';
 import { archiveRoute } from '@/routes/archive.js';
 import { downloadsRoute } from '@/routes/downloads.js';
 import { fresh1g1rRoute } from '@/routes/fresh1g1r.js';
@@ -49,6 +50,7 @@ app.onError((err, c) => {
 app.route('/api', healthRoute);
 app.route('/api', datsRoute);
 app.route('/api', scanRoute);
+app.route('/api', gameLinksRoute);
 app.route('/api', archiveRoute);
 app.route('/api', downloadsRoute);
 app.route('/api', fresh1g1rRoute);

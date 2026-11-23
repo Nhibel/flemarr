@@ -115,7 +115,7 @@ describe('matchFiles', () => {
   it('classifies a file with unknown CRC as unmatched', () => {
     const result = matchFiles([{ filePath: '/roms/unknown.sfc', crc: 'deadbeef' }], index);
     expect(result.unmatched).toHaveLength(1);
-    expect(result.unmatched[0]).toBe('/roms/unknown.sfc');
+    expect(result.unmatched[0]).toEqual({ filePath: '/roms/unknown.sfc', crc: 'deadbeef' });
   });
 
   it('handles mixed results across multiple files', () => {

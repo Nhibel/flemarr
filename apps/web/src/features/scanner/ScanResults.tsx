@@ -1,14 +1,14 @@
 import { css } from '@/styled-system/css';
 import { Chip } from '@/components/Chip.js';
-import { displayPath } from '@/lib/paths.js';
-import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult } from '@shared/scan.js';
 import { RenameRow } from './RenameRow.js';
+import { UnmatchedFiles } from './UnmatchedFiles.js';
 import { plural } from '@/lib/plural.js';
 import { chosenName } from './use-renames.js';
 import { foundGames, scannedFileCount } from './scan-summary.js';
 
 interface ScanResultsProps {
+  datId: string;
   result: ScanResult;
   selected: Set<string>;
   /** Names picked for the files several games share, by path. */
@@ -23,6 +23,7 @@ interface ScanResultsProps {
 
 /** The scan's outcome: counts, the misnamed files to rename, and what matched nothing. */
 export function ScanResults({
+  datId,
   result,
   selected,
   choices,
@@ -32,7 +33,6 @@ export function ScanResults({
   onRename,
   renaming,
 }: ScanResultsProps) {
-  const romsRoot = useRomsRoot();
   const total = scannedFileCount(result);
   const games = foundGames(result);
   // A file whose name is still to be picked cannot be selected.
@@ -51,7 +51,11 @@ export function ScanResults({
           color="green"
         />
         <Chip label="mal nommés" count={result.wrongName.length} color="amber" />
-        <Chip label="introuvables" count={result.unmatched.length} color="gray" />
+        <Chip
+          label={`${plural(result.unmatched.length, 'absent')} du DAT`}
+          count={result.unmatched.length}
+          color="gray"
+        />
         <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
           {total} {plural(total, 'fichier')} {plural(total, 'scanné')}
         </span>
@@ -119,38 +123,7 @@ export function ScanResults({
         </div>
       )}
 
-      {/* Unmatched */}
-      {result.unmatched.length > 0 && (
-        <details className={css({ fontSize: 'sm' })}>
-          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            {result.unmatched.length} {plural(result.unmatched.length, 'fichier')} non{' '}
-            {plural(result.unmatched.length, 'trouvé')}
-          </summary>
-          <ul
-            className={css({
-              pl: '4',
-              mt: '1',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5',
-            })}
-          >
-            {result.unmatched.map((p) => (
-              <li
-                key={p}
-                className={css({
-                  color: 'fg.subtle',
-                  fontFamily: 'mono',
-                  fontSize: 'xs',
-                  truncate: true,
-                })}
-              >
-                {displayPath(p, romsRoot)}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <UnmatchedFiles datId={datId} files={result.unmatched} />
 
       {/* Found games — folded: on a full folder it is the long list, and
           not the one that asks for action. */}

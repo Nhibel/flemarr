@@ -1,6 +1,6 @@
 import { basename, dirname } from 'node:path';
 import type { DatFile, Game, Rom } from '@shared/dat.js';
-import type { ScanMatch, ScanResult, WrongNameEntry } from '@shared/scan.js';
+import type { ScanMatch, ScanResult, UnmatchedFile, WrongNameEntry } from '@shared/scan.js';
 
 export interface CrcEntry {
   game: Game;
@@ -101,7 +101,7 @@ function describeWrongName(
 export function matchFiles(files: HashedFile[], index: CrcIndex): ScanResult {
   const matched: ScanMatch[] = [];
   const wrongName: WrongNameEntry[] = [];
-  const unmatched: string[] = [];
+  const unmatched: UnmatchedFile[] = [];
   const folders = groupByFolder(files);
 
   for (const file of files) {
@@ -109,7 +109,7 @@ export function matchFiles(files: HashedFile[], index: CrcIndex): ScanResult {
     const entries = index.get(crc);
     const folder = folders.get(dirname(filePath));
     if (entries === undefined || folder === undefined) {
-      unmatched.push(filePath);
+      unmatched.push({ filePath, crc });
       continue;
     }
 

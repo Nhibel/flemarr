@@ -8,6 +8,8 @@ import {
 } from '@shared/api.js';
 import type { DatUploadResponse, GamesResponse, ListDatsResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema, lastScanResponseSchema } from '@shared/scan.js';
+import { gameLinksResponseSchema } from '@shared/game-link.js';
+import type { GameLink } from '@shared/game-link.js';
 import type { ScanJob, RenameRequest, RenameResult, LastScan } from '@shared/scan.js';
 import {
   downloadJobSchema,
@@ -107,6 +109,29 @@ export async function deleteDat(datId: string): Promise<void> {
 export async function fetchLastScan(datId: string): Promise<LastScan | null> {
   const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/last-scan`);
   return parseResponse(res, lastScanResponseSchema).then((r) => r.lastScan);
+}
+
+function gameLinkUrl(datId: string, fileCrc: string): string {
+  return `/api/dats/${encodeURIComponent(datId)}/links/${encodeURIComponent(fileCrc)}`;
+}
+
+export async function fetchGameLinks(datId: string): Promise<GameLink[]> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/links`);
+  return parseResponse(res, gameLinksResponseSchema).then((r) => r.links);
+}
+
+export async function saveGameLink(datId: string, fileCrc: string, gameId: string): Promise<void> {
+  const res = await fetch(gameLinkUrl(datId, fileCrc), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gameId }),
+  });
+  await ensureOk(res);
+}
+
+export async function deleteGameLink(datId: string, fileCrc: string): Promise<void> {
+  const res = await fetch(gameLinkUrl(datId, fileCrc), { method: 'DELETE' });
+  await ensureOk(res);
 }
 
 export async function fetchGames(datId: string): Promise<GamesResponse['games']> {

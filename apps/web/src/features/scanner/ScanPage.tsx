@@ -150,6 +150,7 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
       {/* Results */}
       {scan.phase === 'done' && (
         <ScanResults
+          datId={datId}
           result={scan.result}
           selected={renames.selected}
           choices={renames.choices}

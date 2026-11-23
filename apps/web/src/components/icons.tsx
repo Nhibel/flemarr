@@ -122,6 +122,25 @@ export function PlusIcon() {
   );
 }
 
+/** Two overlapping sheets: another version of the same thing. */
+export function VersionsIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 8h12v12H8z" />
+      <path d="M4 16V4h12" />
+    </svg>
+  );
+}
+
 /** Magnifier for the header's inline search field. */
 export function SearchIcon() {
   return (

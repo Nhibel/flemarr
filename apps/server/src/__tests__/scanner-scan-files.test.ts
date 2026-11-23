@@ -99,7 +99,7 @@ describe('scanFiles — .chd', () => {
     const { result } = await scan([chdPath]);
 
     expect(result.matched).toEqual([]);
-    expect(result.unmatched).toEqual([chdPath]);
+    expect(result.unmatched).toEqual([{ filePath: chdPath }]);
   });
 });
 

@@ -2,7 +2,7 @@ import { cpus } from 'node:os';
 import { basename } from 'node:path';
 import { computeCrc32 } from '@/lib/crc32.js';
 import type { DatFile } from '@shared/dat.js';
-import type { ScanMatch, ScanResult } from '@shared/scan.js';
+import type { ScanMatch, ScanResult, UnmatchedFile } from '@shared/scan.js';
 import { buildCrcIndex, matchFiles } from './matcher.js';
 import { matchChdFile } from './chd-match.js';
 import { indexGamesByName, matchChdByName } from './chd-name-match.js';
@@ -38,7 +38,7 @@ export async function scanFiles(
 
   const hashed: { filePath: string; crc: string }[] = [];
   const chdMatched: ScanMatch[] = [];
-  const chdUnmatched: string[] = [];
+  const chdUnmatched: UnmatchedFile[] = [];
 
   const matchChd = async (filePath: string): Promise<void> => {
     const byName = matchChdByName(filePath, gamesByName);
@@ -51,7 +51,7 @@ export async function scanFiles(
     if (byContent.length > 0) {
       chdMatched.push(...byContent);
     } else {
-      chdUnmatched.push(filePath);
+      chdUnmatched.push({ filePath });
     }
   };
 

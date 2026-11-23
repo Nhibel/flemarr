@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { parseDat, addDat, getDat, listDats, deleteDat } from '@/services/dat/index.js';
 import { clearResolverCache } from '@/services/archive-org/resolver.js';
+import { deleteGameLinks } from '@/services/scanner/game-links.js';
 import { deleteLastScan } from '@/services/scanner/last-scan.js';
 import { deleteDownloadHistory } from '@/services/downloader/history.js';
 import { logger } from '@/lib/logger.js';
@@ -18,6 +19,7 @@ datsRoute.delete('/dats/:id', (c) => {
     return errorJson(c, 404, 'NOT_FOUND', `DAT ${id} not found`);
   }
   deleteLastScan(id);
+  deleteGameLinks(id);
   deleteDownloadHistory(id);
   logger.info({ datId: id }, 'DAT deleted');
   return c.json({ ok: true });

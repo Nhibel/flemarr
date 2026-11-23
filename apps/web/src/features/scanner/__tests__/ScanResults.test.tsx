@@ -22,10 +22,11 @@ function wrongName(file: string) {
 const RESULT: ScanResult = {
   matched: [{ filePath: '/roms/snes/ok.sfc', crc: '11111111', romName: 'ok.sfc', gameName: 'Ok' }],
   wrongName: [wrongName('a.sfc'), wrongName('b.sfc')],
-  unmatched: ['/roms/snes/junk.txt'],
+  unmatched: [{ filePath: '/roms/snes/junk.txt', crc: 'ffffffff' }],
 };
 
 const PROPS: ComponentProps<typeof ScanResults> = {
+  datId: 'd1',
   result: RESULT,
   selected: new Set(),
   choices: new Map(),
@@ -47,6 +48,8 @@ function renderResults(over: Partial<ComponentProps<typeof ScanResults>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(api.fetchGames).mockResolvedValue([]);
+  vi.mocked(api.fetchGameLinks).mockResolvedValue([]);
   vi.mocked(api.getSettings).mockResolvedValue({
     fresh1g1rPreset: 'PropeR',
     downloaderConcurrency: 2,
@@ -65,7 +68,7 @@ describe('ScanResults', () => {
     renderResults();
     expect(screen.getByText('jeu trouvé').parentElement).toHaveTextContent('1');
     expect(screen.getByText('mal nommés').parentElement).toHaveTextContent('2');
-    expect(screen.getByText('introuvables').parentElement).toHaveTextContent('1');
+    expect(screen.getByText('absent du DAT').parentElement).toHaveTextContent('1');
     expect(screen.getByText('4 fichiers scannés')).toBeInTheDocument();
   });
 
@@ -133,7 +136,7 @@ describe('ScanResults', () => {
 
   it('lists the files that matched nothing', () => {
     renderResults();
-    expect(screen.getByText('1 fichier non trouvé')).toBeInTheDocument();
+    expect(screen.getByText('1 fichier absent du DAT')).toBeInTheDocument();
   });
 
   it('hides the rename section when every name is already right', () => {

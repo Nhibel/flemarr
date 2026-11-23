@@ -20,6 +20,8 @@ function fakeEventSource() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(api.fetchGames).mockResolvedValue([]);
+  vi.mocked(api.fetchGameLinks).mockResolvedValue([]);
   vi.mocked(api.getSettings).mockResolvedValue({
     fresh1g1rPreset: 'PropeR',
     downloaderConcurrency: 2,

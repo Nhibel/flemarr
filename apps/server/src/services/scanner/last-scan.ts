@@ -1,4 +1,5 @@
 import type { Database } from 'better-sqlite3';
+import { scanResultSchema } from '@shared/scan.js';
 import type { LastScan, ScanResult } from '@shared/scan.js';
 import { getDb } from '@/lib/db.js';
 
@@ -35,7 +36,7 @@ export function getLastScan(datId: string, db: Database = getDb()): LastScan | n
   return {
     directory: row.directory,
     scannedAt: row.scanned_at,
-    result: JSON.parse(row.result_json) as ScanResult,
+    result: scanResultSchema.parse(JSON.parse(row.result_json)),
   };
 }
 

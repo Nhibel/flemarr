@@ -19,7 +19,13 @@ import { fetchGames } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
 import { useSettings } from '@/lib/use-settings.js';
 import { useSystemIcons } from '@/lib/use-system-icons.js';
-import { computeMissingGameIds, computeOwnership, countOwned } from '@/lib/missing-games.js';
+import {
+  computeMissingGameIds,
+  computeOwnership,
+  countOwned,
+  linkedGameIds,
+} from '@/lib/missing-games.js';
+import { useGameLinks } from '@/lib/use-game-links.js';
 import type { DatUploadResponse } from '@shared/api.js';
 import { GameHeader } from './GameHeader.js';
 import { SelectionDock } from './SelectionDock.js';
@@ -120,10 +126,16 @@ export function GameView({
     [baseFiltered, selected, selectedOnly],
   );
 
+  const links = useGameLinks(dat.id);
+  const linked = useMemo(
+    () => (lastScan ? linkedGameIds(links, lastScan) : undefined),
+    [links, lastScan],
+  );
+
   // Selected games the last scan didn't find on disk — null until a scan ran
   const missingGameIds = useMemo(
-    () => (lastScan ? computeMissingGameIds(selected, games, lastScan) : null),
-    [lastScan, selected, games],
+    () => (lastScan ? computeMissingGameIds(selected, games, lastScan, linked) : null),
+    [lastScan, selected, games, linked],
   );
 
   // Per-game ownership for the row tags, and its totals for the header.
@@ -131,8 +143,8 @@ export function GameView({
   // about what's on disk, and says so rather than tagging 1500 rows
   // "missing" on the strength of no evidence.
   const ownership = useMemo(
-    () => (lastScan ? computeOwnership(games, lastScan) : undefined),
-    [games, lastScan],
+    () => (lastScan ? computeOwnership(games, lastScan, linked) : undefined),
+    [games, lastScan, linked],
   );
   const ownedCount = useMemo(() => (ownership ? countOwned(ownership) : null), [ownership]);
 

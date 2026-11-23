@@ -19,6 +19,6 @@ export function scannedFileCount(result: ScanResult): number {
   const paths = new Set<string>();
   for (const match of result.matched) paths.add(match.filePath);
   for (const entry of result.wrongName) paths.add(entry.filePath);
-  for (const path of result.unmatched) paths.add(path);
+  for (const file of result.unmatched) paths.add(file.filePath);
   return paths.size;
 }

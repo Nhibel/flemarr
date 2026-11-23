@@ -14,6 +14,7 @@ export const queryKeys = {
   settings: () => ['settings'] as const,
   dats: () => ['dats'] as const,
   games: (datId: string) => ['games', datId] as const,
+  gameLinks: (datId: string) => ['game-links', datId] as const,
   lastScan: (datId: string) => ['last-scan', datId] as const,
   runningDownloads: (datId: string) => ['running-downloads', datId] as const,
   downloadHistory: (datId: string) => ['download-history', datId] as const,
