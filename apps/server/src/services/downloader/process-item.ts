@@ -125,7 +125,12 @@ async function fetchFromSources(
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
       logger.warn(
-        { jobId, romName: item.romName, target: logTarget(source.url), error: networkErrorReason(err) },
+        {
+          jobId,
+          romName: item.romName,
+          target: logTarget(source.url),
+          error: networkErrorReason(err),
+        },
         'download source failed',
       );
     }
