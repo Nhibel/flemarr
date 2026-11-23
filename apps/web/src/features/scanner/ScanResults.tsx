@@ -5,33 +5,40 @@ import { useRomsRoot } from '@/lib/use-roms-root.js';
 import type { ScanResult } from '@shared/scan.js';
 import { RenameRow } from './RenameRow.js';
 import { plural } from '@/lib/plural.js';
+import { chosenName } from './use-renames.js';
 import { foundGames, scannedFileCount } from './scan-summary.js';
 
 interface ScanResultsProps {
   result: ScanResult;
   selected: Set<string>;
+  /** Names picked for the files several games share, by path. */
+  choices: ReadonlyMap<string, string>;
   onToggle: (p: string) => void;
+  onChoose: (filePath: string, name: string) => void;
   /** Selects every misnamed file (true) or none (false). */
   onSetAll: (selectAll: boolean) => void;
   onRename: () => void;
   renaming: boolean;
-  renameResult: { done: number; failed: number } | null;
 }
 
 /** The scan's outcome: counts, the misnamed files to rename, and what matched nothing. */
 export function ScanResults({
   result,
   selected,
+  choices,
   onToggle,
+  onChoose,
   onSetAll,
   onRename,
   renaming,
-  renameResult,
 }: ScanResultsProps) {
   const romsRoot = useRomsRoot();
   const total = scannedFileCount(result);
   const games = foundGames(result);
-  const allSelected = result.wrongName.every((entry) => selected.has(entry.filePath));
+  // A file whose name is still to be picked cannot be selected.
+  const selectable = result.wrongName.filter((entry) => chosenName(entry, choices) !== undefined);
+  const allSelected =
+    selectable.length > 0 && selectable.every((entry) => selected.has(entry.filePath));
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
@@ -80,7 +87,9 @@ export function ScanResults({
                 key={entry.filePath}
                 entry={entry}
                 checked={selected.has(entry.filePath)}
+                choice={choices.get(entry.filePath)}
                 onToggle={onToggle}
+                onChoose={onChoose}
               />
             ))}
           </div>
@@ -106,19 +115,6 @@ export function ScanResults({
                 ? 'Renommage…'
                 : `Renommer ${selected.size} ${plural(selected.size, 'fichier')}`}
             </button>
-            {renameResult && (
-              <span
-                className={css({
-                  fontSize: 'sm',
-                  color: renameResult.failed > 0 ? 'status.danger.text' : 'status.success.text',
-                })}
-              >
-                {renameResult.done} {plural(renameResult.done, 'renommé')}
-                {renameResult.failed > 0
-                  ? `, ${renameResult.failed} ${plural(renameResult.failed, 'échoué')}`
-                  : ''}
-              </span>
-            )}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '@/lib/api.js';
@@ -59,5 +59,54 @@ describe('ScanPage', () => {
 
     await send({ type: 'progress', scanned: 1, total: 1 });
     expect(screen.queryByText(/Décompression de/)).not.toBeInTheDocument();
+  });
+
+  async function scanWithMisnamedFile() {
+    const { source, send } = fakeEventSource();
+    vi.mocked(api.openScanEvents).mockReturnValue(source as unknown as EventSource);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Scanner' }));
+    const done: ScanEvent = {
+      type: 'done',
+      result: {
+        matched: [],
+        wrongName: [
+          {
+            filePath: '/roms/psx/a.bin',
+            currentName: 'a.bin',
+            canonicalName: 'A.bin',
+            crc: 'aabbccdd',
+            gameName: 'A',
+          },
+        ],
+        unmatched: [],
+      },
+    };
+    await send(done);
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Renommer 1 fichier' }));
+    return { send, done };
+  }
+
+  it('still explains a skipped duplicate after the rescan', async () => {
+    vi.mocked(api.requestRenames).mockResolvedValue({
+      done: [],
+      failed: [],
+      rolledBack: [],
+      skipped: [{ entry: { from: '/roms/psx/a.bin', to: 'A.bin' }, reason: 'destination-exists' }],
+    });
+    const { send, done } = await scanWithMisnamedFile();
+    await waitFor(() => expect(api.startScan).toHaveBeenCalledTimes(2));
+    await send(done);
+    expect(screen.getByText(/un autre fichier porte déjà ce nom/)).toBeInTheDocument();
+    expect(screen.getByText('/psx/a.bin ↔ /psx/A.bin')).toBeInTheDocument();
+  });
+
+  it('keeps the results on screen when a rename fails', async () => {
+    vi.mocked(api.requestRenames).mockRejectedValue(new Error('disque plein'));
+    await scanWithMisnamedFile();
+    expect(await screen.findByRole('alert')).toHaveTextContent('disque plein');
+    expect(screen.getByText('a.bin')).toBeInTheDocument();
   });
 });

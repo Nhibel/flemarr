@@ -137,37 +137,25 @@ describe('POST /api/scan/rename', () => {
     expect(body.error?.code).toBe('PATH_TRAVERSAL');
   });
 
-  it('returns 409 when a destination file already exists', async () => {
+  it('skips a taken destination without failing the batch', async () => {
     await writeFile(join(ROOT, 'wrong-name.sfc'), 'a');
     await writeFile(join(ROOT, 'Canonical.sfc'), 'b');
-
-    const res = await app.request('/api/scan/rename', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        renames: [{ from: join(ROOT, 'wrong-name.sfc'), to: 'Canonical.sfc' }],
-      }),
-    });
-    expect(res.status).toBe(409);
-    const body = (await res.json()) as { error?: { code: string } };
-    expect(body.error?.code).toBe('DESTINATION_COLLISION');
-  });
-
-  it('returns 409 when two renames target the same destination', async () => {
-    await writeFile(join(ROOT, 'a.sfc'), 'a');
-    await writeFile(join(ROOT, 'b.sfc'), 'b');
+    await writeFile(join(ROOT, 'other.sfc'), 'c');
 
     const res = await app.request('/api/scan/rename', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         renames: [
-          { from: join(ROOT, 'a.sfc'), to: 'Same.sfc' },
-          { from: join(ROOT, 'b.sfc'), to: 'Same.sfc' },
+          { from: join(ROOT, 'wrong-name.sfc'), to: 'Canonical.sfc' },
+          { from: join(ROOT, 'other.sfc'), to: 'Other.sfc2' },
         ],
       }),
     });
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { done: unknown[]; skipped: { reason: string }[] };
+    expect(body.done).toHaveLength(1);
+    expect(body.skipped.map((skip) => skip.reason)).toEqual(['destination-exists']);
   });
 
   it('renames a file inside a configured root', async () => {

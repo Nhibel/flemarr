@@ -28,11 +28,12 @@ const RESULT: ScanResult = {
 const PROPS: ComponentProps<typeof ScanResults> = {
   result: RESULT,
   selected: new Set(),
+  choices: new Map(),
+  onChoose: () => {},
   onToggle: () => {},
   onSetAll: () => {},
   onRename: () => {},
   renaming: false,
-  renameResult: null,
 };
 
 function withQueryClient(children: ReactNode) {
@@ -120,9 +121,14 @@ describe('ScanResults', () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it('reports a rename outcome, failures included', () => {
-    renderResults({ renameResult: { done: 1, failed: 2 } });
-    expect(screen.getByText('1 renommé, 2 échoués')).toBeInTheDocument();
+  it('cannot select a shared file before its name is picked', async () => {
+    const onChoose = vi.fn();
+    const onSetAll = vi.fn();
+    const shared = { ...wrongName('x.bin'), alternatives: ['Alpha.bin', 'Beta.bin'] };
+    renderResults({ result: { ...RESULT, wrongName: [shared] }, onChoose, onSetAll });
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'Beta.bin');
+    expect(onChoose).toHaveBeenCalledWith('/roms/snes/x.bin', 'Beta.bin');
   });
 
   it('lists the files that matched nothing', () => {

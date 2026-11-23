@@ -1,13 +1,15 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { css } from '@/styled-system/css';
-import { startScan, openScanEvents, requestRenames } from '@/lib/api.js';
+import { startScan, openScanEvents } from '@/lib/api.js';
 import { Button } from '@/components/Button.js';
 import { useSystemFolder } from '@/lib/use-system-folder.js';
 import { displayPath } from '@/lib/paths.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
-import type { ScanResult, ScanEvent } from '@shared/scan.js';
+import type { ScanResult, ScanEvent, WrongNameEntry } from '@shared/scan.js';
 import { scanEventSchema } from '@shared/scan.js';
+import { RenameOutcomeNote } from './RenameOutcomeNote.js';
 import { ScanResults } from './ScanResults.js';
+import { useRenames } from './use-renames.js';
 import { plural } from '@/lib/plural.js';
 
 interface Props {
@@ -22,21 +24,18 @@ type ScanState =
   | { phase: 'done'; result: ScanResult; directory: string }
   | { phase: 'error'; message: string };
 
+const NO_ENTRIES: WrongNameEntry[] = [];
+
 export function ScanPage({ datId, system, onScanComplete }: Props) {
   // The directory to scan is the system's folder, chosen once in SystemFolderBar.
   const { folder: directory, loaded } = useSystemFolder(system);
   const romsRoot = useRomsRoot();
   const [scan, setScan] = useState<ScanState>({ phase: 'idle' });
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [renaming, setRenaming] = useState(false);
-  const [renameResult, setRenameResult] = useState<{ done: number; failed: number } | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
-  const handleScan = useCallback(async () => {
+  const runScan = useCallback(async () => {
     if (!directory) return;
     esRef.current?.close();
-    setSelected(new Set());
-    setRenameResult(null);
     setScan({ phase: 'scanning', scanned: 0, total: 0 });
 
     let job: { jobId: string };
@@ -82,59 +81,26 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
     };
   }, [datId, directory, onScanComplete]);
 
-  const toggleRename = useCallback((filePath: string) => {
-    setSelected((s) => {
-      const next = new Set(s);
-      if (next.has(filePath)) next.delete(filePath);
-      else next.add(filePath);
-      return next;
-    });
-  }, []);
+  const wrongNames = scan.phase === 'done' ? scan.result.wrongName : NO_ENTRIES;
+  const renames = useRenames(wrongNames, runScan);
+  const { clearSelection, clearOutcome } = renames;
 
-  // Not a toggle per file: with some already ticked, toggling each one
-  // inverted the selection instead of completing it.
-  const setAllRenames = useCallback(
-    (selectAll: boolean) => {
-      if (scan.phase !== 'done') return;
-      const everyFile = scan.result.wrongName.map((entry) => entry.filePath);
-      setSelected(new Set(selectAll ? everyFile : []));
-    },
-    [scan],
-  );
+  // A new scan makes the ticked files stale, whoever started it.
+  const isScanning = scan.phase === 'scanning';
+  useEffect(() => {
+    if (isScanning) clearSelection();
+  }, [isScanning, clearSelection]);
 
-  const handleRename = useCallback(async () => {
-    if (scan.phase !== 'done' || selected.size === 0) return;
-    setRenaming(true);
-
-    const entries = scan.result.wrongName
-      .filter((e) => selected.has(e.filePath))
-      .map((e) => ({ from: e.filePath, to: e.canonicalName }));
-
-    try {
-      const result = await requestRenames({ renames: entries });
-      setRenameResult({ done: result.done.length, failed: result.failed.length });
-      if (result.failed.length === 0) {
-        // Re-scan to refresh results
-        await handleScan();
-      }
-    } catch (err) {
-      setScan({
-        phase: 'error',
-        message: err instanceof Error ? err.message : 'Échec du renommage',
-      });
-    } finally {
-      setRenaming(false);
-    }
-  }, [scan, selected, handleScan]);
+  const handleScan = useCallback(() => {
+    clearOutcome();
+    void runScan();
+  }, [clearOutcome, runScan]);
 
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
       {/* Scan control — the directory comes from the system folder (SystemFolderBar) */}
       <div className={css({ display: 'flex', gap: '3', alignItems: 'center' })}>
-        <Button
-          onClick={() => void handleScan()}
-          disabled={!directory || scan.phase === 'scanning'}
-        >
+        <Button onClick={handleScan} disabled={!directory || scan.phase === 'scanning'}>
           {scan.phase === 'scanning' ? 'Scan en cours…' : 'Scanner'}
         </Button>
         {directory ? (
@@ -179,16 +145,19 @@ export function ScanPage({ datId, system, onScanComplete }: Props) {
         </p>
       )}
 
+      {renames.outcome !== null && <RenameOutcomeNote outcome={renames.outcome} />}
+
       {/* Results */}
       {scan.phase === 'done' && (
         <ScanResults
           result={scan.result}
-          selected={selected}
-          onToggle={toggleRename}
-          onSetAll={setAllRenames}
-          onRename={() => void handleRename()}
-          renaming={renaming}
-          renameResult={renameResult}
+          selected={renames.selected}
+          choices={renames.choices}
+          onToggle={renames.toggle}
+          onChoose={renames.choose}
+          onSetAll={renames.setAll}
+          onRename={() => void renames.rename()}
+          renaming={renames.renaming}
         />
       )}
     </div>

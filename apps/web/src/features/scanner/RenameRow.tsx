@@ -7,13 +7,20 @@ import type { WrongNameEntry } from '@shared/scan.js';
 export function RenameRow({
   entry,
   checked,
+  choice,
   onToggle,
+  onChoose,
 }: {
   entry: WrongNameEntry;
   checked: boolean;
+  /** The name picked among the alternatives, if any. */
+  choice?: string;
   onToggle: (p: string) => void;
+  onChoose: (filePath: string, name: string) => void;
 }) {
   const romsRoot = useRomsRoot();
+  const { alternatives } = entry;
+  const isChoicePending = alternatives !== undefined && choice === undefined;
   return (
     <label
       className={css({
@@ -31,6 +38,7 @@ export function RenameRow({
       <input
         type="checkbox"
         checked={checked}
+        disabled={isChoicePending}
         onChange={() => onToggle(entry.filePath)}
         className={css({ mt: '0.5', flexShrink: 0 })}
       />
@@ -43,9 +51,29 @@ export function RenameRow({
         <span className={css({ fontSize: 'sm', color: 'fg.default' })}>
           <span className={css({ color: 'status.danger.text' })}>{entry.currentName}</span>
           {' → '}
-          <span className={css({ color: 'status.success.text' })}>{entry.canonicalName}</span>
+          {alternatives === undefined ? (
+            <span className={css({ color: 'status.success.text' })}>{entry.canonicalName}</span>
+          ) : (
+            <select
+              aria-label={`Nom à donner à ${entry.currentName}`}
+              value={choice ?? ''}
+              onChange={(e) => onChoose(entry.filePath, e.target.value)}
+              className={css({ px: '2', maxW: 'full', fontSize: 'xs', borderRadius: '9px' })}
+            >
+              <option value="">Choisir un nom…</option>
+              {alternatives.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          )}
         </span>
-        <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>{entry.gameName}</span>
+        <span className={css({ fontSize: 'xs', color: 'fg.faint' })}>
+          {alternatives === undefined
+            ? entry.gameName
+            : 'Fichier identique dans plusieurs jeux : impossible de savoir lequel.'}
+        </span>
       </div>
     </label>
   );

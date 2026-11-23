@@ -5,11 +5,7 @@ import { streamJobEvents } from '@/lib/job-event-stream.js';
 import { scanRequestSchema, renameRequestSchema } from '@shared/scan.js';
 import { runScan, scanJobs } from '@/services/scanner/index.js';
 import { getLastScan } from '@/services/scanner/last-scan.js';
-import {
-  findCollisions,
-  renameDestination,
-  renameWithRollback,
-} from '@/services/scanner/rename.js';
+import { renameDestination, renameWithRollback } from '@/services/scanner/rename.js';
 import {
   assertWithinConfiguredRoots,
   PathTraversalError,
@@ -101,21 +97,6 @@ scanRoute.post('/scan/rename', async (c) => {
       if (known) return known;
       throw err;
     }
-  }
-
-  // Refuse the whole batch if any destination already exists or is duplicated
-  // within the batch — a rename would silently overwrite the existing file.
-  const collisions = await findCollisions(renames);
-  if (collisions.length > 0) {
-    return errorJson(
-      c,
-      409,
-      'DESTINATION_COLLISION',
-      `Destination already exists: ${collisions.join(', ')}`,
-      {
-        collisions,
-      },
-    );
   }
 
   const result = await renameWithRollback(renames);

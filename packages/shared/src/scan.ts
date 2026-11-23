@@ -79,6 +79,8 @@ export type RenameRequest = z.infer<typeof renameRequestSchema>;
 export const renameResultSchema = z.object({
   done: z.array(renameEntrySchema),
   failed: z.array(z.object({ entry: renameEntrySchema, error: z.string() })),
+  // Left under their name: renaming would have overwritten another file.
+  skipped: z.array(z.object({ entry: renameEntrySchema, reason: z.literal('destination-exists') })),
   // Entries undone by the best-effort rollback after a failure — always
   // empty when failed.length === 0.
   rolledBack: z.array(z.string()),
