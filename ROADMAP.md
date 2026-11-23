@@ -180,6 +180,10 @@ Make the DAT upload step optional by pulling from Fresh1G1R automatically.
 
 ### Shipped notes
 
+Superseded on 2026-11-23: Fresh1G1R moved its DATs from the repository to
+release assets, so everything below about the Contents and Trees APIs and the
+SHA cache key is history. See ARCHITECTURE.md § "Fresh1G1R DATs".
+
 `GET /api/dat-sources` no longer uses GitHub's Contents API as described
 above — swapped for the Git Trees API (f544ab5, November 2026) after
 intermittent 502/503/504s traced to the Contents API's ~340KB response

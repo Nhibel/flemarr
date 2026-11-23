@@ -290,9 +290,24 @@ records the decisions and the deliberate departures from the comps.
 
 ---
 
+## Fresh1G1R DATs
+
+Since 2026-11-21 Fresh1G1R publishes its DATs as ZIP assets of a daily GitHub release, one per preset and collection, up to 77 MB. `services/fresh1g1r/` reads them by HTTP byte range: the ZIP directory from the end of the archive to list DATs, then only the wanted entry. It uses the plain download URLs, not the rate-limited API.
+
+- The latest release is resolved once and pinned with its index (10 minutes), so two releases are never mixed.
+- A DAT is still identified by the path it had in the repository (`daily-1g1r-dat/<preset>/<collection>/<file>`). That path no longer exists upstream, but it is stored with every loaded DAT: changing it would cut those off from their updates.
+- `revision` (CRC32 and size) replaces the git blob SHA as the cache key.
+- Ranges must have explicit bounds: GitHub's storage answers 501 to `bytes=-N`.
+
+---
+
 ## Logging
 
 - Backend: structured logs via `pino` (`apps/server/src/lib/logger.ts`). Log every API request with method, path, status, duration. Log every external HTTP call (archive.org, GitHub) with target, status, duration. Never log credentials or cookies — paths and identifiers only.
+- External calls go through `loggedFetch` (`lib/logged-fetch.ts`), which logs host and path only: a query string can carry a signature. Expected answers are `debug`, errors `warn`.
+- Every error response is logged by `errorJson` (4xx `warn`, 5xx `error`), so a route that answers 502 always leaves its cause in the log.
+- Each request gets a `requestId` (also sent as `X-Request-Id`), carried by `AsyncLocalStorage` into the background work it starts: one scan or download can be followed end to end. Jobs also log their `jobId`.
+- `LOG_LEVEL` (default `info`; `debug` adds external requests, cache lookups and healthchecks). An unknown value falls back to `info`.
 - Frontend: console only. Don't ship logs anywhere.
 - No PII to worry about (single-user homelab app), but still no need to log file contents — just paths.
 

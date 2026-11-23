@@ -101,6 +101,14 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 Le premier build prend quelques minutes. Dans Portainer (mode _Repository_), ajoute `docker-compose.build.yml` dans _Additional paths_.
 
+## Dépannage
+
+```bash
+docker logs --tail 200 flemarr
+```
+
+Les erreurs y figurent avec leur cause, et tout ce que déclenche un clic partage le même `requestId`. Pour plus de détail, règle `LOG_LEVEL=debug` dans `.env` (ou dans les variables de la stack) puis lance `docker compose up -d`. Les journaux ne contiennent ni mot de passe ni clé, mais ils contiennent des chemins et des noms de ROM : relis-les avant de les publier dans une issue.
+
 ## ⚠️ Sécurité
 
 Flemarr n'a **aucune authentification**. Elle est faite pour tourner en local ou sur un réseau domestique de confiance, c'est pourquoi le fichier compose publie le port sur `127.0.0.1`. Ne mets `BIND_ADDR=0.0.0.0` que sur un réseau local de confiance, et ne l'expose **jamais** sur Internet sans un reverse proxy authentifié ou un VPN devant, en HTTPS : quiconque y accède peut utiliser ton compte archive.org et écrire dans ta collection. Détails et options (en anglais) : [docs/security.md](./docs/security.md).

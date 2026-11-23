@@ -103,6 +103,14 @@ The first build takes a few minutes. In Portainer (_Repository_ mode), add `dock
 
 Coming from rom-curator, the app's former name? See [docs/migrating-from-rom-curator.md](./docs/migrating-from-rom-curator.md).
 
+## Troubleshooting
+
+```bash
+docker logs --tail 200 flemarr
+```
+
+Errors are logged with their cause, and everything a click triggers shares one `requestId`. For more detail, set `LOG_LEVEL=debug` in `.env` (or in the stack's environment variables) and run `docker compose up -d`. Logs never hold passwords or keys, but they do hold file paths and ROM names: read them before posting them in an issue.
+
 ## ⚠️ Security
 
 Flemarr has **no authentication**. It is meant for localhost or a trusted home network only, which is why the compose file binds to `127.0.0.1`. Set `BIND_ADDR=0.0.0.0` only on a LAN you trust, and **never** expose it to the internet without an authenticated reverse proxy or a VPN in front, over HTTPS: anyone who reaches it can use your archive.org account and write to your library. Details and options: [docs/security.md](./docs/security.md).
