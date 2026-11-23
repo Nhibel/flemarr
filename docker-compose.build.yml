@@ -1,0 +1,10 @@
+# Builds the image from this checkout instead of pulling the published one —
+# to run an unreleased commit. Use it on top of the main file:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  flemarr:
+    build: .
+    image: flemarr:local
+    # Keeps `docker compose pull` (e.g. Portainer's re-pull) from looking for
+    # flemarr:local on a registry, where it does not exist.
+    pull_policy: build

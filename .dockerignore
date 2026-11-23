@@ -18,6 +18,7 @@
 Dockerfile
 .dockerignore
 docker-compose.yml
+docker-compose.build.yml
 
 # Local env, data, logs, coverage
 .env

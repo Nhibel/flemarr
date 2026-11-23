@@ -45,16 +45,17 @@ Tu débutes ? Le [guide d'utilisation](./docs/guide-utilisateur.md) explique les
 
 ## Installation rapide
 
+Pas besoin de cloner le dépôt : l'app est fournie sous forme d'image toute prête (`ghcr.io/nhibel/flemarr`, amd64 et arm64). Deux fichiers suffisent.
+
 ```sh
-git clone https://github.com/Nhibel/flemarr.git
-cd flemarr
-cp .env.example .env        # puis mets dans ROMS_HOST_DIR le dossier de ta collection
-docker compose up -d --build
+mkdir flemarr && cd flemarr
+curl -fsSLO https://raw.githubusercontent.com/Nhibel/flemarr/master/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/Nhibel/flemarr/master/.env.example -o .env
+# édite .env : ROMS_HOST_DIR, et BIND_ADDR si tu ouvres l'app depuis une autre machine
+docker compose up -d
 ```
 
-Ouvre `http://127.0.0.1:3000`.
-
-Il n'y a pas d'image toute prête : la stack se construit depuis le Dockerfile, ce qui prend quelques minutes la première fois.
+Ouvre `http://127.0.0.1:3000`, ou `http://<adresse-du-serveur>:3000` depuis une autre machine une fois `BIND_ADDR=0.0.0.0` réglé.
 
 ### Monter ta collection
 
@@ -65,24 +66,40 @@ Fais pointer `ROMS_HOST_DIR` **directement sur le dossier de ta collection**, pa
 ROMS_HOST_DIR=/srv/roms
 ```
 
+Le conteneur tourne avec l'utilisateur non-root `node` (**UID 1000**) : le dossier de la collection doit être accessible en écriture par cet UID, sinon les téléchargements et les renommages échouent. Sur un NAS où les partages appartiennent à un autre utilisateur : `sudo chown -R 1000:1000 /srv/roms`, ou donne à l'UID 1000 le droit d'écriture sur le partage.
+
 ### Configuration
 
-| Variable           | Défaut      | Rôle                                                                              |
-| ------------------ | ----------- | --------------------------------------------------------------------------------- |
-| `BIND_ADDR`        | `127.0.0.1` | Adresse de l'hôte où le port est publié. Boucle locale par défaut, voir Sécurité. |
-| `PORT`             | `3000`      | Port de l'hôte où l'app est publiée.                                              |
-| `ROMS_HOST_DIR`    | `./roms`    | Dossier de l'hôte qui contient ta collection ; monté sur `/roms`.                 |
-| `ROMS_ROOT`        | `/roms`     | Racine de la collection dans le conteneur, à laquelle tout est limité.            |
-| `FLEMARR_DATA_DIR` | `/data`     | Emplacement de la base SQLite et du cache des DAT (le volume `flemarr-data`).     |
+Ces trois variables se règlent dans `.env` :
+
+| Variable        | Défaut      | Rôle                                                                                                                                                                                 |
+| --------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROMS_HOST_DIR` | `./roms`    | Dossier de l'hôte qui contient ta collection ; monté sur `/roms`.                                                                                                                    |
+| `BIND_ADDR`     | `127.0.0.1` | Adresse de l'hôte où le port est publié. Boucle locale par défaut : l'app n'est joignable **que depuis la machine elle-même** ; `0.0.0.0` l'ouvre à ton réseau local, voir Sécurité. |
+| `PORT`          | `3000`      | Port de l'hôte où l'app est publiée.                                                                                                                                                 |
+
+Le fichier compose fixe aussi `ROMS_ROOT=/roms` (la racine de la collection dans le conteneur, à laquelle tout est limité) et `FLEMARR_DATA_DIR=/data` (la base SQLite et le cache des DAT, dans le volume `flemarr-data`) ; aucune raison d'y toucher.
 
 Tout le reste (le préréglage 1G1R, le nombre de téléchargements simultanés, le dossier de chaque console, le compte archive.org, la destination des téléchargements, la conversion en `.chd`) se règle depuis la page **Réglages** de l'app et est enregistré dans sa base.
 
 ### Déployer sur un serveur maison
 
-- **Portainer** : Stacks → Add stack → _Repository_, indique ce dépôt et `docker-compose.yml`. Portainer le clone et le construit.
-- **SSH** : `git clone`, puis `docker compose up -d --build`.
+- **Portainer** : Stacks → Add stack → _Web editor_, colle `docker-compose.yml`, et règle `ROMS_HOST_DIR` et `BIND_ADDR` dans _Environment variables_. Ou _Repository_, en indiquant ce dépôt et `docker-compose.yml`.
+- **SSH** : l'installation rapide ci-dessus.
 
-Pour mettre à jour, récupère le dernier commit et reconstruis (dans Portainer : _Pull and redeploy_).
+Pour mettre à jour : `docker compose pull && docker compose up -d` (dans Portainer : _Update the stack_ avec _Re-pull image_ activé). Tes données et tes réglages sont dans le volume `flemarr-data` et survivent aux mises à jour.
+
+### Construire depuis les sources
+
+Pour faire tourner un commit pas encore publié, construis l'image toi-même depuis un clone :
+
+```sh
+git clone https://github.com/Nhibel/flemarr.git && cd flemarr
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+Le premier build prend quelques minutes. Dans Portainer (mode _Repository_), ajoute `docker-compose.build.yml` dans _Additional paths_.
 
 ## ⚠️ Sécurité
 

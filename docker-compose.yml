@@ -1,11 +1,8 @@
 services:
   flemarr:
-    build: .
-    image: flemarr:latest
-    # Build the image locally from the Dockerfile — it is not published to any
-    # registry. Prevents `docker compose pull` (e.g. Portainer's "re-pull")
-    # from failing with "pull access denied for flemarr".
-    pull_policy: build
+    # Published by .github/workflows/docker.yml on every version tag. To build
+    # from source instead, add docker-compose.build.yml (see the README).
+    image: ghcr.io/nhibel/flemarr:latest
     container_name: flemarr
     restart: unless-stopped
     ports:
