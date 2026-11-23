@@ -55,6 +55,16 @@ function makeRequest(overrides: Partial<DownloadRequest> = {}): DownloadRequest 
   return { datId: 'dat-001', items: [ITEM], target: 'server', destinationDir: TMP, ...overrides };
 }
 
+// The job's work hits the real disk: no fixed delay is always long enough.
+async function jobEnd(jobId: string): Promise<void> {
+  await vi.waitFor(
+    () => {
+      expect(['complete', 'cancelled']).toContain(downloadJobs.get(jobId)?.events.at(-1)?.type);
+    },
+    { timeout: 10_000, interval: 10 },
+  );
+}
+
 describe('startDownload', () => {
   it('returns a jobId immediately', async () => {
     vi.mocked(downloadFile).mockResolvedValue('done');
@@ -301,7 +311,7 @@ describe('startDownload — multiple items with concurrency', () => {
     };
 
     const jobId = await startDownload(request);
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     expect(vi.mocked(downloadFile)).toHaveBeenCalledTimes(3);
     const job = downloadJobs.get(jobId)!;
@@ -390,7 +400,7 @@ describe('archive-container fast path — shared container dedup', () => {
       target: 'server',
       destinationDir: TMP,
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     expect(containerFetches).toBe(1);
     expect(vi.mocked(extractContainerEntry)).toHaveBeenCalledTimes(2);
@@ -438,7 +448,7 @@ describe('archive-container fast path — shared container dedup', () => {
       target: 'server',
       destinationDir: TMP,
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     const job = downloadJobs.get(jobId)!;
     const binProgress = job.events.find(
@@ -472,7 +482,7 @@ describe('archive-container fast path — shared container dedup', () => {
       target: 'server',
       destinationDir: TMP,
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     const job = downloadJobs.get(jobId)!;
     const types = job.events.map((e) => e.type);
@@ -781,7 +791,7 @@ describe('autoConvertChd', () => {
       items: discItems,
       target: 'browser',
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     const job = downloadJobs.get(jobId)!;
 
@@ -830,7 +840,7 @@ describe('autoConvertChd', () => {
       items: discItems,
       target: 'browser',
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     const job = downloadJobs.get(jobId)!;
 
@@ -870,7 +880,7 @@ describe('autoConvertChd', () => {
       items: discItems,
       target: 'browser',
     });
-    await new Promise((r) => setTimeout(r, 150));
+    await jobEnd(jobId);
 
     const job = downloadJobs.get(jobId)!;
 
