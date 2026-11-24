@@ -1,9 +1,11 @@
 import { cpus } from 'node:os';
 import { basename } from 'node:path';
 import { computeCrc32 } from '@/lib/crc32.js';
+import { computeCrc32BehindInesHeader } from '@/lib/ines-header.js';
 import type { DatFile } from '@shared/dat.js';
 import type { ScanMatch, ScanResult, UnmatchedFile } from '@shared/scan.js';
 import { buildCrcIndex, matchFiles } from './matcher.js';
+import type { CrcIndex } from './matcher.js';
 import { matchChdFile } from './chd-match.js';
 import { indexGamesByName, matchChdByName } from './chd-name-match.js';
 
@@ -15,6 +17,19 @@ export interface ScanProgress {
   total: number;
   /** The .chd being decompressed to identify it, when there is one. */
   extracting?: string;
+}
+
+/**
+ * The CRC the DAT may know a file by. A Headerless DAT lists NES games without
+ * the iNES header their files carry. A file the DAT knows neither way keeps
+ * the CRC of all its bytes, the one manual links are stored under.
+ */
+async function identifyingCrc(filePath: string, index: CrcIndex): Promise<string> {
+  const crc = await computeCrc32(filePath);
+  if (index.has(crc)) return crc;
+  const headerlessCrc = await computeCrc32BehindInesHeader(filePath);
+  const isKnownHeaderless = headerlessCrc !== null && index.has(headerlessCrc);
+  return isKnownHeaderless ? headerlessCrc : crc;
 }
 
 /**
@@ -67,7 +82,7 @@ export async function scanFiles(
           await matchChd(filePath);
           return undefined;
         }
-        return { filePath, crc: await computeCrc32(filePath) };
+        return { filePath, crc: await identifyingCrc(filePath, crcIndex) };
       }),
     );
     // Pushed after the chunk settles, in file order — not as each hash

@@ -40,10 +40,11 @@ export class Crc32Accumulator {
   }
 }
 
-export function computeCrc32(filePath: string): Promise<string> {
+/** The CRC32 of a file, from byte `start` to its end. */
+export function computeCrc32(filePath: string, start = 0): Promise<string> {
   return new Promise((resolve, reject) => {
     let crc = 0;
-    const stream = createReadStream(filePath);
+    const stream = createReadStream(filePath, { start });
     stream.on('data', (chunk) => {
       crc = update(crc, Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     });
