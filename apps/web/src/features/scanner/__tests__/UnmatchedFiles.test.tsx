@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as api from '@/lib/api.js';
 import type { Game } from '@shared/dat.js';
 import type { UnmatchedFile } from '@shared/scan.js';
+import { useGameLinks } from '@/lib/use-game-links.js';
+import { splitUnmatched } from '../scan-summary.js';
+import { useOpenSections } from '../use-open-sections.js';
 import { UnmatchedFiles } from '../UnmatchedFiles.js';
 
 vi.mock('@/lib/api.js');
@@ -26,11 +29,19 @@ beforeEach(() => {
   vi.mocked(api.deleteGameLink).mockResolvedValue(undefined);
 });
 
+function Harness({ files }: { files: UnmatchedFile[] }) {
+  const { openSections, setOpen } = useOpenSections();
+  const groups = splitUnmatched(files, useGameLinks('d1'));
+  return (
+    <UnmatchedFiles datId="d1" {...groups} openSections={openSections} onOpenChange={setOpen} />
+  );
+}
+
 function renderFiles(files: UnmatchedFile[]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <UnmatchedFiles datId="d1" files={files} />
+      <Harness files={files} />
     </QueryClientProvider>,
   );
 }
@@ -70,7 +81,7 @@ describe('UnmatchedFiles', () => {
     const user = userEvent.setup();
     renderFiles([FILE]);
     await user.click(await screen.findByRole('button', { name: /^Détacher/ }));
-    expect(screen.getByText('1 fichier rattaché')).toBeInTheDocument();
+    expect(screen.getByText('1 fichier rattaché à un jeu')).toBeInTheDocument();
     expect(api.deleteGameLink).toHaveBeenCalledWith('d1', 'deadbeef');
   });
 

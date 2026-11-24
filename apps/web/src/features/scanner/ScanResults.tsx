@@ -1,11 +1,15 @@
 import { css } from '@/styled-system/css';
 import { Chip } from '@/components/Chip.js';
+import { Foldable } from '@/components/Foldable.js';
+import { useGameLinks } from '@/lib/use-game-links.js';
 import type { ScanResult } from '@shared/scan.js';
 import { RenameRow } from './RenameRow.js';
 import { UnmatchedFiles } from './UnmatchedFiles.js';
 import { plural } from '@/lib/plural.js';
 import { chosenName } from './use-renames.js';
-import { foundGames, scannedFileCount } from './scan-summary.js';
+import { sectionId, useOpenSections } from './use-open-sections.js';
+import type { ScanSection } from './use-open-sections.js';
+import { foundGames, scannedFileCount, splitUnmatched } from './scan-summary.js';
 
 interface ScanResultsProps {
   datId: string;
@@ -33,28 +37,52 @@ export function ScanResults({
   onRename,
   renaming,
 }: ScanResultsProps) {
+  const { wrongName } = result;
+  const { linked, unlinked } = splitUnmatched(result.unmatched, useGameLinks(datId));
+  const { openSections, setOpen } = useOpenSections();
   const total = scannedFileCount(result);
   const games = foundGames(result);
   // A file whose name is still to be picked cannot be selected.
-  const selectable = result.wrongName.filter((entry) => chosenName(entry, choices) !== undefined);
+  const selectable = wrongName.filter((entry) => chosenName(entry, choices) !== undefined);
   const allSelected =
     selectable.length > 0 && selectable.every((entry) => selected.has(entry.filePath));
 
+  const toggleOf = (section: ScanSection, count: number) => {
+    if (count === 0) return undefined;
+    const open = openSections[section];
+    return { open, controls: sectionId(section), onToggle: () => setOpen(section, !open) };
+  };
+
   return (
     <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-      {/* Summary chips. Found counts games; the other two count files,
-          since those are files to act on. */}
+      {/* Summary chips. Found counts games; the others count files,
+          since those are files to act on. Each folds its list. */}
       <div className={css({ display: 'flex', gap: '3', flexWrap: 'wrap' })}>
         <Chip
           label={`${plural(games.length, 'jeu', 'jeux')} ${plural(games.length, 'trouvé')}`}
           count={games.length}
           color="green"
+          toggle={toggleOf('found', games.length)}
         />
-        <Chip label="mal nommés" count={result.wrongName.length} color="amber" />
         <Chip
-          label={`${plural(result.unmatched.length, 'absent')} du DAT`}
-          count={result.unmatched.length}
+          label={plural(wrongName.length, 'mal nommé')}
+          count={wrongName.length}
+          color="amber"
+          toggle={toggleOf('wrongName', wrongName.length)}
+        />
+        {linked.length > 0 && (
+          <Chip
+            label={plural(linked.length, 'rattaché')}
+            count={linked.length}
+            color="blue"
+            toggle={toggleOf('linked', linked.length)}
+          />
+        )}
+        <Chip
+          label={`${plural(unlinked.length, 'absent')} du DAT`}
+          count={unlinked.length}
           color="gray"
+          toggle={toggleOf('unmatched', unlinked.length)}
         />
         <span className={css({ fontSize: 'xs', color: 'fg.faint', alignSelf: 'center' })}>
           {total} {plural(total, 'fichier')} {plural(total, 'scanné')}
@@ -62,12 +90,14 @@ export function ScanResults({
       </div>
 
       {/* Rename suggestions */}
-      {result.wrongName.length > 0 && (
-        <div>
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '2' })}>
-            <h3 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'fg.default' })}>
-              Suggestions de renommage
-            </h3>
+      {wrongName.length > 0 && (
+        <Foldable
+          id={sectionId('wrongName')}
+          open={openSections.wrongName}
+          onOpenChange={(open) => setOpen('wrongName', open)}
+          summary="Suggestions de renommage"
+        >
+          <div className={css({ mb: '2' })}>
             <button
               onClick={() => onSetAll(!allSelected)}
               className={css({
@@ -86,7 +116,7 @@ export function ScanResults({
               overflow: 'hidden',
             })}
           >
-            {result.wrongName.map((entry) => (
+            {wrongName.map((entry) => (
               <RenameRow
                 key={entry.filePath}
                 entry={entry}
@@ -120,18 +150,26 @@ export function ScanResults({
                 : `Renommer ${selected.size} ${plural(selected.size, 'fichier')}`}
             </button>
           </div>
-        </div>
+        </Foldable>
       )}
 
-      <UnmatchedFiles datId={datId} files={result.unmatched} />
+      <UnmatchedFiles
+        datId={datId}
+        linked={linked}
+        unlinked={unlinked}
+        openSections={openSections}
+        onOpenChange={setOpen}
+      />
 
       {/* Found games — folded: on a full folder it is the long list, and
           not the one that asks for action. */}
       {games.length > 0 && (
-        <details className={css({ fontSize: 'sm' })}>
-          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            Voir {plural(games.length, 'le jeu trouvé', `les ${games.length} jeux trouvés`)}
-          </summary>
+        <Foldable
+          id={sectionId('found')}
+          open={openSections.found}
+          onOpenChange={(open) => setOpen('found', open)}
+          summary={`Voir ${plural(games.length, 'le jeu trouvé', `les ${games.length} jeux trouvés`)}`}
+        >
           <ul
             className={css({
               pl: '4',
@@ -150,7 +188,7 @@ export function ScanResults({
               </li>
             ))}
           </ul>
-        </details>
+        </Foldable>
       )}
     </div>
   );

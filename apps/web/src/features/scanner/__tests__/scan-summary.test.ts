@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ScanResult } from '@shared/scan.js';
-import { foundGames, scannedFileCount } from '../scan-summary.js';
+import { foundGames, scannedFileCount, splitUnmatched } from '../scan-summary.js';
 
 // One disc game converted to a single .chd: the scan reports one match per
 // rom of the DAT, all under the same file.
@@ -52,5 +52,22 @@ describe('scannedFileCount', () => {
       unmatched: [{ filePath: '/roms/psx/junk.txt' }],
     };
     expect(scannedFileCount(result)).toBe(3);
+  });
+});
+
+describe('splitUnmatched', () => {
+  it('separates the attached files from the rest', () => {
+    const attached = { filePath: '/a.gbc', crc: '0000000a' };
+    const other = { filePath: '/b.gbc', crc: '0000000b' };
+    const link = { fileCrc: '0000000a', gameId: 'g1', gameName: 'A (USA)' };
+    expect(splitUnmatched([attached, other], [link])).toEqual({
+      linked: [{ ...attached, link }],
+      unlinked: [other],
+    });
+  });
+
+  it('leaves a file without a CRC unattached', () => {
+    const file = { filePath: '/a.gbc' };
+    expect(splitUnmatched([file], [])).toEqual({ linked: [], unlinked: [file] });
   });
 });

@@ -5,10 +5,14 @@ import { fetchGames } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { plural } from '@/lib/plural.js';
 import { queryKeys } from '@/lib/query-keys.js';
-import { useGameLinkMutations, useGameLinks } from '@/lib/use-game-links.js';
+import { useGameLinkMutations } from '@/lib/use-game-links.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
+import { Foldable } from '@/components/Foldable.js';
 import type { UnmatchedFile } from '@shared/scan.js';
 import { LinkGameDialog } from './LinkGameDialog.js';
+import type { LinkedFile } from './scan-summary.js';
+import { sectionId } from './use-open-sections.js';
+import type { ScanSection } from './use-open-sections.js';
 import { linkableGames } from './suggest-games.js';
 
 const linkButtonClass = css({
@@ -39,9 +43,20 @@ function fileNameOf(path: string): string {
  * Absent from the DAT is usually not an error: a 1G1R DAT keeps one version
  * of each game, and this file is another.
  */
-export function UnmatchedFiles({ datId, files }: { datId: string; files: UnmatchedFile[] }) {
+export function UnmatchedFiles({
+  datId,
+  linked,
+  unlinked,
+  openSections,
+  onOpenChange,
+}: {
+  datId: string;
+  linked: LinkedFile[];
+  unlinked: UnmatchedFile[];
+  openSections: Record<ScanSection, boolean>;
+  onOpenChange: (section: ScanSection, open: boolean) => void;
+}) {
   const romsRoot = useRomsRoot();
-  const links = useGameLinks(datId);
   const { attach, detach } = useGameLinkMutations(datId);
   const [linking, setLinking] = useState<{ fileName: string; crc: string } | null>(null);
   const { data: games = [] } = useQuery({
@@ -51,9 +66,6 @@ export function UnmatchedFiles({ datId, files }: { datId: string; files: Unmatch
     gcTime: Infinity,
   });
 
-  const linkByCrc = new Map(links.map((link) => [link.fileCrc, link]));
-  const linked = files.filter(({ crc }) => crc !== undefined && linkByCrc.has(crc));
-  const unlinked = files.filter((file) => !linked.includes(file));
   const canLink = linkableGames(games).length > 0;
 
   const openDialog = (file: UnmatchedFile) => {
@@ -65,19 +77,20 @@ export function UnmatchedFiles({ datId, files }: { datId: string; files: Unmatch
   return (
     <>
       {linked.length > 0 && (
-        <details open className={css({ fontSize: 'sm' })}>
-          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            {linked.length} {plural(linked.length, 'fichier')} {plural(linked.length, 'rattaché')}
-          </summary>
+        <Foldable
+          id={sectionId('linked')}
+          open={openSections.linked}
+          onOpenChange={(open) => onOpenChange('linked', open)}
+          summary={`${linked.length} ${plural(linked.length, 'fichier')} ${plural(linked.length, 'rattaché')} à un jeu`}
+        >
           <ul className={css({ pl: '4', display: 'flex', flexDirection: 'column', gap: '1' })}>
-            {linked.map(({ filePath, crc = '' }) => {
-              const link = linkByCrc.get(crc);
-              const isOrphan = link?.gameId === null;
+            {linked.map(({ filePath, crc, link }) => {
+              const isOrphan = link.gameId === null;
               return (
                 <li key={filePath} className={rowClass}>
                   <span className={pathClass}>{displayPath(filePath, romsRoot)}</span>
                   <span className={css({ fontSize: 'xs', color: 'fg.default' })}>
-                    → {link?.gameName}
+                    → {link.gameName}
                     {isOrphan && ' (absent de ce DAT)'}
                   </span>
                   <button
@@ -98,15 +111,16 @@ export function UnmatchedFiles({ datId, files }: { datId: string; files: Unmatch
               {detach.error.message}
             </p>
           )}
-        </details>
+        </Foldable>
       )}
 
       {unlinked.length > 0 && (
-        <details className={css({ fontSize: 'sm' })}>
-          <summary className={css({ cursor: 'pointer', color: 'fg.subtle', mb: '1' })}>
-            {unlinked.length} {plural(unlinked.length, 'fichier')}{' '}
-            {plural(unlinked.length, 'absent')} du DAT
-          </summary>
+        <Foldable
+          id={sectionId('unmatched')}
+          open={openSections.unmatched}
+          onOpenChange={(open) => onOpenChange('unmatched', open)}
+          summary={`${unlinked.length} ${plural(unlinked.length, 'fichier')} ${plural(unlinked.length, 'absent')} du DAT`}
+        >
           <p className={css({ fontSize: 'xs', color: 'fg.faint', mb: '2' })}>
             Souvent une autre version (région, langue) d&apos;un jeu du DAT.
             {canLink && ' Rattache-la pour qu’il compte comme possédé.'}
@@ -128,7 +142,7 @@ export function UnmatchedFiles({ datId, files }: { datId: string; files: Unmatch
               </li>
             ))}
           </ul>
-        </details>
+        </Foldable>
       )}
 
       {linking !== null && (

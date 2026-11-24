@@ -72,6 +72,33 @@ describe('ScanResults', () => {
     expect(screen.getByText('4 fichiers scannés')).toBeInTheDocument();
   });
 
+  it.each([
+    ['jeu trouvé', 'scan-section-found'],
+    ['mal nommés', 'scan-section-wrongName'],
+    ['absent du DAT', 'scan-section-unmatched'],
+  ])('folds and unfolds a list from its chip: %s', async (label, id) => {
+    const { container } = renderResults();
+    const list = container.querySelector<HTMLDetailsElement>(`#${id}`)!;
+    const chip = screen.getByRole('button', { name: new RegExp(label) });
+    const wasOpen = list.open;
+    await userEvent.click(chip);
+    expect(list.open).toBe(!wasOpen);
+    expect(chip).toHaveAttribute('aria-expanded', String(!wasOpen));
+    await userEvent.click(chip);
+    expect(list.open).toBe(wasOpen);
+  });
+
+  it('counts an attached file apart from the absent ones', async () => {
+    vi.mocked(api.fetchGameLinks).mockResolvedValue([
+      { fileCrc: 'ffffffff', gameId: 'g1', gameName: 'Catwoman (USA)' },
+    ]);
+    renderResults();
+    const chip = await screen.findByRole('button', { name: /rattaché/ });
+    expect(chip).toHaveTextContent('1');
+    expect(screen.getByText('absent du DAT').closest('span')).toHaveTextContent('0');
+    expect(screen.getByText(/Catwoman/)).toBeInTheDocument();
+  });
+
   it('lists each misnamed file with its canonical name', () => {
     renderResults();
     expect(screen.getByText('a.sfc')).toBeInTheDocument();

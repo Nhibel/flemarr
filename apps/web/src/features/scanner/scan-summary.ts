@@ -1,4 +1,5 @@
-import type { ScanResult } from '@shared/scan.js';
+import type { GameLink } from '@shared/game-link.js';
+import type { ScanResult, UnmatchedFile } from '@shared/scan.js';
 
 /**
  * The games a scan found, by name, sorted. `matched` holds one entry per
@@ -21,4 +22,26 @@ export function scannedFileCount(result: ScanResult): number {
   for (const entry of result.wrongName) paths.add(entry.filePath);
   for (const file of result.unmatched) paths.add(file.filePath);
   return paths.size;
+}
+
+export interface LinkedFile {
+  filePath: string;
+  crc: string;
+  link: GameLink;
+}
+
+/** The files the DAT does not list: those attached to a game, and the rest. */
+export function splitUnmatched(
+  files: UnmatchedFile[],
+  links: GameLink[],
+): { linked: LinkedFile[]; unlinked: UnmatchedFile[] } {
+  const linkByCrc = new Map(links.map((link) => [link.fileCrc, link]));
+  const linked: LinkedFile[] = [];
+  const unlinked: UnmatchedFile[] = [];
+  for (const file of files) {
+    const link = file.crc === undefined ? undefined : linkByCrc.get(file.crc);
+    if (link === undefined) unlinked.push(file);
+    else linked.push({ filePath: file.filePath, crc: link.fileCrc, link });
+  }
+  return { linked, unlinked };
 }
