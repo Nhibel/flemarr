@@ -5,8 +5,9 @@ const INES_MAGIC = Buffer.from([0x4e, 0x45, 0x53, 0x1a]); // "NES\x1A"
 const INES_HEADER_SIZE = 16;
 
 /**
- * If `buf` carries a 16-byte iNES header (magic "NES\x1A") and stripping it
- * yields a CRC32 matching `expectedCrc`, returns the stripped buffer.
+ * Whether `buf` is the expected ROM behind a 16-byte iNES header: it starts
+ * with the magic "NES\x1A" and what follows the header has the expected CRC32.
+ * The header is never removed: several emulators refuse a file without it.
  *
  * This is the mechanically well-defined half of the NES Headered/Headerless
  * mismatch (see "Name-only matches" in docs/archive-org-strategy.md): a
@@ -17,11 +18,11 @@ const INES_HEADER_SIZE = 16;
  * derive them, so a guessed header would risk silently producing a
  * corrupt-but-accepted ROM instead of a clean, honest failure.
  */
-export function stripInesHeaderIfMatches(buf: Buffer, expectedCrc: string): Buffer | null {
-  if (buf.length <= INES_HEADER_SIZE) return null;
-  if (!buf.subarray(0, 4).equals(INES_MAGIC)) return null;
-  const stripped = buf.subarray(INES_HEADER_SIZE);
-  return computeCrc32Buffer(stripped) === expectedCrc.toLowerCase() ? stripped : null;
+export function matchesBehindInesHeader(buf: Buffer, expectedCrc: string): boolean {
+  if (buf.length <= INES_HEADER_SIZE) return false;
+  if (!buf.subarray(0, INES_MAGIC.length).equals(INES_MAGIC)) return false;
+  const body = buf.subarray(INES_HEADER_SIZE);
+  return computeCrc32Buffer(body) === expectedCrc.toLowerCase();
 }
 
 /** The CRC32 of a file without its iNES header, or null when it has none. */

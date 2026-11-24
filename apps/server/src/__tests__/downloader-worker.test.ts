@@ -122,7 +122,7 @@ describe('downloadFile', () => {
     ).rejects.toThrow('HTTP 404');
   });
 
-  it('strips a 16-byte iNES header and succeeds when the remainder matches', async () => {
+  it('keeps the iNES header of a file whose remainder matches', async () => {
     const rom = Buffer.from('the actual prg+chr rom bytes');
     const inesHeader = Buffer.concat([Buffer.from([0x4e, 0x45, 0x53, 0x1a]), Buffer.alloc(12)]);
     const headered = Buffer.concat([inesHeader, rom]);
@@ -140,7 +140,7 @@ describe('downloadFile', () => {
 
     expect(result).toBe('done');
     const written = await readFile(tempPath);
-    expect(written.equals(rom)).toBe(true);
+    expect(written.equals(headered)).toBe(true);
   });
 
   it('reports progress via onProgress callback', async () => {
@@ -276,7 +276,7 @@ describe('downloadFile — extractFromZip (nested-zip collections)', () => {
     await expect(access(tempPath)).rejects.toThrow();
   });
 
-  it('strips a 16-byte iNES header from an extracted ZIP entry when the remainder matches', async () => {
+  it('keeps the iNES header of an extracted ZIP entry whose remainder matches', async () => {
     const tempPath = join(TMP, 'wrapped-headered.tmp');
     const inesHeader = Buffer.concat([Buffer.from([0x4e, 0x45, 0x53, 0x1a]), Buffer.alloc(12)]);
     const headeredRom = Buffer.concat([inesHeader, ROM]);
@@ -293,7 +293,7 @@ describe('downloadFile — extractFromZip (nested-zip collections)', () => {
 
     expect(result).toBe('done');
     const written = await readFile(tempPath);
-    expect(written.equals(ROM)).toBe(true);
+    expect(written.equals(headeredRom)).toBe(true);
   });
 
   it('throws when the downloaded bytes are not a valid ZIP', async () => {

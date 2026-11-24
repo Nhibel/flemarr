@@ -160,8 +160,8 @@ match is a plausible guess, not a guarantee — the downloader's own CRC check
 NES "Headered" vs "Headerless" DATs.** Fresh1G1R publishes both for
 No-Intro NES. The Headered DAT expects the 16-byte iNES header to be part
 of the dumped bytes (`Tetris (USA).nes`, CRC `d16ea396`); the Headerless one
-expects it stripped (CRC `1394f57e`). Virtually every real-world NES dump in
-circulation is headerless, but still named `.nes` — no real file and no
+expects it stripped (CRC `1394f57e`). Real files are named `.nes` whether or
+not they carry the header — no real file and no
 emulator (RetroArch's NES cores included) ever uses or recognizes the
 `.unh` extension Fresh1G1R's Headerless DAT XML actually ships (it exists
 purely so Retool can tell the two DAT variants' CRCs apart). Three fixes
@@ -184,14 +184,14 @@ landed together to deal with this (2026-11-09):
    index showed almost nothing for Headerless. With fix 1 in place the
    extensions already agree in the common case, but this stays as defense
    in depth for any other naming mismatch.
-3. **Downloader-side iNES header recovery.** `apps/server/src/lib/ines-header.ts`'s
-   `stripInesHeaderIfMatches` runs whenever the downloaded bytes fail their
-   primary CRC check: if they start with the iNES magic (`NES\x1A`) and
-   stripping the 16-byte header yields a CRC32 that matches what the DAT
-   expects, the stripped bytes are kept and the download succeeds. This
-   covers the common real case where a source (especially an older "clean
-   romset") bakes the header into every file, but the Headerless DAT expects
-   it gone. It's deliberately one-directional — there is no attempt to _add_
+3. **Downloader-side iNES header tolerance.** `apps/server/src/lib/ines-header.ts`'s
+   `matchesBehindInesHeader` runs whenever the downloaded bytes fail their
+   primary CRC check: if they start with the iNES magic (`NES\x1A`) and the
+   bytes after the 16-byte header have the CRC32 the DAT expects, the download
+   succeeds and the file is kept **with its header**. Until 2026-11-24 the
+   header was removed to fit the DAT; FCEUmm and QuickNES refuse such a file
+   (checked in their sources), and only Mesen rebuilds the header from a
+   database. The scanner accepts both forms the same way (`scan-files.ts`). It's deliberately one-directional — there is no attempt to _add_
    a header to satisfy a Headered DAT, because the header encodes per-game
    mapper/mirroring/PRG-RAM bytes with no general way to derive them from
    the ROM data alone; guessing one could silently accept a corrupt file

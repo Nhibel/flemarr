@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { unzipSync } from 'fflate';
 import { Crc32Accumulator, computeCrc32Buffer } from '@/lib/crc32.js';
-import { stripInesHeaderIfMatches } from '@/lib/ines-header.js';
+import { matchesBehindInesHeader } from '@/lib/ines-header.js';
 import { logger } from '@/lib/logger.js';
 import { logTarget } from '@/lib/logged-fetch.js';
 import { archiveFetch } from '@/services/archive-org/fetch.js';
@@ -25,6 +25,14 @@ export interface DownloadFileOptions {
   // validate its CRC instead of the ZIP's own bytes.
   extractFromZip?: boolean;
   onProgress?: (bytesDownloaded: number, totalBytes: number) => void;
+}
+
+/** The DAT may list an NES game without the iNES header its file carries. */
+function isExpectedRom(rom: Buffer, expectedCrc: string): boolean {
+  return (
+    computeCrc32Buffer(rom) === expectedCrc.toLowerCase() ||
+    matchesBehindInesHeader(rom, expectedCrc)
+  );
 }
 
 // Open the downloaded ZIP, extract its single entry, and replace the temp file
@@ -50,13 +58,8 @@ async function extractAndValidate(tempPath: string, expectedCrc: string): Promis
     return 'crc-mismatch';
   }
   const romBuf = Buffer.from(rom);
-  if (computeCrc32Buffer(romBuf) === expectedCrc.toLowerCase()) {
+  if (isExpectedRom(romBuf, expectedCrc)) {
     await writeFile(tempPath, romBuf);
-    return 'done';
-  }
-  const stripped = stripInesHeaderIfMatches(romBuf, expectedCrc);
-  if (stripped) {
-    await writeFile(tempPath, stripped);
     return 'done';
   }
   logger.warn({ tempPath, expectedCrc, foundCrc: computeCrc32Buffer(romBuf) }, 'CRC mismatch');
@@ -168,13 +171,8 @@ export async function extractContainerEntry(
   }
   await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
 
-  if (computeCrc32Buffer(rom) === expectedCrc.toLowerCase()) {
+  if (isExpectedRom(rom, expectedCrc)) {
     await writeFile(outputPath, rom);
-    return 'done';
-  }
-  const stripped = stripInesHeaderIfMatches(rom, expectedCrc);
-  if (stripped) {
-    await writeFile(outputPath, stripped);
     return 'done';
   }
   logger.warn({ innerPath, expectedCrc, foundCrc: computeCrc32Buffer(rom) }, 'CRC mismatch');
@@ -337,11 +335,10 @@ async function checkCrc(
 
   // The streamed bytes might carry a 16-byte iNES header the DAT doesn't
   // expect (Headerless DAT, headered real-world dump) — the file is already
-  // on disk, so read it back and check rather than re-downloading.
+  // on disk, so read it back and check rather than re-downloading. The header
+  // stays: several emulators refuse a file without it.
   const buf = await readFile(tempPath);
-  const stripped = stripInesHeaderIfMatches(buf, expectedCrc);
-  if (stripped) {
-    await writeFile(tempPath, stripped);
+  if (matchesBehindInesHeader(buf, expectedCrc)) {
     return 'done';
   }
   logger.warn({ tempPath, expectedCrc, foundCrc: computeCrc32Buffer(buf) }, 'CRC mismatch');
