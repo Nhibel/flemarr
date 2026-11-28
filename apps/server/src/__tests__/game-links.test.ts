@@ -85,3 +85,46 @@ describe('game links', () => {
     expect(row).toBeUndefined();
   });
 });
+describe('game links — several at once', () => {
+  function linkMany(entries: { fileCrc: string; gameId: string }[]) {
+    return app.request(`/api/dats/${datId}/links`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ links: entries }),
+    });
+  }
+
+  beforeEach(async () => {
+    await app.request(`/api/dats/${datId}/links/cafebabe`, {
+      method: 'DELETE',
+    });
+  });
+
+  it('attaches every file in one request', async () => {
+    ({ id: datId } = addDat(datOf(game('g1', 'Catwoman (USA)'), game('g3', 'Tetris (USA)'))));
+    const res = await linkMany([
+      { fileCrc: CRC, gameId: 'g1' },
+      { fileCrc: 'cafebabe', gameId: 'g3' },
+    ]);
+    expect(res.status).toBe(200);
+    expect(await links()).toEqual([
+      { fileCrc: 'cafebabe', gameId: 'g3', gameName: 'Tetris (USA)' },
+      { fileCrc: CRC, gameId: 'g1', gameName: 'Catwoman (USA)' },
+    ]);
+  });
+
+  it('saves nothing when one of them is refused', async () => {
+    const res = await linkMany([
+      { fileCrc: CRC, gameId: 'g1' },
+      { fileCrc: 'cafebabe', gameId: 'g2' },
+    ]);
+    expect(res.status).toBe(400);
+    expect(await links()).toEqual([]);
+  });
+
+  it('refuses an empty list and an unknown game', async () => {
+    expect((await linkMany([])).status).toBe(400);
+    expect((await linkMany([{ fileCrc: CRC, gameId: 'nope' }])).status).toBe(404);
+    expect(await links()).toEqual([]);
+  });
+});

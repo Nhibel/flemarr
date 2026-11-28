@@ -1,16 +1,38 @@
 import { Hono } from 'hono';
-import { fileCrcSchema, saveGameLinkRequestSchema } from '@shared/game-link.js';
+import {
+  fileCrcSchema,
+  saveGameLinkRequestSchema,
+  saveGameLinksRequestSchema,
+} from '@shared/game-link.js';
+import type { DatFile, Game } from '@shared/dat.js';
 import { getDat } from '@/services/dat/index.js';
 import {
   deleteGameLink,
   isLinkable,
   listGameLinks,
   saveGameLink,
+  saveGameLinks,
 } from '@/services/scanner/game-links.js';
 import { errorJson, parseJsonBody } from '@/lib/http.js';
 import { logger } from '@/lib/logger.js';
 
 export const gameLinksRoute = new Hono();
+
+type GameLookup =
+  { ok: true; game: Game } | { ok: false; status: 400 | 404; code: string; message: string };
+
+/** The game a file may stand for: one of the DAT, made of a single file. */
+function findLinkableGame(dat: DatFile, gameId: string): GameLookup {
+  const game = dat.games.find((candidate) => candidate.id === gameId);
+  if (game === undefined) {
+    return { ok: false, status: 404, code: 'NOT_FOUND', message: 'Game not found in this DAT' };
+  }
+  if (!isLinkable(game)) {
+    const message = 'A file cannot stand for a multi-file game';
+    return { ok: false, status: 400, code: 'MULTI_FILE_GAME', message };
+  }
+  return { ok: true, game };
+}
 
 gameLinksRoute.get('/dats/:id/links', (c) => {
   const datId = c.req.param('id');
@@ -28,14 +50,31 @@ gameLinksRoute.put('/dats/:id/links/:crc', async (c) => {
 
   const dat = getDat(datId);
   if (dat === undefined) return errorJson(c, 404, 'NOT_FOUND', `DAT ${datId} not found`);
-  const game = dat.games.find((candidate) => candidate.id === body.data.gameId);
-  if (game === undefined) return errorJson(c, 404, 'NOT_FOUND', 'Game not found in this DAT');
-  if (!isLinkable(game)) {
-    return errorJson(c, 400, 'MULTI_FILE_GAME', 'A file cannot stand for a multi-file game');
+  const found = findLinkableGame(dat, body.data.gameId);
+  if (!found.ok) return errorJson(c, found.status, found.code, found.message);
+
+  saveGameLink(datId, crc.data, found.game);
+  logger.info({ datId, crc: crc.data, game: found.game.name }, 'file linked to game');
+  return c.json({ links: listGameLinks(datId, dat) });
+});
+
+gameLinksRoute.put('/dats/:id/links', async (c) => {
+  const datId = c.req.param('id');
+  const body = await parseJsonBody(c, saveGameLinksRequestSchema);
+  if (!body.ok) return body.response;
+  const dat = getDat(datId);
+  if (dat === undefined) return errorJson(c, 404, 'NOT_FOUND', `DAT ${datId} not found`);
+
+  // Every game checked before anything is written: all saved, or none.
+  const links: { fileCrc: string; game: Game }[] = [];
+  for (const { fileCrc, gameId } of body.data.links) {
+    const found = findLinkableGame(dat, gameId);
+    if (!found.ok) return errorJson(c, found.status, found.code, `${found.message}: ${gameId}`);
+    links.push({ fileCrc, game: found.game });
   }
 
-  saveGameLink(datId, crc.data, game);
-  logger.info({ datId, crc: crc.data, game: game.name }, 'file linked to game');
+  saveGameLinks(datId, links);
+  logger.info({ datId, count: links.length }, 'files linked to games');
   return c.json({ links: listGameLinks(datId, dat) });
 });
 

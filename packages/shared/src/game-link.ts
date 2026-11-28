@@ -18,3 +18,12 @@ export const gameLinksResponseSchema = z.object({ links: z.array(gameLinkSchema)
 export type GameLinksResponse = z.infer<typeof gameLinksResponseSchema>;
 
 export const saveGameLinkRequestSchema = z.object({ gameId: z.string().min(1) });
+
+// Several files attached in one go: all are saved, or none.
+export const saveGameLinksRequestSchema = z.object({
+  links: z
+    .array(z.object({ fileCrc: fileCrcSchema, gameId: z.string().min(1) }))
+    .min(1)
+    .max(10_000),
+});
+export type SaveGameLinksRequest = z.infer<typeof saveGameLinksRequestSchema>;

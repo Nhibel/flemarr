@@ -53,6 +53,17 @@ export function saveGameLink(
   ).run(datId, fileCrc, game.id, game.name);
 }
 
+/** Saves every link, or none if one fails. */
+export function saveGameLinks(
+  datId: string,
+  links: { fileCrc: string; game: Game }[],
+  db: Database = getDb(),
+): void {
+  db.transaction(() => {
+    for (const { fileCrc, game } of links) saveGameLink(datId, fileCrc, game, db);
+  })();
+}
+
 export function deleteGameLink(datId: string, fileCrc: string, db: Database = getDb()): boolean {
   const { changes } = db
     .prepare(`DELETE FROM game_links WHERE dat_id = ? AND file_crc = ?`)
