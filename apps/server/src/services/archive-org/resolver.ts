@@ -18,6 +18,7 @@ import {
   extensionOf,
   isReencodedDump,
   stripExtension,
+  withoutLanguages,
 } from './system-name.js';
 import { networkErrorReason } from '@/lib/logged-fetch.js';
 import { logger } from '@/lib/logger.js';
@@ -32,6 +33,20 @@ const MAX_ZIP_HEAD_CHECKS = 5;
 // then each ROM's lookup in every source. A few at a time stays polite to
 // archive.org, which answers bursts with 429.
 const ARCHIVE_CONCURRENCY = 6;
+
+/**
+ * A source's answer for one ROM. `renamed` when only the name without its
+ * language list matched: an upload older than the DAT's current name.
+ */
+interface SourceMatch {
+  source: ResolvedSource;
+  renamed: boolean;
+}
+
+/** The ROM's name as an upload of another day may carry it, with the ROM's extension. */
+function renamedEntry(containerName: string, romName: string): string {
+  return `${stripExtension(baseName(containerName))}${extensionOf(romName)}`;
+}
 
 interface ResultCacheEntry {
   result: ResolvedGame;
@@ -78,9 +93,9 @@ function findMatch(
   romCrc: string,
   index: ItemIndex,
   siblingExtensions: Set<string>,
-): { file: ArchiveFile; verified: boolean } | undefined {
+): { file: ArchiveFile; verified: boolean; renamed: boolean } | undefined {
   const byCrc = index.byCrc.get(romCrc.toLowerCase());
-  if (byCrc) return { file: byCrc, verified: true };
+  if (byCrc) return { file: byCrc, verified: true, renamed: false };
   const romBase = stripExtension(romName);
   // A re-encode (.chd, .rvz…) carries the game but never the DAT's exact
   // bytes — matching one by name here would hand the downloader a file
@@ -116,7 +131,11 @@ function findMatch(
   const byName =
     byNameCandidates.find((f) => baseName(f.name) === romName) ??
     byNameCandidates.find((f) => !siblingExtensions.has(extensionOf(f.name)));
-  return byName ? { file: byName, verified: false } : undefined;
+  if (byName) return { file: byName, verified: false, renamed: false };
+
+  const renamedCandidates = index.rawFilesByLooseBase.get(withoutLanguages(romBase)) ?? [];
+  const renamed = renamedCandidates.find((f) => extensionOf(f.name) === extensionOf(romName));
+  return renamed ? { file: renamed, verified: false, renamed: true } : undefined;
 }
 
 // Rank ZIPs by likelihood of containing the ROM:
@@ -139,6 +158,13 @@ function isExactZipMatch(zip: ArchiveFile, romBase: string, gameName: string): b
   return zipBase === romBase || zipBase === gameName;
 }
 
+// Is it named after the ROM or the game once both lose their language list?
+function isRenamedZipMatch(zip: ArchiveFile, romBase: string, gameName: string): boolean {
+  if (isExactZipMatch(zip, romBase, gameName)) return false;
+  const zipBase = withoutLanguages(stripExtension(baseName(zip.name)));
+  return zipBase === withoutLanguages(romBase) || zipBase === withoutLanguages(gameName);
+}
+
 // The first `limit` containers in that order, each rank in item order —
 // what a stable sort by rank gave, without sorting every container of the
 // item for every ROM. `systemOnly` stops before rank 4.
@@ -158,7 +184,15 @@ function orderZipCandidates(
   const rankedGroups = [ranks.exact, ranks.loose];
   if (!systemOnly) rankedGroups.push(ranks.none);
 
-  const ordered = [...exactPositions].sort((a, b) => a - b);
+  const renamedPositions = new Set([
+    ...(index.zipPositionsByLooseBase.get(withoutLanguages(romBase)) ?? []),
+    ...(index.zipPositionsByLooseBase.get(withoutLanguages(gameName)) ?? []),
+  ]);
+  for (const position of exactPositions) renamedPositions.delete(position);
+  const byPosition = (a: number, b: number) => a - b;
+  const named = [...exactPositions].sort(byPosition);
+  const ordered = [...named, ...[...renamedPositions].sort(byPosition)];
+  for (const position of ordered) exactPositions.add(position);
   for (const group of rankedGroups) {
     for (const position of group) {
       if (ordered.length >= limit) break;
@@ -178,7 +212,7 @@ async function resolveViaZipListing(
   identifier: string,
   info: ArchiveItemInfo,
   siblingExtensions: Set<string>,
-): Promise<ResolvedSource | null> {
+): Promise<SourceMatch | null> {
   if (!info.server || !info.dir) return null;
 
   const romBase = stripExtension(romName);
@@ -198,9 +232,11 @@ async function resolveViaZipListing(
   });
 
   for (const zip of zips) {
-    const archiveFormat = isExactZipMatch(zip, romBase, gameName)
-      ? containerFormat(zip.name)
-      : undefined;
+    const renamed = isRenamedZipMatch(zip, romBase, gameName);
+    const isPerGame = renamed || isExactZipMatch(zip, romBase, gameName);
+    const archiveFormat = isPerGame ? containerFormat(zip.name) : undefined;
+    // The entry carries the container's name of its day, not the DAT's.
+    const guessedInner = renamed ? renamedEntry(zip.name, romName) : romName;
 
     let entries: string[];
     try {
@@ -212,15 +248,16 @@ async function resolveViaZipListing(
       // zip-view fallback below), so don't give up on it over a transient
       // listing error.
       if (archiveFormat) {
-        return {
+        const source: ResolvedSource = {
           identifier,
           downloadUrl: resolveDownloadUrl(identifier, zip.name),
           container: 'archive-container',
           extractFromZip: false,
-          innerPath: romName,
+          innerPath: guessedInner,
           archiveFormat,
           verified: false,
         };
+        return { source, renamed };
       }
       continue;
     }
@@ -229,10 +266,13 @@ async function resolveViaZipListing(
     // see orderZipCandidates). Re-encoded entries (.chd, .rvz…) are excluded
     // for the same reason as findMatch above — they'd never pass the
     // downloader's CRC check.
+    const wanted = renamed
+      ? [withoutLanguages(romBase), withoutLanguages(gameName)]
+      : [romBase, gameName];
     const innerCandidates = entries.filter((e) => {
       if (isReencodedDump(e)) return false;
       const base = stripExtension(baseName(e));
-      return base === romBase || base === gameName;
+      return wanted.includes(renamed ? withoutLanguages(base) : base);
     });
     // For a single-track disc game, romBase === gameName, so a .cue and its
     // .bin both pass the filter above — prefer the entry whose extension
@@ -242,7 +282,7 @@ async function resolveViaZipListing(
     // for the full reasoning and the real rr-sony-playstation-u case this
     // catches).
     const inner =
-      innerCandidates.find((e) => baseName(e) === romName) ??
+      innerCandidates.find((e) => baseName(e) === guessedInner) ??
       innerCandidates.find((e) => !siblingExtensions.has(extensionOf(e)));
     const zipView: ResolvedSource | undefined = inner
       ? {
@@ -283,19 +323,20 @@ async function resolveViaZipListing(
       // checked so far). A wrong guess here just fails to find the entry
       // (caught, falls through to the next candidate) — safe, since the
       // actual bytes are still verified by CRC either way.
-      return {
+      const source: ResolvedSource = {
         identifier,
         downloadUrl: resolveDownloadUrl(identifier, zip.name),
         container: 'archive-container',
         extractFromZip: false,
-        innerPath: romName,
+        innerPath: guessedInner,
         archiveFormat,
         fallback: zipView,
         verified: false,
       };
+      return { source, renamed };
     }
 
-    if (zipView) return zipView;
+    if (zipView) return { source: zipView, renamed };
   }
   return null;
 }
@@ -308,18 +349,19 @@ async function resolveRomInSource(
   source: { identifier: string; layout: 'direct' | 'zip-collection' },
   info: ArchiveItemInfo,
   siblingExtensions: Set<string>,
-): Promise<ResolvedSource | null> {
+): Promise<SourceMatch | null> {
   const index = itemIndex(info);
   if (source.layout === 'direct') {
     const match = findMatch(romName, romCrc, index, siblingExtensions);
     if (!match) return null;
-    return {
+    const resolved: ResolvedSource = {
       identifier: source.identifier,
       downloadUrl: resolveDownloadUrl(source.identifier, match.file.name),
       container: 'direct',
       extractFromZip: false,
       verified: match.verified,
     };
+    return { source: resolved, renamed: match.renamed };
   }
 
   // Restricted items can't be HEAD-probed anonymously — go through the datanode
@@ -342,19 +384,22 @@ async function resolveRomInSource(
     systemOnly: false,
   });
   for (const zip of candidates) {
+    const renamed = isRenamedZipMatch(zip, stripExtension(romName), gameName);
+    const entryName = renamed ? renamedEntry(zip.name, romName) : romName;
     // ZIPs often prefix entries with a folder named like the archive itself
     const folderPrefix = stripExtension(baseName(zip.name));
-    for (const entryPath of [romName, `${folderPrefix}/${romName}`]) {
+    for (const entryPath of [entryName, `${folderPrefix}/${entryName}`]) {
       const downloadUrl = resolveDownloadUrl(source.identifier, entryPath, zip.name);
       if (await urlExists(downloadUrl)) {
         // A HEAD check confirms the path exists, never the content's hash.
-        return {
+        const resolved: ResolvedSource = {
           identifier: source.identifier,
           downloadUrl,
           container: 'zip-entry',
           extractFromZip: false,
           verified: false,
         };
+        return { source: resolved, renamed };
       }
     }
   }
@@ -420,9 +465,13 @@ async function resolveOneGame(
         siblingExtensions,
       );
     });
-    const resolvedSources = perSource.filter(
-      (resolved): resolved is ResolvedSource => resolved !== null,
-    );
+    // A renamed match comes after the others: the downloader stops at the
+    // first CRC mismatch, so a wrong guess must not hide a right file.
+    const matches = perSource.filter((match): match is SourceMatch => match !== null);
+    const resolvedSources = [
+      ...matches.filter((match) => !match.renamed),
+      ...matches.filter((match) => match.renamed),
+    ].map((match) => match.source);
     roms.push({ romName: rom.name, expectedCrc: rom.crc, sources: resolvedSources });
   }
 

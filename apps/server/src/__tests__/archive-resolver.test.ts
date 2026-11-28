@@ -939,3 +939,124 @@ describe('selectSources', () => {
     );
   });
 });
+describe('resolveGames — upload older than the DAT name', () => {
+  const N64 = 'Nintendo - Nintendo 64 (BigEndian)';
+  const LODGENET_DAT: DatFile = {
+    source: 'no-intro',
+    system: N64,
+    games: [
+      {
+        id: '1080',
+        name: '1080 Snowboarding (USA) (En,Ja,Fr,De) (LodgeNet)',
+        region: ['USA'],
+        languages: ['En', 'Ja', 'Fr', 'De'],
+        roms: [
+          {
+            name: '1080 Snowboarding (USA) (En,Ja,Fr,De) (LodgeNet).z64',
+            size: 16777216,
+            crc: '67e010d2',
+            status: 'good',
+          },
+        ],
+      },
+    ],
+  };
+  const OLD_NAME = '1080 Snowboarding (USA) (En,Ja) (LodgeNet)';
+
+  beforeEach(() => {
+    for (const id of ['old-direct', 'old-zips', 'old-restricted', 'new-direct']) {
+      removeSource(id, N64);
+    }
+  });
+
+  it('finds a per-game zip named before the languages changed, and its real entry', async () => {
+    addSource(N64, {
+      identifier: 'old-zips',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: `mnt/N64/${OLD_NAME}.zip`, size: 11263640, format: 'ZIP' },
+    ]);
+
+    const results = await resolveGames(LODGENET_DAT, 'dat1', ['1080']);
+    const src = results[0]?.roms[0]?.sources[0];
+    expect(src?.container).toBe('zip-entry');
+    expect(src?.downloadUrl).toContain(encodeURIComponent(`${OLD_NAME}.z64`));
+    expect(src?.verified).toBe(false);
+  });
+
+  it('finds a raw file named before the languages changed', async () => {
+    addSource(N64, { identifier: 'old-direct', layout: 'direct', note: '' });
+    vi.mocked(getIndex).mockResolvedValue([
+      { name: `${OLD_NAME}.z64`, size: 16777216, format: 'N64 ROM' },
+    ]);
+
+    const results = await resolveGames(LODGENET_DAT, 'dat1', ['1080']);
+    expect(results[0]?.roms[0]?.sources[0]?.downloadUrl).toContain(
+      encodeURIComponent(`${OLD_NAME}.z64`),
+    );
+  });
+
+  it('extracts the entry under its old name from a restricted per-game zip', async () => {
+    addSource(N64, {
+      identifier: 'old-restricted',
+      layout: 'zip-collection',
+      note: '',
+    });
+    vi.mocked(getItemInfo).mockResolvedValue({
+      files: [{ name: `${OLD_NAME}.zip`, size: 11263640, format: 'ZIP' }],
+      restricted: true,
+      server: 'ia800000.us.archive.org',
+      dir: '/1/items/old-restricted',
+    });
+    vi.mocked(getZipListing).mockResolvedValue([`${OLD_NAME}.i64`, `${OLD_NAME}.z64`]);
+
+    const results = await resolveGames(LODGENET_DAT, 'dat1', ['1080']);
+    const src = results[0]?.roms[0]?.sources[0];
+    expect(src?.container).toBe('archive-container');
+    expect(src?.innerPath).toBe(`${OLD_NAME}.z64`);
+    expect(src?.fallback?.downloadUrl).toContain(encodeURIComponent(`${OLD_NAME}.z64`));
+  });
+
+  it('lists a renamed match after an exact one, whatever the source order', async () => {
+    addSource(N64, { identifier: 'old-direct', layout: 'direct', note: '' });
+    addSource(N64, { identifier: 'new-direct', layout: 'direct', note: '' });
+    vi.mocked(getIndex).mockImplementation(async (id: string) =>
+      id === 'old-direct'
+        ? [{ name: `${OLD_NAME}.z64`, size: 1, format: 'N64 ROM' }]
+        : [
+            {
+              name: '1080 Snowboarding (USA) (En,Ja,Fr,De) (LodgeNet).z64',
+              size: 1,
+              format: 'N64 ROM',
+            },
+          ],
+    );
+
+    const results = await resolveGames(LODGENET_DAT, 'dat1', ['1080']);
+    expect(results[0]?.roms[0]?.sources.map((s) => s.identifier)).toEqual([
+      'new-direct',
+      'old-direct',
+    ]);
+  });
+
+  it('does not take another region or version for a renamed one', async () => {
+    addSource(N64, { identifier: 'old-direct', layout: 'direct', note: '' });
+    vi.mocked(getIndex).mockResolvedValue([
+      {
+        name: '1080 Snowboarding (Japan, USA) (En,Ja).z64',
+        size: 1,
+        format: 'N64 ROM',
+      },
+      {
+        name: '1080 Snowboarding (USA) (En,Ja).z64',
+        size: 1,
+        format: 'N64 ROM',
+      },
+    ]);
+
+    const results = await resolveGames(LODGENET_DAT, 'dat1', ['1080']);
+    expect(results[0]?.roms[0]?.sources).toEqual([]);
+  });
+});

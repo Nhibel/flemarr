@@ -6,6 +6,7 @@ import {
   zipMatchesSystem,
   mentionsSystem,
   isReencodedDump,
+  withoutLanguages,
 } from '../services/archive-org/system-name.js';
 
 const GB = 'Nintendo - Game Boy';
@@ -102,5 +103,24 @@ describe('isReencodedDump', () => {
 
   it('ignores a dot-prefixed name with no extension', () => {
     expect(isReencodedDump('.DS_Store')).toBe(false);
+  });
+});
+describe('withoutLanguages', () => {
+  it('drops the language list and nothing else', () => {
+    expect(withoutLanguages('1080 Snowboarding (USA) (En,Ja,Fr,De) (LodgeNet)')).toBe(
+      '1080 Snowboarding (USA) (LodgeNet)',
+    );
+  });
+
+  it('drops a single language and a script variant', () => {
+    expect(withoutLanguages('Tetris (Japan) (En)')).toBe('Tetris (Japan)');
+    expect(withoutLanguages('Game (Taiwan) (Zh-Hant,En)')).toBe('Game (Taiwan)');
+  });
+
+  it('keeps regions, revisions and other tags', () => {
+    expect(withoutLanguages('Kid Icarus (USA, Europe) (Rev 1)')).toBe(
+      'Kid Icarus (USA, Europe) (Rev 1)',
+    );
+    expect(withoutLanguages('Mega Man (World) (Evercade)')).toBe('Mega Man (World) (Evercade)');
   });
 });

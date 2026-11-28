@@ -215,6 +215,21 @@ CRC-only subset — so a candidate whose high "coverage" is mostly name
 guesses (exactly what a Headered-DAT scoring run looks like) is visibly
 different from one that's genuinely well-matched.
 
+**Uploads older than the DAT's names (2026-11-28).** No-Intro adds
+languages to existing entries as they get checked: `1080 Snowboarding (USA)
+(En,Ja) (LodgeNet)` is now `(En,Ja,Fr,De)`. An upload keeps the name of its
+day, and when its index gives only the per-game ZIP's CRC, nothing matched
+— yet `No-Intro_N64_Collection`'s old file holds exactly the CRC the DAT
+expects (`67e010d2`, downloaded and checked). So when no name matches
+exactly, the resolver compares names without their language list
+(`withoutLanguages`, `system-name.ts`); region, revision and every other tag
+must still agree. The entry inside such a ZIP carries the ZIP's old name,
+not the DAT's, so that is the path requested or extracted. These matches
+come **after** every other source's for the same ROM: the downloader stops
+at the first CRC mismatch, and a guess must not hide a right file.
+`scoreIndex` does not count them: suggestions are unchanged. Measured on
+N64 against that collection: 1 game of 391 gained.
+
 ---
 
 ## Deferred / resolved

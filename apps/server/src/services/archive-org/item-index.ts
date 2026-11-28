@@ -5,6 +5,7 @@ import {
   isArchiveContainer,
   isReencodedDump,
   stripExtension,
+  withoutLanguages,
   zipSystemMatch,
 } from './system-name.js';
 
@@ -21,10 +22,14 @@ export interface ItemIndex {
   byCrc: Map<string, ArchiveFile>;
   /** Raw files (no container, no re-encode) by extension-less basename. */
   rawFilesByBase: Map<string, ArchiveFile[]>;
+  /** The same, keyed by the basename without its language list. */
+  rawFilesByLooseBase: Map<string, ArchiveFile[]>;
   /** Archive containers, in item order. */
   zips: ArchiveFile[];
   /** Positions in `zips`, by the container's extension-less basename. */
   zipPositionsByBase: Map<string, number[]>;
+  /** The same, keyed by the basename without its language list. */
+  zipPositionsByLooseBase: Map<string, number[]>;
   /** Per system: positions in `zips` grouped by system rank (exact, loose, none). */
   zipRanksBySystem: Map<string, ZipRankGroups>;
 }
@@ -50,8 +55,10 @@ function buildIndex(files: ArchiveFile[]): ItemIndex {
   const index: ItemIndex = {
     byCrc: new Map(),
     rawFilesByBase: new Map(),
+    rawFilesByLooseBase: new Map(),
     zips: [],
     zipPositionsByBase: new Map(),
+    zipPositionsByLooseBase: new Map(),
     zipRanksBySystem: new Map(),
   };
   for (const file of files) {
@@ -59,11 +66,14 @@ function buildIndex(files: ArchiveFile[]): ItemIndex {
     if (crc !== undefined && !index.byCrc.has(crc)) index.byCrc.set(crc, file);
 
     const base = stripExtension(baseName(file.name));
+    const looseBase = withoutLanguages(base);
     if (isArchiveContainer(file)) {
       pushTo(index.zipPositionsByBase, base, index.zips.length);
+      pushTo(index.zipPositionsByLooseBase, looseBase, index.zips.length);
       index.zips.push(file);
     } else if (!isReencodedDump(file.name)) {
       pushTo(index.rawFilesByBase, base, file);
+      pushTo(index.rawFilesByLooseBase, looseBase, file);
     }
   }
   return index;

@@ -96,7 +96,9 @@ function isArchiveContainerName(name: string): boolean {
 /** Is this file an archive container (.zip, .7z, .rar) by name or reported format? */
 export function isArchiveContainer(file: Pick<ArchiveFile, 'name' | 'format'>): boolean {
   const format = file.format?.toUpperCase();
-  return format === 'ZIP' || format === '7Z' || format === 'RAR' || isArchiveContainerName(file.name);
+  return (
+    format === 'ZIP' || format === '7Z' || format === 'RAR' || isArchiveContainerName(file.name)
+  );
 }
 
 /** The container's own extraction format, from its filename — undefined if it isn't one. */
@@ -109,6 +111,18 @@ export function containerFormat(name: string): 'zip' | '7z' | 'rar' | undefined 
   if (ext === '.7z') return '7z';
   if (ext === '.rar') return 'rar';
   return undefined;
+}
+
+// A No-Intro language list: "(En,Ja,Fr,De)", "(Zh-Hant)", "(En)".
+const LANGUAGE_TAG = / \([A-Z][a-z](?:-[A-Za-z]+)?(?:,[A-Z][a-z](?:-[A-Za-z]+)?)*\)/g;
+
+/**
+ * The name without its language list. No-Intro adds languages to existing
+ * entries as they are checked ("1080 Snowboarding (USA) (En,Ja) (LodgeNet)"
+ * became "(En,Ja,Fr,De)"), and uploads keep the name of their day.
+ */
+export function withoutLanguages(name: string): string {
+  return name.replace(LANGUAGE_TAG, '');
 }
 
 export function stripExtension(name: string): string {
