@@ -31,6 +31,10 @@ describe('titleWords', () => {
       'eclair',
     ]);
   });
+
+  it('drops a leading article, which No-Intro moves to the end', () => {
+    expect(titleWords('The Legend of Zelda')).toEqual(titleWords('Legend of Zelda, The (USA)'));
+  });
 });
 
 describe('suggestGames', () => {

@@ -9,7 +9,7 @@ import {
 import type { DatUploadResponse, GamesResponse, ListDatsResponse } from '@shared/api.js';
 import { scanJobSchema, renameResultSchema, lastScanResponseSchema } from '@shared/scan.js';
 import { gameLinksResponseSchema } from '@shared/game-link.js';
-import type { GameLink } from '@shared/game-link.js';
+import type { GameLink, SaveGameLinksRequest } from '@shared/game-link.js';
 import type { ScanJob, RenameRequest, RenameResult, LastScan } from '@shared/scan.js';
 import {
   downloadJobSchema,
@@ -125,6 +125,18 @@ export async function saveGameLink(datId: string, fileCrc: string, gameId: strin
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ gameId }),
+  });
+  await ensureOk(res);
+}
+
+export async function saveGameLinks(
+  datId: string,
+  links: SaveGameLinksRequest['links'],
+): Promise<void> {
+  const res = await fetch(`/api/dats/${encodeURIComponent(datId)}/links`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ links }),
   });
   await ensureOk(res);
 }

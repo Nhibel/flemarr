@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteGameLink, fetchGameLinks, saveGameLink } from '@/lib/api.js';
+import { deleteGameLink, fetchGameLinks, saveGameLink, saveGameLinks } from '@/lib/api.js';
 import { queryKeys } from '@/lib/query-keys.js';
-import type { GameLink } from '@shared/game-link.js';
+import type { GameLink, SaveGameLinksRequest } from '@shared/game-link.js';
 
 const NO_LINKS: GameLink[] = [];
 
@@ -23,9 +23,13 @@ export function useGameLinkMutations(datId: string) {
       saveGameLink(datId, fileCrc, gameId),
     onSuccess,
   });
+  const attachMany = useMutation({
+    mutationFn: (links: SaveGameLinksRequest['links']) => saveGameLinks(datId, links),
+    onSuccess,
+  });
   const detach = useMutation({
     mutationFn: (fileCrc: string) => deleteGameLink(datId, fileCrc),
     onSuccess,
   });
-  return { attach, detach };
+  return { attach, attachMany, detach };
 }

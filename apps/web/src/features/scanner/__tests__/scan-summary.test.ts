@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ScanResult } from '@shared/scan.js';
-import { foundGames, scannedFileCount, splitUnmatched } from '../scan-summary.js';
+import { foundGames, ownedGameNames, scannedFileCount, splitUnmatched } from '../scan-summary.js';
 
 // One disc game converted to a single .chd: the scan reports one match per
 // rom of the DAT, all under the same file.
@@ -69,5 +69,25 @@ describe('splitUnmatched', () => {
   it('leaves a file without a CRC unattached', () => {
     const file = { filePath: '/a.gbc' };
     expect(splitUnmatched([file], [])).toEqual({ linked: [], unlinked: [file] });
+  });
+});
+
+describe('ownedGameNames', () => {
+  it('holds the games found, misnamed or attached', () => {
+    const result: ScanResult = {
+      ...ONE_CHD,
+      wrongName: [
+        {
+          filePath: '/x.bin',
+          currentName: 'x.bin',
+          canonicalName: 'X.bin',
+          crc: '6',
+          gameName: 'X',
+        },
+      ],
+    };
+    const link = { fileCrc: '0000000a', gameId: 'g1', gameName: 'A (USA)' };
+    const linked = [{ filePath: '/a.gbc', crc: '0000000a', link }];
+    expect(ownedGameNames(result, linked)).toEqual(new Set(['Bloody Roar (USA)', 'X', 'A (USA)']));
   });
 });

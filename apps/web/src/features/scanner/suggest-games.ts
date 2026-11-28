@@ -6,6 +6,8 @@ const MIN_SIMILARITY = 0.5;
 
 // No-Intro puts the article last: "Aventures de Buzz l'Eclair, Les".
 const TRAILING_ARTICLE = /, (the|a|an|le|la|les|l'|der|die|das|el|los|las|il|lo|gli|i)\b/i;
+// A file named by hand keeps it first: "The Legend of Zelda".
+const LEADING_ARTICLE = /^(the|a|an|le|la|les|der|die|das|el|los|las|il|lo|gli) /i;
 
 /** The words of a title, without its tags, extension, accents and article. */
 export function titleWords(name: string): string[] {
@@ -13,6 +15,7 @@ export function titleWords(name: string): string[] {
   return (
     title
       .replace(TRAILING_ARTICLE, '')
+      .replace(LEADING_ARTICLE, '')
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()

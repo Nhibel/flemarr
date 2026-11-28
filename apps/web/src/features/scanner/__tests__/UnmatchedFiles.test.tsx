@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.mocked(api.fetchGames).mockResolvedValue([GAME]);
   vi.mocked(api.fetchGameLinks).mockResolvedValue([]);
   vi.mocked(api.saveGameLink).mockResolvedValue(undefined);
+  vi.mocked(api.saveGameLinks).mockResolvedValue(undefined);
   vi.mocked(api.deleteGameLink).mockResolvedValue(undefined);
 });
 
@@ -33,7 +34,13 @@ function Harness({ files }: { files: UnmatchedFile[] }) {
   const { openSections, setOpen } = useOpenSections();
   const groups = splitUnmatched(files, useGameLinks('d1'));
   return (
-    <UnmatchedFiles datId="d1" {...groups} openSections={openSections} onOpenChange={setOpen} />
+    <UnmatchedFiles
+      datId="d1"
+      {...groups}
+      ownedGameNames={new Set()}
+      openSections={openSections}
+      onOpenChange={setOpen}
+    />
   );
 }
 
@@ -97,5 +104,19 @@ describe('UnmatchedFiles', () => {
     renderFiles([FILE]);
     await waitFor(() => expect(api.fetchGames).toHaveBeenCalled());
     expect(screen.queryByRole('button', { hidden: true })).not.toBeInTheDocument();
+  });
+});
+
+describe('UnmatchedFiles — Tout rattacher', () => {
+  const OTHER: UnmatchedFile = { filePath: '/roms/gbc/Unknown Hack.gbc', crc: 'cafebabe' };
+
+  it('saves the ticked files in one request, once confirmed', async () => {
+    const user = userEvent.setup();
+    renderFiles([FILE, OTHER]);
+    await user.click(await screen.findByRole('button', { name: 'Tout rattacher…', hidden: true }));
+    expect(api.saveGameLinks).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Rattacher 1 fichier', hidden: true }));
+    expect(api.saveGameLinks).toHaveBeenCalledWith('d1', [{ fileCrc: 'deadbeef', gameId: 'g1' }]);
+    await waitFor(() => expect(api.fetchGameLinks).toHaveBeenCalledTimes(2));
   });
 });

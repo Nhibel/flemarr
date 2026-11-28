@@ -45,3 +45,12 @@ export function splitUnmatched(
   }
   return { linked, unlinked };
 }
+
+/** The games the user has: found, misnamed, or attached to a file. */
+export function ownedGameNames(result: ScanResult, linked: LinkedFile[]): Set<string> {
+  const names = new Set<string>();
+  for (const match of result.matched) names.add(match.gameName);
+  for (const entry of result.wrongName) names.add(entry.gameName);
+  for (const { link } of linked) names.add(link.gameName);
+  return names;
+}

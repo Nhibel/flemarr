@@ -9,7 +9,7 @@ import { plural } from '@/lib/plural.js';
 import { chosenName } from './use-renames.js';
 import { sectionId, useOpenSections } from './use-open-sections.js';
 import type { ScanSection } from './use-open-sections.js';
-import { foundGames, scannedFileCount, splitUnmatched } from './scan-summary.js';
+import { foundGames, ownedGameNames, scannedFileCount, splitUnmatched } from './scan-summary.js';
 
 interface ScanResultsProps {
   datId: string;
@@ -157,6 +157,7 @@ export function ScanResults({
         datId={datId}
         linked={linked}
         unlinked={unlinked}
+        ownedGameNames={ownedGameNames(result, linked)}
         openSections={openSections}
         onOpenChange={setOpen}
       />

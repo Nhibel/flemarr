@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { css } from '@/styled-system/css';
+import { css, cx } from '@/styled-system/css';
 import { fetchGames } from '@/lib/api.js';
 import { displayPath } from '@/lib/paths.js';
 import { plural } from '@/lib/plural.js';
@@ -9,6 +9,9 @@ import { useGameLinkMutations } from '@/lib/use-game-links.js';
 import { useRomsRoot } from '@/lib/use-roms-root.js';
 import { Foldable } from '@/components/Foldable.js';
 import type { UnmatchedFile } from '@shared/scan.js';
+import { BulkLinkDialog } from './BulkLinkDialog.js';
+import { proposeLinks } from './bulk-links.js';
+import type { LinkProposal } from './bulk-links.js';
 import { LinkGameDialog } from './LinkGameDialog.js';
 import type { LinkedFile } from './scan-summary.js';
 import { sectionId } from './use-open-sections.js';
@@ -47,18 +50,23 @@ export function UnmatchedFiles({
   datId,
   linked,
   unlinked,
+  ownedGameNames,
   openSections,
   onOpenChange,
 }: {
   datId: string;
   linked: LinkedFile[];
   unlinked: UnmatchedFile[];
+  /** Games already owned: never ticked by default in "Tout rattacher". */
+  ownedGameNames: ReadonlySet<string>;
   openSections: Record<ScanSection, boolean>;
   onOpenChange: (section: ScanSection, open: boolean) => void;
 }) {
   const romsRoot = useRomsRoot();
-  const { attach, detach } = useGameLinkMutations(datId);
+  const { attach, attachMany, detach } = useGameLinkMutations(datId);
   const [linking, setLinking] = useState<{ fileName: string; crc: string } | null>(null);
+  // Computed once, on opening: the dialog keeps its own ticks from there.
+  const [proposals, setProposals] = useState<LinkProposal[] | null>(null);
   const { data: games = [] } = useQuery({
     queryKey: queryKeys.games(datId),
     queryFn: () => fetchGames(datId),
@@ -67,6 +75,7 @@ export function UnmatchedFiles({
   });
 
   const canLink = linkableGames(games).length > 0;
+  const canLinkMany = canLink && unlinked.some((file) => file.crc !== undefined);
 
   const openDialog = (file: UnmatchedFile) => {
     if (file.crc === undefined) return;
@@ -125,6 +134,18 @@ export function UnmatchedFiles({
             Souvent une autre version (région, langue) d&apos;un jeu du DAT.
             {canLink && ' Rattache-la pour qu’il compte comme possédé.'}
           </p>
+          {canLinkMany && (
+            <button
+              type="button"
+              className={cx(linkButtonClass, css({ mb: '2' }))}
+              onClick={() => {
+                attachMany.reset();
+                setProposals(proposeLinks(unlinked, games, ownedGameNames));
+              }}
+            >
+              Tout rattacher…
+            </button>
+          )}
           <ul className={css({ pl: '4', display: 'flex', flexDirection: 'column', gap: '1' })}>
             {unlinked.map((file) => (
               <li key={file.filePath} className={rowClass}>
@@ -143,6 +164,16 @@ export function UnmatchedFiles({
             ))}
           </ul>
         </Foldable>
+      )}
+
+      {proposals !== null && (
+        <BulkLinkDialog
+          proposals={proposals}
+          saving={attachMany.isPending}
+          error={attachMany.error?.message ?? null}
+          onClose={() => setProposals(null)}
+          onConfirm={(links) => attachMany.mutate(links, { onSuccess: () => setProposals(null) })}
+        />
       )}
 
       {linking !== null && (
